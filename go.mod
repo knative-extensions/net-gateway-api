@@ -1,19 +1,21 @@
-module knative.dev/sample-controller
+module knative.dev/net-ingressv2
 
 go 1.14
 
 require (
-	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/google/go-cmp v0.5.4
 	github.com/google/licenseclassifier v0.0.0-20200708223521-3d09a0ea2f39
-	github.com/sergi/go-diff v1.1.0 // indirect
 	go.uber.org/zap v1.16.0
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	k8s.io/code-generator v0.19.2
-	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
-	knative.dev/hack v0.0.0-20201201234937-fddbf732e450
-	knative.dev/pkg v0.0.0-20201202014037-81712ed625fd
+	k8s.io/kube-openapi v0.0.0-20200831175022-64514a1d5d59
+	knative.dev/hack v0.0.0-20210120165453-8d623a0af457
+	knative.dev/networking v0.0.0-20210121025453-4db00b8ae77a
+	knative.dev/pkg v0.0.0-20210121051653-32a3248a7121
+	knative.dev/sample-controller v0.0.0-20210121143553-f889075a49b8
+	sigs.k8s.io/service-apis v0.1.0-rc2
 )
 
 replace (
@@ -25,5 +27,4 @@ replace (
 	k8s.io/apiserver => k8s.io/apiserver v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
 	k8s.io/code-generator => k8s.io/code-generator v0.19.2
-//k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 )

@@ -89,6 +89,10 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "knative.dev/pkg/controller",
 			Name:    "WithEventRecorder",
 		}),
+		"controllerNewSkipKey": c.Universe.Type(types.Name{
+			Package: "knative.dev/pkg/controller",
+			Name:    "NewSkipKey",
+		}),
 		"corev1EventSource": c.Universe.Function(types.Name{
 			Package: "k8s.io/api/core/v1",
 			Name:    "EventSource",
@@ -375,7 +379,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 	// If we are not the leader, and we don't implement either ReadOnly
 	// observer interfaces, then take a fast-path out.
 	if s.isNotLeaderNorObserver() {
-		return nil
+		return {{.controllerNewSkipKey|raw}}(key)
 	}
 
 	// If configStore is set, attach the frozen configuration to the context.
@@ -420,9 +424,6 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 	logger = logger.With(zap.String("targetMethod", name))
 	switch name {
 	case {{.doReconcileKind|raw}}:
-		// Append the target method to the logger.
-		logger = logger.With(zap.String("targetMethod", "ReconcileKind"))
-
 		// Set and update the finalizer on resource if r.reconciler
 		// implements Finalizer.
 		if resource, err = r.setFinalizerIfFinalizer(ctx, resource); err != nil {

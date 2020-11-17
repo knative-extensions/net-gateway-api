@@ -31,20 +31,27 @@ group "Kubernetes Codegen"
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
-${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
-  knative.dev/sample-controller/pkg/client knative.dev/sample-controller/pkg/apis \
-  "samples:v1alpha1" \
+chmod +x ${CODEGEN_PKG}/generate-groups.sh
+# serving v2
+${CODEGEN_PKG}/generate-groups.sh "client,informer,lister" \
+  knative.dev/net-ingressv2/pkg/client sigs.k8s.io/service-apis \
+  "apis:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
-group "Knative Codegen"
-
-# Knative Injection
+# serving v2
+chmod +x ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh
 ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
-  knative.dev/sample-controller/pkg/client knative.dev/sample-controller/pkg/apis \
-  "samples:v1alpha1" \
+  knative.dev/net-ingressv2/pkg/client sigs.k8s.io/service-apis \
+  "apis:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
-group "Update deps post-codegen"
+# TODO:
+# Depends on generate-groups.sh to install bin/deepcopy-gen
+#${GOPATH}/bin/deepcopy-gen \
+#  -O zz_generated.deepcopy \
+#  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+#  -i knative.dev/net-ingressv2/pkg/reconciler/ingress \
+#  -i knative.dev/net-ingressv2/pkg/reconciler/ingressv2
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh

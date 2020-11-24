@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ingress
 
 import (
@@ -24,6 +40,12 @@ const (
 	notReconciledMessage    = "Ingress reconciliation failed"
 )
 
+// TODO: Istio cannot choose gateway now. See - https://github.com/istio/istio/issues/29078
+const (
+	istioGatewayName      = "istio-ingressgateway"
+	istioGatewayNamespace = "istio-system"
+)
+
 // Reconciler implements addressableservicereconciler.Interface for
 // AddressableService resources.
 type Reconciler struct {
@@ -37,8 +59,6 @@ type Reconciler struct {
 
 var (
 	_ ingressreconciler.Interface = (*Reconciler)(nil)
-	//	_ ingressreconciler.Finalizer = (*Reconciler)(nil)
-
 	_ ingressv2.HTTPRouteAccessor = (*Reconciler)(nil)
 )
 
@@ -78,23 +98,20 @@ func (r *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	ing.Status.InitializeConditions()
 	logger.Infof("Reconciling ingress: %#v", ing)
 
-	httpRoutes, err := resources.MakeHTTPRoutes(ctx, ing)
-	if err != nil {
-		return err
-	}
+	httpRoutes := resources.MakeHTTPRoutes(ctx, ing)
 	if err := r.reconcileHTTPRoutes(ctx, ing, httpRoutes); err != nil {
 		return err
 	}
 
-	//TODO
-	// Update status
 	ing.Status.MarkNetworkConfigured()
-	// Update lb status
+
 	publicLbs := []v1alpha1.LoadBalancerIngressStatus{
-		//TODO
-		{DomainInternal: pkgnet.GetServiceHostname("istio-ingressgateway", "istio-system")},
+		{DomainInternal: pkgnet.GetServiceHostname(istioGatewayName, istioGatewayNamespace)},
 	}
-	privateLbs := []v1alpha1.LoadBalancerIngressStatus{}
+	privateLbs := []v1alpha1.LoadBalancerIngressStatus{
+		{DomainInternal: pkgnet.GetServiceHostname(istioGatewayName, istioGatewayNamespace)},
+	}
+
 	ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)
 
 	return nil
@@ -117,6 +134,5 @@ func (r *Reconciler) reconcileHTTPRoutes(ctx context.Context, ing *v1alpha1.Ingr
 			return err
 		}
 	}
-
 	return nil
 }

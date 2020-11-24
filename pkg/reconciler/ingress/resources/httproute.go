@@ -1,8 +1,23 @@
+/*
+Copyright 2020 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resources
 
 import (
 	"context"
-	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -31,33 +46,32 @@ const (
 
 const V2IngressClassName = "ingressv2.ingress.networking.knative.dev"
 
-// MakeHTTPRoutes creates ...
-func MakeHTTPRoutes(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alpha1.HTTPRoute, error) {
-	httpRoutes, err := makeHTTPRoute(ctx, ing)
-	if err != nil {
-		return nil, fmt.Errorf("todo: %w", err)
-	}
-
-	return httpRoutes, nil
+// MakeHTTPRoutes creates HTTPRoute to control an HTTP traffic.
+func MakeHTTPRoutes(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
+	return makeHTTPRoute(ctx, ing)
 }
 
-// makeHTTPRoutes creates ...
-func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alpha1.HTTPRoute, error) {
+func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
 	var httpRoutes []*servicev1alpha1.HTTPRoute
 
 	for _, rule := range ing.Spec.Rules {
-		//TODO: https://github.com/istio/istio/issues/29078
-		if rule.Visibility == v1alpha1.IngressVisibilityClusterLocal {
-			continue
-		}
 		var rules []servicev1alpha1.HTTPRouteRule
 		for _, path := range rule.HTTP.Paths {
 			var forwards []servicev1alpha1.HTTPRouteForwardTo
-			var filters []servicev1alpha1.HTTPRouteFilter
-			// TODO:
-			// When requestHeaderModifier in forwards.filters does not work when weight 100.
-			// see: https://github.com/istio/istio/issues/29111
+			var preFilters []servicev1alpha1.HTTPRouteFilter
+			if path.AppendHeaders != nil {
+				preFilters = []servicev1alpha1.HTTPRouteFilter{{
+					Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
+						Add: path.AppendHeaders,
+					}}}
+			}
+
 			if len(path.Splits) == 1 {
+				// TODO:
+				// requestHeaderModifier in forwards.filters does not work when weight 100.
+				// As a workaround, add requestHeaderModifier to preFilter.
+				// see: https://github.com/istio/istio/issues/29111
 				split := path.Splits[0]
 				name := split.IngressBackend.ServiceName
 				forward := servicev1alpha1.HTTPRouteForwardTo{
@@ -66,11 +80,14 @@ func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alph
 					Weight:      int32(split.Percent),
 				}
 				forwards = append(forwards, forward)
-				filters = []servicev1alpha1.HTTPRouteFilter{{
-					Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
-						Add: split.AppendHeaders,
-					}}}
+				if split.AppendHeaders != nil {
+					preFilters = append(preFilters,
+						servicev1alpha1.HTTPRouteFilter{
+							Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
+								Add: split.AppendHeaders,
+							}})
+				}
 			} else {
 				for _, split := range path.Splits {
 					name := split.IngressBackend.ServiceName
@@ -89,7 +106,7 @@ func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alph
 			}
 			rule := servicev1alpha1.HTTPRouteRule{
 				ForwardTo: forwards,
-				Filters:   filters,
+				Filters:   preFilters,
 			}
 			rules = append(rules, rule)
 		}
@@ -103,9 +120,14 @@ func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alph
 			Rules:     rules,
 		}
 
+		hrName := ing.Name
+		if rule.Visibility == v1alpha1.IngressVisibilityClusterLocal {
+			hrName = ing.Name + "-private"
+		}
+
 		httpRoute := &servicev1alpha1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            ing.Name, // TODO: Should not be same name with ingress?
+				Name:            hrName,
 				Namespace:       ing.Namespace,
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 				Labels:          ing.GetLabels(),
@@ -116,5 +138,5 @@ func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) ([]*servicev1alph
 		httpRoutes = append(httpRoutes, httpRoute)
 
 	}
-	return httpRoutes, nil
+	return httpRoutes
 }

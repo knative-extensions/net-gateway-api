@@ -2,7 +2,7 @@
 
 This doc explains how to setup a development environment so you can get started
 [contributing](https://www.knative.dev/contributing/) to Knative
-`sample-controller`. Also take a look at:
+`net-ingressv2`. Also take a look at:
 
 - [The pull request workflow](https://knative.dev/community/contributing/reviewing/)
 
@@ -22,7 +22,7 @@ Before submitting a PR, see also [CONTRIBUTING.md](./CONTRIBUTING.md).
 You must install these tools:
 
 1. [`go`](https://golang.org/doc/install): The language Knative
-   `sample-controller` is built in
+   `net-ingressv2` is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external dependencies.
 
@@ -47,7 +47,7 @@ export PATH="${PATH}:${GOPATH}/bin"
 ### Checkout your fork
 
 The Go tools require that you clone the repository to the
-`src/knative.dev/sample-controller` directory in your
+`src/knative.dev/net-ingressv2` directory in your
 [`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
 
 To check out this repository:
@@ -60,9 +60,9 @@ To check out this repository:
 ```shell
 mkdir -p ${GOPATH}/src/knative.dev
 cd ${GOPATH}/src/knative.dev
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/sample-controller.git
-cd sample-controller
-git remote add upstream https://github.com/knative-sandbox/sample-controller.git
+git clone git@github.com:${YOUR_GITHUB_USERNAME}/net-ingressv2.git
+cd net-ingressv2
+git remote add upstream https://github.com/knative-sandbox/net-ingressv2.git
 git remote set-url --push upstream no_push
 ```
 
@@ -71,3 +71,34 @@ _Adding the `upstream` remote sets you up nicely for regularly
 
 Once you reach this point you are ready to do a full build and deploy as
 described below.
+
+### Install service-apis
+
+```
+kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.1.0-rc2'
+```
+
+### Install Istio
+
+Run the following command to install Istio for development purpose:
+
+```shell
+third_party/istio-latest/install-istio.sh istio-ci-no-mesh.yaml
+```
+
+### Install Knative Serving
+
+Run the following command to install Knative
+
+```shell
+kubectl apply --filename https://storage.googleapis.com/knative-nightly/serving/latest/serving-crds.yaml
+kubectl apply --filename https://storage.googleapis.com/knative-nightly/serving/latest/serving-core.yaml
+```
+
+### Install Knative net-ingressv2
+
+```
+KNATIVE_NAMESPACE="knative-serving"
+kubectl patch configmap/config-network -n ${KNATIVE_NAMESPACE} --type merge -p '{"data":{"ingress.class":"ingressv2.ingress.networking.knative.dev"}}'
+ko apply -f config/examples/gateway.yaml -f config/
+```

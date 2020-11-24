@@ -1,36 +1,43 @@
+/*
+Copyright 2020 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ingress
 
 import (
 	"context"
 	"testing"
 
-	fakenetworkingclient "knative.dev/networking/pkg/client/injection/client/fake"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
-
-	servicev1alpha1 "sigs.k8s.io/service-apis/apis/v1alpha1"
-
-	"knative.dev/net-ingressv2/pkg/reconciler/ingress/resources"
-
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	clientgotesting "k8s.io/client-go/testing"
 	v2client "knative.dev/net-ingressv2/pkg/client/injection/client"
+	_ "knative.dev/net-ingressv2/pkg/client/injection/informers/apis/v1alpha1/httproute/fake"
+	"knative.dev/net-ingressv2/pkg/reconciler/ingress/resources"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/pkg/kmeta"
-
-	_ "knative.dev/net-ingressv2/pkg/client/injection/informers/apis/v1alpha1/httproute/fake"
-
-	corev1 "k8s.io/api/core/v1"
-	clientgotesting "k8s.io/client-go/testing"
-
-	duckv1 "knative.dev/pkg/apis/duck/v1"
-
-	//	"knative.dev/pkg/apis"
-	pkgnet "knative.dev/pkg/network"
-
+	fakenetworkingclient "knative.dev/networking/pkg/client/injection/client/fake"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/logging"
+	pkgnet "knative.dev/pkg/network"
+	servicev1alpha1 "sigs.k8s.io/service-apis/apis/v1alpha1"
 
 	. "knative.dev/net-ingressv2/pkg/reconciler/testing"
 	. "knative.dev/pkg/reconciler/testing"
@@ -107,11 +114,6 @@ func TestReconcile(t *testing.T) {
 		},
 	}, {
 		Name: "reconcile HTTPRoutes to match desired one",
-		/*
-			WithReactors: []clientgotesting.ReactionFunc{
-				InduceFailure("update", "virtualservices"),
-			},
-		*/
 		Objects: []runtime.Object{
 			ingressWithStatus("reconcile-httproute",
 				v1alpha1.IngressStatus{
@@ -177,26 +179,10 @@ func TestReconcile(t *testing.T) {
 							ServiceName: &serviceName,
 							Weight:      int32(100),
 						}},
-						Filters: []servicev1alpha1.HTTPRouteFilter{{
-							Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
-								Add: nil,
-							}},
-						},
 					}},
 				},
 			},
 		}},
-		/*
-			WantDeletes: []clientgotesting.DeleteActionImpl{{
-				ActionImpl: clientgotesting.ActionImpl{
-					Namespace: testNS,
-					Verb:      "delete",
-					//	Resource:  v1alpha3.SchemeGroupVersion.WithResource("virtualservices"),
-				},
-				Name: "reconcile-httproute-extra",
-			}},
-		*/
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
 			Object: ingressWithStatus("reconcile-httproute",
 				v1alpha1.IngressStatus{
@@ -205,7 +191,11 @@ func TestReconcile(t *testing.T) {
 							{DomainInternal: pkgnet.GetServiceHostname("istio-ingressgateway", "istio-system")},
 						},
 					},
-					PrivateLoadBalancer: &v1alpha1.LoadBalancerStatus{Ingress: []v1alpha1.LoadBalancerIngressStatus{}},
+					PrivateLoadBalancer: &v1alpha1.LoadBalancerStatus{
+						Ingress: []v1alpha1.LoadBalancerIngressStatus{
+							{DomainInternal: pkgnet.GetServiceHostname("istio-ingressgateway", "istio-system")},
+						},
+					},
 					Status: duckv1.Status{
 						Conditions: duckv1.Conditions{{
 							Type:   v1alpha1.IngressConditionLoadBalancerReady,

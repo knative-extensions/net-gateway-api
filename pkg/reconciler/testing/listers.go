@@ -1,5 +1,5 @@
 /*
-  pyright 2020 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,15 +22,13 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	fakeingressv2clientset "knative.dev/net-ingressv2/pkg/client/clientset/versioned/fake"
+	ingressv2v1alpha1 "knative.dev/net-ingressv2/pkg/client/listers/apis/v1alpha1"
 	networking "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakenetworkingclientset "knative.dev/networking/pkg/client/clientset/versioned/fake"
 	networkinglisters "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/pkg/reconciler/testing"
 	servicev1alpha1 "sigs.k8s.io/service-apis/apis/v1alpha1"
-
-	fakeingressv2clientset "knative.dev/net-ingressv2/pkg/client/clientset/versioned/fake"
-
-	ingressv2v1alpha1 "knative.dev/net-ingressv2/pkg/client/listers/apis/v1alpha1"
 )
 
 var clientSetSchemes = []func(*runtime.Scheme) error{

@@ -1,5 +1,5 @@
 /*
-  pyright 2019 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ func NewController(
 	httprouteInformer := httprouteinformer.Get(ctx)
 
 	c := &Reconciler{
-		//	IngressLister: ingressInformer.Lister(),
 		httpLister:  httprouteInformer.Lister(),
 		v2ClientSet: v2client.Get(ctx),
 	}
@@ -71,19 +70,7 @@ func NewController(
 	c.Tracker = tracker
 
 	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		// Cancel probing when a Ingress is deleted
-		DeleteFunc: combineFunc(
-			tracker.OnDeletedObserver,
-		),
+		DeleteFunc: tracker.OnDeletedObserver,
 	})
 	return impl
-}
-
-// TODO: not necessary?
-func combineFunc(functions ...func(interface{})) func(interface{}) {
-	return func(obj interface{}) {
-		for _, f := range functions {
-			f(obj)
-		}
-	}
 }

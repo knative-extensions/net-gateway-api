@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resources
 
 import (
@@ -10,16 +26,8 @@ import (
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
-
 	servicev1alpha1 "sigs.k8s.io/service-apis/apis/v1alpha1"
-	/*
-		"k8s.io/apimachinery/pkg/util/intstr"
-		"k8s.io/apimachinery/pkg/util/sets"
-		"knative.dev/net-istio/pkg/reconciler/ingress/config"
-		"knative.dev/networking/pkg/ingress"
-		"knative.dev/pkg/system"
-		_ "knative.dev/pkg/system/testing"
-	*/)
+)
 
 var (
 	serviceName = "test-service"
@@ -64,10 +72,7 @@ func TestMakeHTTPRoute_CorrectMetadata(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			hr, err := MakeHTTPRoutes(context.Background(), tc.ing)
-			if err != nil {
-				t.Fatal("MakeHTTPRoutes failed:", err)
-			}
+			hr := MakeHTTPRoutes(context.Background(), tc.ing)
 			if len(hr) != len(tc.expected) {
 				t.Fatalf("Expected %d HTTPRoutes, saw %d", len(tc.expected), len(hr))
 			}
@@ -126,10 +131,7 @@ func TestMakeHTTPRoute_CorrectSpec(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			hr, err := MakeHTTPRoutes(context.Background(), tc.ing)
-			if err != nil {
-				t.Fatal("MakeHTTPRoutes failed:", err)
-			}
+			hr := MakeHTTPRoutes(context.Background(), tc.ing)
 			if len(hr) != len(tc.expected) {
 				t.Fatalf("Expected %d HTTPRoutes, saw %d", len(tc.expected), len(hr))
 			}

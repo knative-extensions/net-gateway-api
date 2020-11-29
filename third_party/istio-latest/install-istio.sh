@@ -14,11 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Find the right arch so we can download the correct istioctl version
+case "${OSTYPE}" in
+  darwin*) ARCH=osx ;;
+  linux*) ARCH=linux-amd64 ;;
+  msys*) ARCH=win ;;
+  *) echo "** unknown OS '${OSTYPE}'" ; exit 1 ;;
+esac
+
 # Download and unpack Istio
-ISTIO_VERSION="1.8.0-rc.1"
-ISTIO_TARBALL=istio-${ISTIO_VERSION}-linux-amd64.tar.gz
-#DOWNLOAD_URL=https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/${ISTIO_TARBALL}
-# https://github.com/istio/istio/releases/download/untagged-044f3ec18dac21c5d620/istio-1.8.0-rc.1-linux-amd64.tar.gz
+ISTIO_VERSION="1.8.0"
+ISTIO_TARBALL=istio-${ISTIO_VERSION}-${ARCH}.tar.gz
+DOWNLOAD_URL=https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/${ISTIO_TARBALL}
 SYSTEM_NAMESPACE="${SYSTEM_NAMESPACE:-"knative-serving"}"
 
 wget --no-check-certificate $DOWNLOAD_URL
@@ -29,7 +36,7 @@ fi
 tar xzf ${ISTIO_TARBALL}
 
 # Install Istio
-./istio-${ISTIO_VERSION}/bin/istioctl install -f "$(dirname $0)/$1"
+./istio-${ISTIO_VERSION}/bin/istioctl install -f "$(dirname $0)/$1" -y
 
 # Enable mTLS STRICT in mesh mode
 if [[ $MESH -eq 1 ]]; then

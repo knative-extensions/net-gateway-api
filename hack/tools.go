@@ -36,4 +36,15 @@ import (
 
 	// Licenseclassifier
 	_ "github.com/google/licenseclassifier"
+
+	_ "knative.dev/networking/test/conformance/ingress"
+	_ "knative.dev/networking/test/test_images/flaky"
+	_ "knative.dev/networking/test/test_images/grpc-ping"
+	_ "knative.dev/networking/test/test_images/httpproxy"
+	_ "knative.dev/networking/test/test_images/runtime"
+	_ "knative.dev/networking/test/test_images/timeout"
+	_ "knative.dev/networking/test/test_images/wsserver"
+
+	// networking resource
+	_ "knative.dev/networking/config"
 )

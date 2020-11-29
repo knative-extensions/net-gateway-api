@@ -179,6 +179,8 @@ github.com/prometheus/procfs/internal/util
 # github.com/prometheus/statsd_exporter v0.15.0
 github.com/prometheus/statsd_exporter/pkg/mapper
 github.com/prometheus/statsd_exporter/pkg/mapper/fsm
+# github.com/rs/dnscache v0.0.0-20190621150935-06bb5526f76b
+github.com/rs/dnscache
 # github.com/sergi/go-diff v1.1.0
 ## explicit
 github.com/sergi/go-diff/diffmatchpatch
@@ -250,6 +252,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3
+golang.org/x/sync/singleflight
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -799,6 +802,7 @@ k8s.io/utils/trace
 knative.dev/hack
 # knative.dev/networking v0.0.0-20210121025453-4db00b8ae77a
 ## explicit
+knative.dev/networking/config
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
 knative.dev/networking/pkg/apis/networking/v1alpha1
@@ -824,7 +828,14 @@ knative.dev/networking/pkg/testing/status
 knative.dev/networking/test
 knative.dev/networking/test/conformance/ingress
 knative.dev/networking/test/defaultsystem
+knative.dev/networking/test/test_images/flaky
+knative.dev/networking/test/test_images/grpc-ping
 knative.dev/networking/test/test_images/grpc-ping/proto
+knative.dev/networking/test/test_images/httpproxy
+knative.dev/networking/test/test_images/runtime
+knative.dev/networking/test/test_images/runtime/handlers
+knative.dev/networking/test/test_images/timeout
+knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
 # knative.dev/pkg v0.0.0-20210121051653-32a3248a7121
 ## explicit

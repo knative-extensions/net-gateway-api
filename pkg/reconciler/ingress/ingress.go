@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	httpRoutesNotReconciled = "ReconcileHTTPRoutesFailed"
-	notReconciledReason     = "ReconcileIngressFailed"
-	notReconciledMessage    = "Ingress reconciliation failed"
+	//	httpRoutesNotReconciled = "ReconcileHTTPRoutesFailed"
+	notReconciledReason  = "ReconcileIngressFailed"
+	notReconciledMessage = "Ingress reconciliation failed"
 )
 
 // TODO: Istio cannot choose gateway now. See - https://github.com/istio/istio/issues/29078

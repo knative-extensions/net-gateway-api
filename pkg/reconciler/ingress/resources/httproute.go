@@ -52,7 +52,7 @@ func MakeHTTPRoutes(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alph
 }
 
 func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
-	var httpRoutes []*servicev1alpha1.HTTPRoute
+	httpRoutes := []*servicev1alpha1.HTTPRoute{}
 
 	for _, rule := range ing.Spec.Rules {
 		var rules []servicev1alpha1.HTTPRouteRule

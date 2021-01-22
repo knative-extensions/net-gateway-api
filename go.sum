@@ -1081,8 +1081,6 @@ knative.dev/networking v0.0.0-20210121025453-4db00b8ae77a/go.mod h1:hVzeezXBzGbh
 knative.dev/pkg v0.0.0-20210120200253-8cd47b5af35d/go.mod h1:cZdMjcJE6JGSNaEypgbUigX1TjteMIwQsW2woNBPVCA=
 knative.dev/pkg v0.0.0-20210121051653-32a3248a7121 h1:Q+mBsG9gH9Q7wcUXswllBXOLICEPQCfpSpWu+t1ctiU=
 knative.dev/pkg v0.0.0-20210121051653-32a3248a7121/go.mod h1:gLxtKir8BJ57os/J88y0zYZ8P15a6nnuP5yGUaG2hDQ=
-knative.dev/sample-controller v0.0.0-20210121143553-f889075a49b8 h1:EBxOx4Lyc0wROk4HHsrHhPvUd7QLojj114UTxs0uR0U=
-knative.dev/sample-controller v0.0.0-20210121143553-f889075a49b8/go.mod h1:V3ZlD23yyK6AX7anxD5itAfAeV5JLBbMwC+eH4V5pwU=
 pgregory.net/rapid v0.3.3/go.mod h1:UYpPVyjFHzYBGHIxLFoupi8vwk6rXNzRY9OMvVxFIOU=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=

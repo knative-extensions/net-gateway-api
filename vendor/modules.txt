@@ -180,6 +180,7 @@ github.com/prometheus/procfs/internal/util
 github.com/prometheus/statsd_exporter/pkg/mapper
 github.com/prometheus/statsd_exporter/pkg/mapper/fsm
 # github.com/sergi/go-diff v1.1.0
+## explicit
 github.com/sergi/go-diff/diffmatchpatch
 # github.com/sirupsen/logrus v1.6.0
 github.com/sirupsen/logrus
@@ -834,8 +835,6 @@ knative.dev/pkg/apis/duck/v1
 knative.dev/pkg/changeset
 knative.dev/pkg/client/injection/kube/client
 knative.dev/pkg/client/injection/kube/client/fake
-knative.dev/pkg/client/injection/kube/informers/core/v1/pod
-knative.dev/pkg/client/injection/kube/informers/factory
 knative.dev/pkg/codegen/cmd/injection-gen
 knative.dev/pkg/codegen/cmd/injection-gen/args
 knative.dev/pkg/codegen/cmd/injection-gen/generators
@@ -882,26 +881,6 @@ knative.dev/pkg/tracker
 knative.dev/pkg/version
 knative.dev/pkg/webhook
 knative.dev/pkg/webhook/certificates/resources
-# knative.dev/sample-controller v0.0.0-20210121143553-f889075a49b8
-## explicit
-knative.dev/sample-controller/pkg/apis/samples
-knative.dev/sample-controller/pkg/apis/samples/v1alpha1
-knative.dev/sample-controller/pkg/client/clientset/versioned
-knative.dev/sample-controller/pkg/client/clientset/versioned/fake
-knative.dev/sample-controller/pkg/client/clientset/versioned/scheme
-knative.dev/sample-controller/pkg/client/clientset/versioned/typed/samples/v1alpha1
-knative.dev/sample-controller/pkg/client/clientset/versioned/typed/samples/v1alpha1/fake
-knative.dev/sample-controller/pkg/client/informers/externalversions
-knative.dev/sample-controller/pkg/client/informers/externalversions/internalinterfaces
-knative.dev/sample-controller/pkg/client/informers/externalversions/samples
-knative.dev/sample-controller/pkg/client/informers/externalversions/samples/v1alpha1
-knative.dev/sample-controller/pkg/client/injection/client
-knative.dev/sample-controller/pkg/client/injection/client/fake
-knative.dev/sample-controller/pkg/client/injection/informers/factory
-knative.dev/sample-controller/pkg/client/injection/informers/factory/fake
-knative.dev/sample-controller/pkg/client/injection/informers/samples/v1alpha1/simpledeployment
-knative.dev/sample-controller/pkg/client/injection/reconciler/samples/v1alpha1/simpledeployment
-knative.dev/sample-controller/pkg/client/listers/samples/v1alpha1
 # sigs.k8s.io/service-apis v0.1.0-rc2
 ## explicit
 sigs.k8s.io/service-apis/apis/v1alpha1

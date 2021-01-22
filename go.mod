@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/google/go-cmp v0.5.4
 	github.com/google/licenseclassifier v0.0.0-20200708223521-3d09a0ea2f39
+	github.com/sergi/go-diff v1.1.0 // indirect
 	go.uber.org/zap v1.16.0
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
@@ -14,7 +15,6 @@ require (
 	knative.dev/hack v0.0.0-20210120165453-8d623a0af457
 	knative.dev/networking v0.0.0-20210121025453-4db00b8ae77a
 	knative.dev/pkg v0.0.0-20210121051653-32a3248a7121
-	knative.dev/sample-controller v0.0.0-20210121143553-f889075a49b8
 	sigs.k8s.io/service-apis v0.1.0-rc2
 )
 

@@ -14,10 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handlers
+package v1alpha1
 
-import "knative.dev/pkg/network"
+import (
+	"context"
+)
 
-// Error sets up a handler suitable for use with the ErrorHandler field on
-// httputil's reverse proxy, which logs /proc/net/sockstat data.
-var Error = network.ErrorHandler
+// SetDefaults implements apis.Defaultable
+func (d *SimpleDeployment) SetDefaults(ctx context.Context) {
+	// Nothing to default.
+}

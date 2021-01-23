@@ -128,7 +128,7 @@ jobs:
     - name: Install service-apis CRD
       # service-apis CRD must be installed before Istio.
       run: |
-        kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.1.0-rc2'
+        kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.1.0'
 
     - name: Install Knative net-ingressv2
       run: |

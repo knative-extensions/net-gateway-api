@@ -23,7 +23,7 @@ case "${OSTYPE}" in
 esac
 
 # Download and unpack Istio
-ISTIO_VERSION="1.8.0"
+ISTIO_VERSION="1.9.0-beta.0"
 ISTIO_TARBALL=istio-${ISTIO_VERSION}-${ARCH}.tar.gz
 DOWNLOAD_URL=https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/${ISTIO_TARBALL}
 SYSTEM_NAMESPACE="${SYSTEM_NAMESPACE:-"knative-serving"}"

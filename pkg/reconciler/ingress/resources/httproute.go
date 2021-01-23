@@ -67,43 +67,21 @@ func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha
 					}}}
 			}
 
-			if len(path.Splits) == 1 {
-				// TODO:
-				// requestHeaderModifier in forwards.filters does not work when weight 100.
-				// As a workaround, add requestHeaderModifier to preFilter.
-				// see: https://github.com/istio/istio/issues/29111
-				split := path.Splits[0]
+			for _, split := range path.Splits {
 				name := split.IngressBackend.ServiceName
 				forward := servicev1alpha1.HTTPRouteForwardTo{
 					Port:        servicev1alpha1.PortNumber(split.ServicePort.IntValue()),
 					ServiceName: &name,
 					Weight:      int32(split.Percent),
-				}
+					Filters: []servicev1alpha1.HTTPRouteFilter{{
+						Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
+							Add: split.AppendHeaders,
+						}},
+					}}
 				forwards = append(forwards, forward)
-				if split.AppendHeaders != nil {
-					preFilters = append(preFilters,
-						servicev1alpha1.HTTPRouteFilter{
-							Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
-								Add: split.AppendHeaders,
-							}})
-				}
-			} else {
-				for _, split := range path.Splits {
-					name := split.IngressBackend.ServiceName
-					forward := servicev1alpha1.HTTPRouteForwardTo{
-						Port:        servicev1alpha1.PortNumber(split.ServicePort.IntValue()),
-						ServiceName: &name,
-						Weight:      int32(split.Percent),
-						Filters: []servicev1alpha1.HTTPRouteFilter{{
-							Type: servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{
-								Add: split.AppendHeaders,
-							}},
-						}}
-					forwards = append(forwards, forward)
-				}
 			}
+
 			rule := servicev1alpha1.HTTPRouteRule{
 				ForwardTo: forwards,
 				Filters:   preFilters,

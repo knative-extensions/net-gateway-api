@@ -222,7 +222,7 @@ func TestReconcile(t *testing.T) {
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers) controller.Reconciler {
 		r := &Reconciler{
-			httpLister:  listers.GetHttpRoutetLister(),
+			httpLister:  listers.GetHTTPRoutetLister(),
 			v2ClientSet: v2client.Get(ctx),
 			Tracker:     &NullTracker{},
 		}

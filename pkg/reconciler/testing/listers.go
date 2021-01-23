@@ -104,6 +104,6 @@ func (l *Listers) GetSecretLister() corev1listers.SecretLister {
 }
 
 // TODO
-func (l *Listers) GetHttpRoutetLister() ingressv2v1alpha1.HTTPRouteLister {
+func (l *Listers) GetHTTPRoutetLister() ingressv2v1alpha1.HTTPRouteLister {
 	return ingressv2v1alpha1.NewHTTPRouteLister(l.IndexerFor(&servicev1alpha1.HTTPRoute{}))
 }

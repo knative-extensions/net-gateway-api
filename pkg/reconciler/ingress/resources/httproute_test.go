@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -72,7 +71,7 @@ func TestMakeHTTPRoute_CorrectMetadata(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			hr := MakeHTTPRoutes(context.Background(), tc.ing)
+			hr := MakeHTTPRoutes(tc.ing)
 			if len(hr) != len(tc.expected) {
 				t.Fatalf("Expected %d HTTPRoutes, saw %d", len(tc.expected), len(hr))
 			}
@@ -131,7 +130,7 @@ func TestMakeHTTPRoute_CorrectSpec(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			hr := MakeHTTPRoutes(context.Background(), tc.ing)
+			hr := MakeHTTPRoutes(tc.ing)
 			if len(hr) != len(tc.expected) {
 				t.Fatalf("Expected %d HTTPRoutes, saw %d", len(tc.expected), len(hr))
 			}

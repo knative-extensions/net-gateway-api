@@ -17,8 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
@@ -47,11 +45,11 @@ const (
 const V2IngressClassName = "ingressv2.ingress.networking.knative.dev"
 
 // MakeHTTPRoutes creates HTTPRoute to control an HTTP traffic.
-func MakeHTTPRoutes(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
-	return makeHTTPRoute(ctx, ing)
+func MakeHTTPRoutes(ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
+	return makeHTTPRoute(ing)
 }
 
-func makeHTTPRoute(ctx context.Context, ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
+func makeHTTPRoute(ing *v1alpha1.Ingress) []*servicev1alpha1.HTTPRoute {
 	httpRoutes := []*servicev1alpha1.HTTPRoute{}
 
 	for _, rule := range ing.Spec.Rules {

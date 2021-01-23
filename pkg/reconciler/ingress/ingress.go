@@ -98,7 +98,7 @@ func (r *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	ing.Status.InitializeConditions()
 	logger.Infof("Reconciling ingress: %#v", ing)
 
-	httpRoutes := resources.MakeHTTPRoutes(ctx, ing)
+	httpRoutes := resources.MakeHTTPRoutes(ing)
 	if err := r.reconcileHTTPRoutes(ctx, ing, httpRoutes); err != nil {
 		return err
 	}

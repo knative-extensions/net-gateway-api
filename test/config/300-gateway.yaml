@@ -2,6 +2,7 @@ kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
   name: simple-gateway
+  namespace: serving-tests
 spec:
   gatewayClassName: istio
   listeners:  # Use GatewayClass defaults for listener definition.

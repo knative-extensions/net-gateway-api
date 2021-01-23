@@ -100,5 +100,5 @@ kubectl apply --filename https://storage.googleapis.com/knative-nightly/serving/
 ```
 KNATIVE_NAMESPACE="knative-serving"
 kubectl patch configmap/config-network -n ${KNATIVE_NAMESPACE} --type merge -p '{"data":{"ingress.class":"ingressv2.ingress.networking.knative.dev"}}'
-ko apply -f config/examples/gateway.yaml -f config/
+ko apply -f test/config/ -f config/
 ```

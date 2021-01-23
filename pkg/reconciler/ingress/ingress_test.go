@@ -178,6 +178,9 @@ func TestReconcile(t *testing.T) {
 							Port:        servicev1alpha1.PortNumber(80),
 							ServiceName: &serviceName,
 							Weight:      int32(100),
+							Filters: []servicev1alpha1.HTTPRouteFilter{{
+								Type:                  servicev1alpha1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &servicev1alpha1.HTTPRequestHeaderFilter{}}},
 						}},
 					}},
 				},

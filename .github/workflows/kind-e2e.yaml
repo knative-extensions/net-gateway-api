@@ -128,7 +128,8 @@ jobs:
     - name: Install service-apis CRD
       # service-apis CRD must be installed before Istio.
       run: |
-        kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.1.0'
+        kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=99150ae530e97e2690bf690c077358e161490034'
+
 
     - name: Install Knative net-ingressv2
       run: |
@@ -172,7 +173,9 @@ jobs:
 
         # Run the tests tagged as e2e on the KinD cluster.
         # go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
-        go test -race -count=1 -short -timeout=20m -tags=e2e -run "TestIngressConformance/basics" ${{ matrix.test-suite }} \
+        go test -race -count=1 -short -timeout=20m -tags=e2e \
+           -run "TestIngressConformance/(basic|grpc|hosts|timeout|websocket|ingressclass)" \
+           ${{ matrix.test-suite }} \
            --enable-alpha --enable-beta \
            --ingressendpoint="${IPS[0]}" \
            --ingressClass=ingressv2.ingress.networking.knative.dev \

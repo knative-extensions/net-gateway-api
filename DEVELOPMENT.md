@@ -75,7 +75,7 @@ described below.
 ### Install service-apis
 
 ```
-kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.1.0-rc2'
+kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=99150ae530e97e2690bf690c077358e161490034'
 ```
 
 ### Install Istio

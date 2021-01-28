@@ -34,9 +34,6 @@ import (
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
 	_ "knative.dev/pkg/codegen/cmd/injection-gen"
 
-	// Licenseclassifier
-	_ "github.com/google/licenseclassifier"
-
 	_ "knative.dev/networking/test/conformance/ingress"
 	_ "knative.dev/networking/test/test_images/grpc-ping"
 	_ "knative.dev/networking/test/test_images/httpproxy"

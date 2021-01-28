@@ -19,11 +19,18 @@ package ingress
 import (
 	"context"
 
+	"k8s.io/client-go/tools/cache"
+	v2client "knative.dev/net-ingressv2/pkg/client/injection/client"
+	httprouteinformer "knative.dev/net-ingressv2/pkg/client/injection/informers/apis/v1alpha1/httproute"
+	"knative.dev/net-ingressv2/pkg/reconciler/ingress/resources"
+	"knative.dev/networking/pkg/apis/networking"
+	ingressinformer "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress"
+	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-
-	// TODO: This is just a to pull service-apis libs. It will be updated.
-	_ "sigs.k8s.io/service-apis/apis/v1alpha1"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/reconciler"
+	"knative.dev/pkg/tracker"
 )
 
 // NewController creates a Reconciler and returns the result of NewImpl.
@@ -31,5 +38,39 @@ func NewController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 ) *controller.Impl {
-	return nil
+	logger := logging.FromContext(ctx)
+
+	ingressInformer := ingressinformer.Get(ctx)
+	httprouteInformer := httprouteinformer.Get(ctx)
+
+	c := &Reconciler{
+		httpLister:  httprouteInformer.Lister(),
+		v2ClientSet: v2client.Get(ctx),
+	}
+
+	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, resources.V2IngressClassName, true)
+
+	impl := ingressreconciler.NewImpl(ctx, c, resources.V2IngressClassName, func(impl *controller.Impl) controller.Options {
+		return controller.Options{}
+	})
+
+	logger.Info("Setting up Ingress event handlers")
+	ingressHandler := cache.FilteringResourceEventHandler{
+		FilterFunc: filterFunc,
+		Handler:    controller.HandleAll(impl.Enqueue),
+	}
+	ingressInformer.Informer().AddEventHandler(ingressHandler)
+
+	httprouteInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: filterFunc,
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+	})
+
+	tracker := tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
+	c.Tracker = tracker
+
+	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: tracker.OnDeletedObserver,
+	})
+	return impl
 }

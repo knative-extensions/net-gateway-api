@@ -1,11 +1,9 @@
-# Knative Sample Controller
+# Knative net-ingressv2
 
-[![GoDoc](https://godoc.org/knative.dev/sample-controller?status.svg)](https://godoc.org/knative.dev/sample-controller)
-[![Go Report Card](https://goreportcard.com/badge/knative/sample-controller)](https://goreportcard.com/report/knative/sample-controller)
+[![GoDoc](https://godoc.org/knative.dev/net-ingressv2?status.svg)](https://godoc.org/knative.dev/net-ingressv2)
+[![Go Report Card](https://goreportcard.com/badge/knative/net-ingressv2)](https://goreportcard.com/report/knative/net-ingressv2)
 
-Knative `sample-controller` defines a few simple resources that are validated by
-webhook and managed by a controller to demonstrate the canonical style in which
-Knative writes controllers.
+Knative `net-ingressv2` defines a service-apis(Ingress v2) controller for migration.
 
 To learn more about Knative, please visit our
 [Knative docs](https://github.com/knative/docs) repository.

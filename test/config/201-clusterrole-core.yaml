@@ -1,4 +1,4 @@
-# Copyright 2019 The Knative Authors
+# Copyright 2020 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,19 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  # These are the permissions needed by the Istio Ingress implementation.
-  name: knative-serving-ingressv2
+  name: knative-serving-core
   labels:
-    serving.knative.dev/release: devel
     serving.knative.dev/controller: "true"
 rules:
-  - apiGroups: ["networking.x-k8s.io"]
-    resources: ["httproutes"]
+  - apiGroups: [""]
+    resources: ["configmaps", "endpoints", "pods", "secrets", "services"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["networking.internal.knative.dev"]
+    resources: ["*", "*/status", "*/finalizers"]
+    verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]

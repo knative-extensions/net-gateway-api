@@ -24,9 +24,9 @@ import (
 )
 
 var stableTests = map[string]func(t *testing.T){
+	"basics":       TestBasics,
+	"basics/http2": TestBasicsHTTP2,
 	/*
-		"basics":                       TestBasics,
-		"basics/http2":                 TestBasicsHTTP2,
 		"headers/pre-split":            TestPreSplitSetHeaders,
 		"headers/post-split":           TestPostSplitSetHeaders,
 		"grpc":                         TestGRPC,

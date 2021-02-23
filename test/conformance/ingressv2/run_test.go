@@ -16,14 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package conformance
+package ingress
 
-import (
-	"testing"
-
-	"knative.dev/networking/test/conformance/ingress"
-)
+import "testing"
 
 func TestIngressConformance(t *testing.T) {
-	ingress.RunConformance(t)
+	RunConformance(t)
 }

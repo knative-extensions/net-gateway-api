@@ -16,7 +16,7 @@ kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
   name: test-gateway
-  namespace: serving-tests
+  namespace: knative-serving
 spec:
   gatewayClassName: istio
   listeners:
@@ -24,8 +24,11 @@ spec:
     port: 80
     routes:
       kind: HTTPRoute
+      selector:
+        matchLabels:
+          knative-e2e-test: "net-ingressv2"
       namespaces:
-        from: "Same"
+        from: "All"
   - protocol: HTTPS
     port: 443
     tls:
@@ -34,5 +37,8 @@ spec:
         certificate: Allow
     routes:
       kind: HTTPRoute
+      selector:
+        matchLabels:
+          knative-e2e-test: "net-ingressv2"
       namespaces:
-        from: "Same"
+        from: "All"

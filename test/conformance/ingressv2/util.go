@@ -72,10 +72,13 @@ var dialBackoff = wait.Backoff{
 var testGateway = gatewayv1alpha1.RouteGateways{
 	Allow: gatewayv1alpha1.GatewayAllowFromList,
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "serving-tests",
+		Namespace: "knative-serving",
 		Name:      "test-gateway",
 	}},
 }
+
+// gatewayLabel is added to HTTPRoute. The test gateway selects the generated HTTPRoute by this label.
+var gatewayLabel = map[string]string{"knative-e2e-test": "net-ingressv2"}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.
@@ -701,6 +704,7 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: test.ServingNamespace,
+			Labels:    gatewayLabel,
 		},
 		Spec: spec,
 	}

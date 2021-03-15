@@ -1,0 +1,180 @@
+name: KinD e2e tests
+
+on:
+  pull_request:
+    branches: [ 'main' ]
+
+  push:
+    branches: [ 'main' ]
+
+  schedule:
+  - cron: '0 * * * *'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src/knative.dev/net-ingressv2
+
+jobs:
+  e2e-tests:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.18.15
+        - v1.19.7
+        - v1.20.2
+
+        test-suite:
+        - ./test/conformance/ingressv2
+
+        istio-version:
+        - head
+
+        # Map between K8s and KinD versions.
+        # This is attempting to make it a bit clearer what's being tested.
+        # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
+        include:
+        - k8s-version: v1.18.15
+          kind-version: v0.10.0
+          kind-image-sha: sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
+        - k8s-version: v1.19.7
+          kind-version: v0.10.0
+          kind-image-sha: sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
+        - k8s-version: v1.20.2
+          kind-version: v0.10.0
+          kind-image-sha: sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
+
+
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+      KO_DOCKER_REPO: kind.local
+      # Use a semi-random cluster suffix, but somewhat predictable
+      # so reruns don't just give us a completely new value.
+#      CLUSTER_SUFFIX: c${{ github.run_id }}.local
+
+    steps:
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.x
+
+    - name: Install Dependencies
+      working-directory: ./
+      run: |
+        echo '::group:: install ko'
+        curl -L https://github.com/google/ko/releases/download/v0.6.0/ko_0.6.0_Linux_x86_64.tar.gz | tar xzf - ko
+        chmod +x ./ko
+        sudo mv ko /usr/local/bin
+        echo '::endgroup::'
+
+    - name: Check out code onto GOPATH
+      uses: actions/checkout@v2
+      with:
+        path: ./src/knative.dev/net-ingressv2
+
+    - name: Install KinD
+      run: |
+        set -x
+
+        # Disable swap otherwise memory enforcement doesn't work
+        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600009955324200
+        sudo swapoff -a
+        sudo rm -f /swapfile
+
+        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${{ matrix.kind-version }}/kind-$(uname)-amd64
+        chmod +x ./kind
+        sudo mv kind /usr/local/bin
+
+    - name: Create KinD Cluster
+      run: |
+        set -x
+
+        # KinD configuration.
+        cat > kind.yaml <<EOF
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        nodes:
+        - role: control-plane
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+        - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+
+        # This is needed in order to
+        # (1) support projected volumes with service account tokens. See
+        #     https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
+        # (2) use a random cluster suffix
+        kubeadmConfigPatches:
+          - |
+            apiVersion: kubeadm.k8s.io/v1beta2
+            kind: ClusterConfiguration
+            metadata:
+              name: config
+            apiServer:
+              extraArgs:
+                "service-account-issuer": "kubernetes.default.svc"
+                "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+            # TODO: Istio doesn't work with non default cluster suffix. see - https://github.com/istio/istio/issues/29250
+            # networking:
+            #  dnsDomain: "${CLUSTER_SUFFIX}"
+        EOF
+
+        # Create a cluster!
+        kind create cluster --config kind.yaml
+
+    - name: Install service-apis CRD
+      # service-apis CRD must be installed before Istio.
+      run: |
+        kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=v0.2.0'
+
+
+    - name: Prepare test environment
+      run: |
+        set -o pipefail
+
+        # Replace cluster.local with random suffix.
+        # sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-${{ matrix.istio-version }}/istio-kind-no-mesh.yaml
+
+        # Deploy Istio
+        ./third_party/istio-${{ matrix.istio-version }}/install-istio.sh istio-kind-no-mesh.yaml
+
+        kubectl apply -f test/config/
+
+    - name: Upload Test Images
+      run: |
+        # Build and Publish our test images to the docker daemon.
+        ./test/upload-test-images.sh
+
+    - name: Run e2e Tests
+      run: |
+        set -x
+
+        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+        # Run the tests tagged as e2e on the KinD cluster.
+        # go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
+        go test -race -count=1 -short -timeout=20m -tags=e2e \
+           ${{ matrix.test-suite }} \
+           --enable-alpha --enable-beta \
+           --ingressendpoint="${IPS[0]}"
+#           --cluster-suffix=$CLUSTER_SUFFIX
+
+#    - name: Post failure notice to Slack
+#      uses: rtCamp/action-slack-notify@v2.1.0
+#      if: ${{ failure() && github.event_name != 'pull_request' }}
+#      env:
+#        SLACK_ICON: http://github.com/knative.png?size=48
+#        SLACK_USERNAME: github-actions
+#        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+#
+#        SLACK_CHANNEL: 'net-ingressv2'
+#        SLACK_COLOR: '#8E1600'
+#        MSG_MINIMAL: 'true'
+#        SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.
+#        SLACK_MESSAGE: |
+#          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

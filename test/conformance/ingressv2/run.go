@@ -24,11 +24,11 @@ import (
 )
 
 var stableTests = map[string]func(t *testing.T){
-	"basics":       TestBasics,
-	"basics/http2": TestBasicsHTTP2,
+	"basics":             TestBasics,
+	"basics/http2":       TestBasicsHTTP2,
+	"headers/pre-split":  TestPreSplitSetHeaders,
+	"headers/post-split": TestPostSplitSetHeaders,
 	/*
-		"headers/pre-split":            TestPreSplitSetHeaders,
-		"headers/post-split":           TestPostSplitSetHeaders,
 		"grpc":                         TestGRPC,
 		"grpc/split":                   TestGRPCSplit,
 		"headers/probe":                TestProbeHeaders,
@@ -52,9 +52,9 @@ var stableTests = map[string]func(t *testing.T){
 
 var betaTests = map[string]func(t *testing.T){
 	// Add your conformance test for beta features
+	"headers/tags": TestTagHeaders,
 	/*
 		"host-rewrite": TestRewriteHost,
-		"headers/tags": TestTagHeaders,
 	*/
 }
 

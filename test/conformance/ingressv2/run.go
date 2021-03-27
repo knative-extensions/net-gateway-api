@@ -36,9 +36,9 @@ var stableTests = map[string]func(t *testing.T){
 	"timeout":                      TestTimeout,
 	"websocket":                    TestWebsocket,
 	"websocket/split":              TestWebsocketSplit,
+	"grpc":                         TestGRPC,
+	"grpc/split":                   TestGRPCSplit,
 	/*
-		"grpc":                         TestGRPC,
-		"grpc/split":                   TestGRPCSplit,
 		"headers/probe":                TestProbeHeaders,
 		"retry":                        TestRetry,
 		"tls":                          TestIngressTLS,

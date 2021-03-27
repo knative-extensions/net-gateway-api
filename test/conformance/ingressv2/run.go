@@ -34,6 +34,8 @@ var stableTests = map[string]func(t *testing.T){
 	"dispatch/rule":                TestRule,
 	"hosts/multiple":               TestMultipleHosts,
 	"timeout":                      TestTimeout,
+	"websocket":                    TestWebsocket,
+	"websocket/split":              TestWebsocketSplit,
 	/*
 		"grpc":                         TestGRPC,
 		"grpc/split":                   TestGRPCSplit,
@@ -45,8 +47,6 @@ var stableTests = map[string]func(t *testing.T){
 		"visibility/split":             TestVisibilitySplit,
 		"visibility/path":              TestVisibilityPath,
 		"ingressclass":                 TestIngressClass,
-		"websocket":                    TestWebsocket,
-		"websocket/split":              TestWebsocketSplit,
 	*/
 }
 

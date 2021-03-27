@@ -32,11 +32,11 @@ var stableTests = map[string]func(t *testing.T){
 	"dispatch/percentage":          TestPercentage,
 	"dispatch/path_and_percentage": TestPathAndPercentageSplit,
 	"dispatch/rule":                TestRule,
+	"hosts/multiple":               TestMultipleHosts,
 	/*
 		"grpc":                         TestGRPC,
 		"grpc/split":                   TestGRPCSplit,
 		"headers/probe":                TestProbeHeaders,
-		"hosts/multiple":               TestMultipleHosts,
 		"retry":                        TestRetry,
 		"timeout":                      TestTimeout,
 		"tls":                          TestIngressTLS,

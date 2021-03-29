@@ -313,7 +313,7 @@ func CreateTimeoutService(ctx context.Context, t *testing.T, clients *test.Clien
 
 // CreateWebsocketService creates a Kubernetes service that will upgrade the connection
 // to use websockets and echo back the received messages with the provided suffix.
-func CreateWebsocketService(ctx context.Context, t *testing.T, clients *test.Clients, suffix string) (string, gatewayv1alpha1.PortNumber, context.CancelFunc) {
+func CreateWebsocketService(ctx context.Context, t *testing.T, clients *test.Clients, suffix string) (string, int, context.CancelFunc) {
 	t.Helper()
 	name := test.ObjectNameForTest(t)
 
@@ -383,7 +383,7 @@ func CreateWebsocketService(ctx context.Context, t *testing.T, clients *test.Cli
 		},
 	}
 
-	return name, gatewayv1alpha1.PortNumber(port), createPodAndService(ctx, t, clients, pod, svc)
+	return name, port, createPodAndService(ctx, t, clients, pod, svc)
 }
 
 // CreateGRPCService creates a Kubernetes service that will upgrade the connection

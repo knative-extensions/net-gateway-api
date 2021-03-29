@@ -24,19 +24,19 @@ import (
 )
 
 var stableTests = map[string]func(t *testing.T){
-	"basics":             TestBasics,
-	"basics/http2":       TestBasicsHTTP2,
-	"headers/pre-split":  TestPreSplitSetHeaders,
-	"headers/post-split": TestPostSplitSetHeaders,
+	"basics":                       TestBasics,
+	"basics/http2":                 TestBasicsHTTP2,
+	"headers/pre-split":            TestPreSplitSetHeaders,
+	"headers/post-split":           TestPostSplitSetHeaders,
+	"dispatch/path":                TestPath,
+	"dispatch/percentage":          TestPercentage,
+	"dispatch/path_and_percentage": TestPathAndPercentageSplit,
+	"dispatch/rule":                TestRule,
 	/*
 		"grpc":                         TestGRPC,
 		"grpc/split":                   TestGRPCSplit,
 		"headers/probe":                TestProbeHeaders,
 		"hosts/multiple":               TestMultipleHosts,
-		"dispatch/path":                TestPath,
-		"dispatch/percentage":          TestPercentage,
-		"dispatch/path_and_percentage": TestPathAndPercentageSplit,
-		"dispatch/rule":                TestRule,
 		"retry":                        TestRetry,
 		"timeout":                      TestTimeout,
 		"tls":                          TestIngressTLS,

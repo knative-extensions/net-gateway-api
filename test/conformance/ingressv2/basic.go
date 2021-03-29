@@ -31,13 +31,14 @@ func TestBasics(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
 		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &port,
+				Port:        &portNum,
 				ServiceName: &name,
 			}},
 		}},
@@ -53,13 +54,14 @@ func TestBasicsHTTP2(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameH2C)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
 		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &port,
+				Port:        &portNum,
 				ServiceName: &name,
 			}},
 		}},

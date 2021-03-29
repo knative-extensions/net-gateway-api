@@ -1,0 +1,115 @@
+/*
+Copyright 2021 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package ingress
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+	"knative.dev/net-ingressv2/test"
+	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+)
+
+// TestTimeout verifies that an Ingress implements "no timeout".
+func TestTimeout(t *testing.T) {
+	t.Parallel()
+	ctx, clients := context.Background(), test.Setup(t)
+
+	name, port, _ := CreateTimeoutService(ctx, t, clients)
+	portNum := gwv1alpha1.PortNumber(port)
+
+	// Create a simple HTTPRoute over the Service.
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{{
+			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+				Port:        &portNum,
+				ServiceName: &name,
+			}},
+		}},
+	})
+
+	const timeout = 10 * time.Second
+
+	tests := []struct {
+		name         string
+		code         int
+		initialDelay time.Duration
+		delay        time.Duration
+	}{{
+		name: "no delays is OK",
+		code: http.StatusOK,
+	}, {
+		name:         "large delay before headers is ok",
+		code:         http.StatusOK,
+		initialDelay: timeout,
+	}, {
+		name:  "large delay after headers is ok",
+		code:  http.StatusOK,
+		delay: timeout,
+	}}
+
+	// TODO: https://github.com/knative-sandbox/net-ingressv2/issues/18
+	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
+	waitForBackend(t, client, "http://"+name+".example.com?initialTimeout=0&timeout=0")
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			checkTimeout(ctx, t, client, name, test.code, test.initialDelay, test.delay)
+		})
+	}
+}
+
+func checkTimeout(ctx context.Context, t *testing.T, client *http.Client, name string, code int, initial time.Duration, timeout time.Duration) {
+	t.Helper()
+
+	resp, err := client.Get(fmt.Sprintf("http://%s.example.com?initialTimeout=%d&timeout=%d",
+		name, initial.Milliseconds(), timeout.Milliseconds()))
+	if err != nil {
+		t.Fatal("Error making GET request:", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != code {
+		t.Errorf("Unexpected status code: %d, wanted %d", resp.StatusCode, code)
+		DumpResponse(ctx, t, resp)
+	}
+}
+
+func waitForBackend(t *testing.T, client *http.Client, url string) {
+	waitErr := wait.PollImmediate(test.PollInterval, test.PollTimeout, func() (bool, error) {
+		resp, err := client.Get(url)
+		if err != nil {
+			t.Fatal("Error making GET request:", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			t.Logf("backend is not ready")
+			return false, nil
+		}
+		return true, nil
+	})
+	if waitErr != nil {
+		t.Fatalf("failed to request: %v", waitErr)
+	}
+}

@@ -31,6 +31,7 @@ func TestMultipleHosts(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	hosts := []gwv1alpha1.Hostname{
 		"foo.com",
@@ -51,7 +52,7 @@ func TestMultipleHosts(t *testing.T) {
 		Hostnames: hosts,
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &port,
+				Port:        &portNum,
 				ServiceName: &name,
 			}},
 		}},

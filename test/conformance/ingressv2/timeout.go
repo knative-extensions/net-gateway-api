@@ -34,6 +34,7 @@ func TestTimeout(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateTimeoutService(ctx, t, clients)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	// Create a simple HTTPRoute over the Service.
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
@@ -41,7 +42,7 @@ func TestTimeout(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &port,
+				Port:        &portNum,
 				ServiceName: &name,
 			}},
 		}},

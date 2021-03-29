@@ -97,7 +97,7 @@ func (ua *uaRoundTripper) RoundTrip(rq *http.Request) (*http.Response, error) {
 // specified with the given portName.  It returns the service name, the port on
 // which the service is listening, and a "cancel" function to clean up the
 // created resources.
-func CreateRuntimeService(ctx context.Context, t *testing.T, clients *test.Clients, portName string) (string, gatewayv1alpha1.PortNumber, context.CancelFunc) {
+func CreateRuntimeService(ctx context.Context, t *testing.T, clients *test.Clients, portName string) (string, int, context.CancelFunc) {
 	t.Helper()
 	name := test.ObjectNameForTest(t)
 
@@ -164,7 +164,7 @@ func CreateRuntimeService(ctx context.Context, t *testing.T, clients *test.Clien
 		},
 	}
 
-	return name, gatewayv1alpha1.PortNumber(port), createPodAndService(ctx, t, clients, pod, svc)
+	return name, port, createPodAndService(ctx, t, clients, pod, svc)
 }
 
 // CreateProxyService creates a Kubernetes service that will forward requests to
@@ -242,7 +242,7 @@ func CreateProxyService(ctx context.Context, t *testing.T, clients *test.Clients
 // specified with the given portName.  It returns the service name, the port on
 // which the service is listening, and a "cancel" function to clean up the
 // created resources.
-func CreateTimeoutService(ctx context.Context, t *testing.T, clients *test.Clients) (string, gatewayv1alpha1.PortNumber, context.CancelFunc) {
+func CreateTimeoutService(ctx context.Context, t *testing.T, clients *test.Clients) (string, int, context.CancelFunc) {
 	t.Helper()
 	name := test.ObjectNameForTest(t)
 
@@ -308,7 +308,7 @@ func CreateTimeoutService(ctx context.Context, t *testing.T, clients *test.Clien
 		},
 	}
 
-	return name, gatewayv1alpha1.PortNumber(port), createPodAndService(ctx, t, clients, pod, svc)
+	return name, port, createPodAndService(ctx, t, clients, pod, svc)
 }
 
 // CreateWebsocketService creates a Kubernetes service that will upgrade the connection

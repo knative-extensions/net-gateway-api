@@ -36,14 +36,18 @@ func TestPath(t *testing.T) {
 
 	// For /foo
 	fooName, fooPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	fooPortNum := gwv1alpha1.PortNumber(fooPort)
 
 	// For /bar
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	barPortNum := gwv1alpha1.PortNumber(barPort)
 
 	// For /baz
 	bazName, bazPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	bazPortNum := gwv1alpha1.PortNumber(bazPort)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
@@ -54,7 +58,7 @@ func TestPath(t *testing.T) {
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &fooPort,
+					Port:        &fooPortNum,
 					ServiceName: &fooName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -74,7 +78,7 @@ func TestPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &barPort,
+					Port:        &barPortNum,
 					ServiceName: &barName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -94,7 +98,7 @@ func TestPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &bazPort,
+					Port:        &bazPortNum,
 					ServiceName: &bazName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -114,7 +118,7 @@ func TestPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &port,
+					Port:        &portNum,
 					ServiceName: &name,
 				}},
 				// Append different headers to each split, which lets us identify
@@ -159,10 +163,13 @@ func TestPathAndPercentageSplit(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	fooName, fooPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	fooPortNum := gwv1alpha1.PortNumber(fooPort)
 
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	barPortNum := gwv1alpha1.PortNumber(barPort)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+	portNum := gwv1alpha1.PortNumber(port)
 
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
@@ -174,7 +181,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{
 					{
-						Port:        &fooPort,
+						Port:        &fooPortNum,
 						ServiceName: &fooName,
 						Weight:      1,
 						// Append different headers to each split, which lets us identify
@@ -187,7 +194,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 						}},
 					},
 					{
-						Port:        &barPort,
+						Port:        &barPortNum,
 						ServiceName: &barName,
 						Weight:      1,
 						// Append different headers to each split, which lets us identify
@@ -209,7 +216,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &port,
+					Port:        &portNum,
 					ServiceName: &name,
 					Weight:      1,
 				}},

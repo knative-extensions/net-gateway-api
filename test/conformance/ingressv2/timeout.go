@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/net-ingressv2/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -93,23 +92,5 @@ func checkTimeout(ctx context.Context, t *testing.T, client *http.Client, name s
 	if resp.StatusCode != code {
 		t.Errorf("Unexpected status code: %d, wanted %d", resp.StatusCode, code)
 		DumpResponse(ctx, t, resp)
-	}
-}
-
-func waitForBackend(t *testing.T, client *http.Client, url string) {
-	waitErr := wait.PollImmediate(test.PollInterval, test.PollTimeout, func() (bool, error) {
-		resp, err := client.Get(url)
-		if err != nil {
-			t.Fatal("Error making GET request:", err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusNotFound {
-			t.Logf("backend is not ready")
-			return false, nil
-		}
-		return true, nil
-	})
-	if waitErr != nil {
-		t.Fatalf("failed to request: %v", waitErr)
 	}
 }

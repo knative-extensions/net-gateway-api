@@ -29,7 +29,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/gorilla/websocket"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/net-ingressv2/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -65,7 +64,9 @@ func TestWebsocket(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: domain, Path: "/"}
 
 	// TODO: As Ingress v2 does not have prober, it needs to make sure backend is ready.
-	waitForwebsocketBackend(t, &dialer, &u)
+	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
+	client := &http.Client{Transport: &uaRoundTripper{RoundTripper: &http.Transport{DialContext: dialCtx}}}
+	waitForBackend(t, client, "http://"+domain)
 
 	conn, _, err := dialer.Dial(u.String(), http.Header{"Host": {domain}})
 	if err != nil {
@@ -120,7 +121,9 @@ func TestWebsocketSplit(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: domain, Path: "/"}
 
 	// TODO: As Ingress v2 does not have prober, it needs to make sure backend is ready.
-	waitForwebsocketBackend(t, &dialer, &u)
+	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
+	client := &http.Client{Transport: &uaRoundTripper{RoundTripper: &http.Transport{DialContext: dialCtx}}}
+	waitForBackend(t, client, "http://"+domain)
 
 	const maxRequests = 100
 	got := sets.NewString()
@@ -186,20 +189,5 @@ func checkWebsocketRoundTrip(ctx context.Context, t *testing.T, conn *websocket.
 		t.Error("ReadMessage() =", err)
 	} else if got, want := string(recv), message+" "+suffix; got != want {
 		t.Errorf("ReadMessage() = %s, wanted %s", got, want)
-	}
-}
-
-func waitForwebsocketBackend(t *testing.T, dialer *websocket.Dialer, u *url.URL) {
-	waitErr := wait.PollImmediate(test.PollInterval, test.PollTimeout, func() (bool, error) {
-		conn, _, err := dialer.Dial(u.String(), http.Header{"Host": {u.Host}})
-		if err != nil {
-			t.Logf("Dial() = %v", err)
-			return false, nil
-		}
-		defer conn.Close()
-		return true, nil
-	})
-	if waitErr != nil {
-		t.Fatalf("failed to request: %v", waitErr)
 	}
 }

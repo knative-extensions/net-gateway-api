@@ -1076,3 +1076,21 @@ func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
 	// TODO: Istio still does not update HTTPRoute status.
 	return true, nil
 }
+
+func waitForBackend(t *testing.T, client *http.Client, url string) {
+	waitErr := wait.PollImmediate(test.PollInterval, test.PollTimeout, func() (bool, error) {
+		resp, err := client.Get(url)
+		if err != nil {
+			t.Fatal("Error making GET request:", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			t.Logf("backend is not ready")
+			return false, nil
+		}
+		return true, nil
+	})
+	if waitErr != nil {
+		t.Fatalf("failed to request: %v", waitErr)
+	}
+}

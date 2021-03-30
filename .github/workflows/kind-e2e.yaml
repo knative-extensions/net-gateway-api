@@ -55,7 +55,7 @@ jobs:
       KO_DOCKER_REPO: kind.local
       # Use a semi-random cluster suffix, but somewhat predictable
       # so reruns don't just give us a completely new value.
-#      CLUSTER_SUFFIX: c${{ github.run_id }}.local
+      CLUSTER_SUFFIX: c${{ github.run_id }}.local
 
     steps:
     - name: Set up Go 1.15.x
@@ -118,9 +118,8 @@ jobs:
               extraArgs:
                 "service-account-issuer": "kubernetes.default.svc"
                 "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
-            # TODO: Istio doesn't work with non default cluster suffix. see - https://github.com/istio/istio/issues/29250
-            # networking:
-            #  dnsDomain: "${CLUSTER_SUFFIX}"
+            networking:
+              dnsDomain: "${CLUSTER_SUFFIX}"
         EOF
 
         # Create a cluster!
@@ -137,7 +136,7 @@ jobs:
         set -o pipefail
 
         # Replace cluster.local with random suffix.
-        # sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-${{ matrix.istio-version }}/istio-kind-no-mesh.yaml
+        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-${{ matrix.istio-version }}/istio-kind-no-mesh.yaml
 
         # Deploy Istio
         ./third_party/istio-${{ matrix.istio-version }}/install-istio.sh istio-kind-no-mesh.yaml
@@ -161,20 +160,20 @@ jobs:
         go test -race -count=1 -short -timeout=20m -tags=e2e \
            ${{ matrix.test-suite }} \
            --enable-alpha --enable-beta \
-           --ingressendpoint="${IPS[0]}"
-#           --cluster-suffix=$CLUSTER_SUFFIX
+           --ingressendpoint="${IPS[0]}" \
+           --cluster-suffix=$CLUSTER_SUFFIX
 
-#    - name: Post failure notice to Slack
-#      uses: rtCamp/action-slack-notify@v2.1.0
-#      if: ${{ failure() && github.event_name != 'pull_request' }}
-#      env:
-#        SLACK_ICON: http://github.com/knative.png?size=48
-#        SLACK_USERNAME: github-actions
-#        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-#
-#        SLACK_CHANNEL: 'net-ingressv2'
-#        SLACK_COLOR: '#8E1600'
-#        MSG_MINIMAL: 'true'
-#        SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.
-#        SLACK_MESSAGE: |
-#          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    - name: Post failure notice to Slack
+      uses: rtCamp/action-slack-notify@v2.1.0
+      if: ${{ failure() && github.event_name != 'pull_request' }}
+      env:
+        SLACK_ICON: http://github.com/knative.png?size=48
+        SLACK_USERNAME: github-actions
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+        SLACK_CHANNEL: 'net-ingressv2'
+        SLACK_COLOR: '#8E1600'
+        MSG_MINIMAL: 'true'
+        SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.
+        SLACK_MESSAGE: |
+          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

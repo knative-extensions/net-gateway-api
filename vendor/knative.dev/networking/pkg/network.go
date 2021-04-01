@@ -175,6 +175,14 @@ const (
 	// already using labels for domain, it probably best to keep this
 	// consistent.
 	VisibilityLabelKey = "networking.knative.dev/visibility"
+
+	// PassthroughLoadbalancingHeaderName is the name of the header that directs
+	// load balancers to not load balance the respective request but to
+	// send it to the request's target directly.
+	PassthroughLoadbalancingHeaderName = "K-Passthrough-Lb"
+
+	// EnableMeshPodAddressabilityKey is the config for enabling pod addressability in mesh.
+	EnableMeshPodAddressabilityKey = "enable-mesh-pod-addressability"
 )
 
 // DomainTemplateValues are the available properties people can choose from
@@ -246,6 +254,14 @@ type Config struct {
 	// cluster administrator is responsible for pre-creating ClusterDomainClaims
 	// and delegating them to namespaces via their spec.Namespace field.
 	AutocreateClusterDomainClaims bool
+
+	// EnableMeshPodAddressability specifies whether networking plugins will add
+	// additional information to deployed applications to make their pods directl
+	// accessible via their IPs even if mesh is enabled and thus direct-addressability
+	// is usually not possible.
+	// Consumers like Knative Serving can use this setting to adjust their behavior
+	// accordingly, i.e. to drop fallback solutions for non-pod-addressable systems.
+	EnableMeshPodAddressability bool
 }
 
 // HTTPProtocol indicates a type of HTTP endpoint behavior
@@ -293,6 +309,7 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		cm.AsString(TagTemplateKey, &nc.TagTemplate),
 		cm.AsInt(RolloutDurationKey, &nc.RolloutDurationSecs),
 		cm.AsBool(AutocreateClusterDomainClaimsKey, &nc.AutocreateClusterDomainClaims),
+		cm.AsBool(EnableMeshPodAddressabilityKey, &nc.EnableMeshPodAddressability),
 	); err != nil {
 		return nil, err
 	}

@@ -857,6 +857,19 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 	}
 }
 
+func getIngress() (string, string) {
+	// TODO: Gateway expose these info?
+	namespace := "istio-system"
+	if gatewayNsOverride := os.Getenv("GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
+		namespace = gatewayNsOverride
+	}
+	name := "istio-ingressgateway"
+	if gatewayOverride := os.Getenv("GATEWAY_OVERRIDE"); gatewayOverride != "" {
+		name = gatewayOverride
+	}
+	return namespace, name
+}
+
 // CreateDialContext looks up the endpoint information to create a "dialer" for
 // the provided HTTPRoute' public ingress loas balancer.  It can be used to
 // contact external-visibility services with an HTTP client via:
@@ -869,15 +882,7 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 func CreateDialContext(ctx context.Context, t *testing.T, clients *test.Clients) func(context.Context, string, string) (net.Conn, error) {
 	t.Helper()
 
-	// TODO: Gateway expose these info?
-	name := "istio-ingressgateway"
-	if gatewayOverride := os.Getenv("GATEWAY_OVERRIDE"); gatewayOverride != "" {
-		name = gatewayOverride
-	}
-	namespace := "istio-system"
-	if gatewayNsOverride := os.Getenv("GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
-		namespace = gatewayNsOverride
-	}
+	namespace, name := getIngress()
 
 	var svc *corev1.Service
 	err := reconciler.RetryTestErrors(func(attempts int) (err error) {

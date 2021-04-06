@@ -61,7 +61,7 @@ func TestRewriteHost(t *testing.T) {
 		gwv1alpha1.Hostname(name + "." + "vanity.isalsomy.number"),
 	}
 
-	portNum_ := gwv1alpha1.PortNumber(80)
+	portNumIng := gwv1alpha1.PortNumber(80)
 
 	// Now create a RewriteHost ingress to point a custom Host at the Service
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
@@ -69,7 +69,7 @@ func TestRewriteHost(t *testing.T) {
 		Hostnames: hosts,
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNum_,
+				Port:        &portNumIng,
 				ServiceName: &privateServiceName,
 			}},
 			Filters: []gwv1alpha1.HTTPRouteFilter{

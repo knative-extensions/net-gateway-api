@@ -75,6 +75,7 @@ var contourBetaTests = map[string]func(t *testing.T){}
 
 var istioBetaTests = map[string]func(t *testing.T){
 	"headers/tags": TestTagHeaders,
+	"host-rewrite": TestRewriteHost,
 }
 
 var betaTests = map[string]func(t *testing.T){

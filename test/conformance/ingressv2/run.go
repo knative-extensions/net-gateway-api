@@ -23,6 +23,27 @@ import (
 	"knative.dev/networking/test"
 )
 
+var istioStableTests = map[string]func(t *testing.T){
+	"basics":                       TestBasics,
+	"basics/http2":                 TestBasicsHTTP2,
+	"headers/pre-split":            TestPreSplitSetHeaders,
+	"headers/post-split":           TestPostSplitSetHeaders,
+	"dispatch/path":                TestPath,
+	"dispatch/percentage":          TestPercentage,
+	"dispatch/path_and_percentage": TestPathAndPercentageSplit,
+	"dispatch/rule":                TestRule,
+	"hosts/multiple":               TestMultipleHosts,
+	"timeout":                      TestTimeout,
+	"websocket":                    TestWebsocket,
+	"websocket/split":              TestWebsocketSplit,
+	"grpc":                         TestGRPC,
+	"grpc/split":                   TestGRPCSplit,
+}
+
+var contourStableTests = map[string]func(t *testing.T){
+	"basics": TestBasics,
+}
+
 var stableTests = map[string]func(t *testing.T){
 	"basics":                       TestBasics,
 	"basics/http2":                 TestBasicsHTTP2,
@@ -50,6 +71,13 @@ var stableTests = map[string]func(t *testing.T){
 	*/
 }
 
+var contourBetaTests = map[string]func(t *testing.T){}
+
+var istioBetaTests = map[string]func(t *testing.T){
+	"headers/tags": TestTagHeaders,
+	"host-rewrite": TestRewriteHost,
+}
+
 var betaTests = map[string]func(t *testing.T){
 	// Add your conformance test for beta features
 	"headers/tags": TestTagHeaders,
@@ -65,7 +93,21 @@ var alphaTests = map[string]func(t *testing.T){
 // Depending on the options it may test alpha and beta features
 func RunConformance(t *testing.T) {
 
-	for name, test := range stableTests {
+	var stables map[string]func(t *testing.T)
+	var betas map[string]func(t *testing.T)
+	switch test.NetworkingFlags.IngressClass {
+	case "istio":
+		stables = istioStableTests
+		betas = istioBetaTests
+	case "contour":
+		stables = contourStableTests
+		betas = contourBetaTests
+	default:
+		stables = stableTests
+		betas = betaTests
+	}
+
+	for name, test := range stables {
 		t.Run(name, test)
 	}
 
@@ -79,7 +121,7 @@ func RunConformance(t *testing.T) {
 	// ie. state - alpha, beta, ga
 	// ie. requirement - must, should, may
 	if test.NetworkingFlags.EnableBetaFeatures {
-		for name, test := range betaTests {
+		for name, test := range betas {
 			if _, ok := skipTests[name]; ok {
 				t.Run(name, skipFunc)
 				continue

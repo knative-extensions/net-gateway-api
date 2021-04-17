@@ -1073,12 +1073,11 @@ func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, 
 func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
 	for _, gw := range r.Status.Gateways {
 		for _, condition := range gw.Conditions {
-			if condition.Type == "true" && condition.Status == metav1.ConditionTrue {
-				return true, nil
+			if condition.Type == "Admitted" && condition.Status != metav1.ConditionTrue {
+				return false, nil
 			}
 		}
 	}
-	// TODO: Istio still does not update HTTPRoute status.
 	return true, nil
 }
 

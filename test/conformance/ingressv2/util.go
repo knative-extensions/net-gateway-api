@@ -1073,7 +1073,7 @@ func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, 
 func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
 	for _, gw := range r.Status.Gateways {
 		for _, condition := range gw.Conditions {
-			if condition.Type == "Admitted" && condition.Status != metav1.ConditionTrue {
+			if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) && condition.Status != metav1.ConditionTrue {
 				return false, nil
 			}
 		}

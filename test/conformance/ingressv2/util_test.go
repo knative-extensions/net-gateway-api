@@ -1,11 +1,11 @@
 /*
-Copyright 2020 The Knative Authors
+Copyright 2021 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,6 @@ package ingress
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -119,14 +118,13 @@ func TestIsHTTPRouteReady(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			httpRoute := &gatewayv1alpha1.HTTPRoute{
 				Status: gatewayv1alpha1.HTTPRouteStatus{
-					RouteStatus: gatewayv1alpha1.RouteStatus{test.gatewayStatus},
+					RouteStatus: gatewayv1alpha1.RouteStatus{Gateways: test.gatewayStatus},
 				},
 			}
 			got, _ := IsHTTPRouteReady(httpRoute)
-			if !cmp.Equal(got, test.expect) {
+			if got != test.expect {
 				t.Errorf("Got = %v, want = %v", got, test.expect)
 			}
 		})

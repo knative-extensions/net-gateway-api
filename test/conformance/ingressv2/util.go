@@ -1068,24 +1068,28 @@ func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, 
 	return nil
 }
 
-// IsHTTPRouteReady will check the status conditions of the ingress and return true if the ingress is
-// ready.
-// It returns false when
-// * one of ConditionRouteAdmitted is false.
-// * ConditionRouteAdmitted is not present. - eg. Ingress controller does not update the status in HTTPRoute yet.
+// IsHTTPRouteReady will check the status conditions of the ingress and return true if
+// all gateways have been admitted.
 func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
-	ready := false
+	if r.Status.Gateways == nil {
+		return false, nil
+	}
 	for _, gw := range r.Status.Gateways {
-		for _, condition := range gw.Conditions {
-			if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) {
-				if condition.Status != metav1.ConditionTrue {
-					return false, nil
-				}
-				ready = true
-			}
+		if !isGatewayAdmitted(gw) {
+			// Return false if _any_ of the gateways isn't admitted yet.
+			return false, nil
 		}
 	}
-	return ready, nil
+	return true, nil
+}
+
+func isGatewayAdmitted(gw gatewayv1alpha1.RouteGatewayStatus) bool {
+	for _, condition := range gw.Conditions {
+		if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) {
+			return condition.Status == metav1.ConditionTrue
+		}
+	}
+	return false
 }
 
 func waitForBackend(t *testing.T, client *http.Client, url string) {

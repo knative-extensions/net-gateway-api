@@ -41,7 +41,14 @@ var istioStableTests = map[string]func(t *testing.T){
 }
 
 var contourStableTests = map[string]func(t *testing.T){
-	"basics": TestBasics,
+	"basics":                       TestBasics,
+	"headers/pre-split":            TestPreSplitSetHeaders,
+	"headers/post-split":           TestPostSplitSetHeaders,
+	"dispatch/path":                TestPath,
+	"dispatch/path_and_percentage": TestPathAndPercentageSplit,
+	"dispatch/rule":                TestRule,
+	"hosts/multiple":               TestMultipleHosts,
+	"timeout":                      TestTimeout,
 }
 
 var stableTests = map[string]func(t *testing.T){

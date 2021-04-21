@@ -1068,18 +1068,28 @@ func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, 
 	return nil
 }
 
-// IsHTTPRouteReady will check the status conditions of the ingress and return true if the ingress is
-// ready.
+// IsHTTPRouteReady will check the status conditions of the ingress and return true if
+// all gateways have been admitted.
 func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
+	if r.Status.Gateways == nil {
+		return false, nil
+	}
 	for _, gw := range r.Status.Gateways {
-		for _, condition := range gw.Conditions {
-			if condition.Type == "true" && condition.Status == metav1.ConditionTrue {
-				return true, nil
-			}
+		if !isGatewayAdmitted(gw) {
+			// Return false if _any_ of the gateways isn't admitted yet.
+			return false, nil
 		}
 	}
-	// TODO: Istio still does not update HTTPRoute status.
 	return true, nil
+}
+
+func isGatewayAdmitted(gw gatewayv1alpha1.RouteGatewayStatus) bool {
+	for _, condition := range gw.Conditions {
+		if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) {
+			return condition.Status == metav1.ConditionTrue
+		}
+	}
+	return false
 }
 
 func waitForBackend(t *testing.T, client *http.Client, url string) {

@@ -159,8 +159,8 @@ jobs:
         # Deploy Contour
         ./third_party/contour-head/install-operator.sh
 
-        # wait for operator pod to be up
-        kubectl wait pod --for=condition=Ready --timeout=120s -n "contour-operator" -l '!job-name'
+        # wait for operator deployment to be Available
+        kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
 
         # TODO: deploy gateway-internal.yaml when visibility test could be supported.
         ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \

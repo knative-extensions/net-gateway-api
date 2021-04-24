@@ -162,14 +162,18 @@ jobs:
         # wait for operator pod to be up
         kubectl wait pod --for=condition=Ready --timeout=120s -n "contour-operator" -l '!job-name'
 
-        # TODO: deploy gateway-internal.yaml when visibility test could be supported.
         ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \
           sed 's/LoadBalancerService/NodePortService/g' | \
+          kubectl apply -f -
+
+        ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
           kubectl apply -f -
 
         # This tells the tests what namespace to look in for our kingress LB.
         echo "GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
         echo "GATEWAY_NAMESPACE_OVERRIDE=contour-external" >> $GITHUB_ENV
+        echo "LOCAL_GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
+        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal" >> $GITHUB_ENV
 
     - name: Upload Test Images
       run: |

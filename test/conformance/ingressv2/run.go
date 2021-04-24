@@ -49,6 +49,7 @@ var contourStableTests = map[string]func(t *testing.T){
 	"dispatch/rule":                TestRule,
 	"hosts/multiple":               TestMultipleHosts,
 	"timeout":                      TestTimeout,
+	"visibility":                   TestVisibility,
 }
 
 var stableTests = map[string]func(t *testing.T){

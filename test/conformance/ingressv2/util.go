@@ -77,8 +77,19 @@ var testGateway = gatewayv1alpha1.RouteGateways{
 	}},
 }
 
-// gatewayLabel is added to HTTPRoute. The test gateway selects the generated HTTPRoute by this label.
+var testLocalGateway = gatewayv1alpha1.RouteGateways{
+	Allow: gatewayv1alpha1.GatewayAllowFromList,
+	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
+		Namespace: "knative-serving",
+		Name:      "test-local-gateway",
+	}},
+}
+
+// gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.
 var gatewayLabel = map[string]string{"knative-e2e-test": "net-ingressv2"}
+
+// gatewayLabel is added to HTTPRoute. The local gateway selects the generated HTTPRoute by this label.
+var gatewayLocalLabel = map[string]string{"knative-e2e-test": "net-ingressv2-local"}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.
@@ -670,10 +681,17 @@ func OverrideHTTPRouteAnnotation(annotations map[string]string) Option {
 	}
 }
 
-func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec) (*gatewayv1alpha1.HTTPRoute, func(context.Context, string, string) (net.Conn, error), context.CancelFunc) {
+// OverrideHTTPRouteLabel overrides the HTTPRoute label.
+func OverrideHTTPRouteLabel(labels map[string]string) Option {
+	return func(hr *gatewayv1alpha1.HTTPRoute) {
+		hr.Labels = labels
+	}
+}
+
+func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, func(context.Context, string, string) (net.Conn, error), context.CancelFunc) {
 	t.Helper()
 
-	hr, cancel := CreateHTTPRoute(ctx, t, clients, spec)
+	hr, cancel := CreateHTTPRoute(ctx, t, clients, spec, io...)
 	hrName := ktypes.NamespacedName{Name: hr.Name, Namespace: hr.Namespace}
 
 	if err := WaitForHTTPRouteState(ctx, clients.GatewayAPIClient, hr.Name, IsHTTPRouteReady, t.Name()); err != nil {
@@ -737,12 +755,12 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 	}
 }
 
-func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec) (*gatewayv1alpha1.HTTPRoute, *http.Client, context.CancelFunc) {
+func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, *http.Client, context.CancelFunc) {
 
 	t.Helper()
 
 	// Create a client with a dialer based on the HTTPRoute' public load balancer.
-	hr, dialer, cancel := createHTTPRouteReadyDialContext(ctx, t, clients, spec)
+	hr, dialer, cancel := createHTTPRouteReadyDialContext(ctx, t, clients, spec, io...)
 
 	var tlsConfig *tls.Config
 	if hr.Spec.TLS != nil {
@@ -865,6 +883,19 @@ func getIngress() (string, string) {
 	}
 	name := "istio-ingressgateway"
 	if gatewayOverride := os.Getenv("GATEWAY_OVERRIDE"); gatewayOverride != "" {
+		name = gatewayOverride
+	}
+	return namespace, name
+}
+
+func getClusterIngress() (string, string) {
+	// TODO: Gateway expose these info?
+	namespace := "istio-system"
+	if gatewayNsOverride := os.Getenv("LOCAL_GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
+		namespace = gatewayNsOverride
+	}
+	name := "istio-ingressgateway"
+	if gatewayOverride := os.Getenv("LOCAL_GATEWAY_OVERRIDE"); gatewayOverride != "" {
 		name = gatewayOverride
 	}
 	return namespace, name

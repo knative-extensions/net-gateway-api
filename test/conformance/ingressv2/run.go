@@ -45,6 +45,7 @@ var contourStableTests = map[string]func(t *testing.T){
 	"headers/pre-split":            TestPreSplitSetHeaders,
 	"headers/post-split":           TestPostSplitSetHeaders,
 	"dispatch/path":                TestPath,
+	"dispatch/percentage":          TestPercentage,
 	"dispatch/path_and_percentage": TestPathAndPercentageSplit,
 	"dispatch/rule":                TestRule,
 	"hosts/multiple":               TestMultipleHosts,

@@ -25,8 +25,7 @@ metadata:
   name: contour-internal
   namespace: contour-internal
 spec:
-#  gatewayClassRef does not work with ClusteerIPService. See https://github.com/projectcontour/contour-operator/pull/293
-#  gatewayClassRef: contour-internal-gatewayclass
+  gatewayClassRef: contour-internal-gatewayclass
   namespace:
     name: contour-internal
   ingressClassName: contour-internal
@@ -61,7 +60,7 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-ingressv2"
+          knative-e2e-test: "net-ingressv2-local"
       namespaces:
         from: "All"
   - protocol: HTTPS
@@ -74,6 +73,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-ingressv2"
+          knative-e2e-test: "net-ingressv2-local"
       namespaces:
         from: "All"

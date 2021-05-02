@@ -17,6 +17,13 @@ kind: Namespace
 metadata:
   labels:
     control-plane: contour-operator
+  name: test-gateway
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: contour-operator
   name: contour-external
 ---
 apiVersion: operator.projectcontour.io/v1alpha1
@@ -27,7 +34,7 @@ metadata:
 spec:
   gatewayClassRef: contour-external-gatewayclass
   namespace:
-    name: contour-external
+    name: test-gateway
   ingressClassName: contour-external
   networkPublishing:
     envoy:
@@ -49,8 +56,8 @@ spec:
 kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
-  name: contour-external
-  namespace: contour-external
+  name: test-gateway
+  namespace: test-gateway
 spec:
   gatewayClassName: contour-external-gatewayclass
   listeners:

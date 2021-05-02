@@ -72,7 +72,7 @@ var dialBackoff = wait.Backoff{
 var testGateway = gatewayv1alpha1.RouteGateways{
 	Allow: gatewayv1alpha1.GatewayAllowFromList,
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "knative-serving",
+		Namespace: "test-gateway",
 		Name:      "test-gateway",
 	}},
 }
@@ -80,7 +80,7 @@ var testGateway = gatewayv1alpha1.RouteGateways{
 var testLocalGateway = gatewayv1alpha1.RouteGateways{
 	Allow: gatewayv1alpha1.GatewayAllowFromList,
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "knative-serving",
+		Namespace: "test-local-gateway",
 		Name:      "test-local-gateway",
 	}},
 }

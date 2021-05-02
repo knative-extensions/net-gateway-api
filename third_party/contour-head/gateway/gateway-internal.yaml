@@ -17,6 +17,13 @@ kind: Namespace
 metadata:
   labels:
     control-plane: contour-operator
+  name: test-local-gateway
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: contour-operator
   name: contour-internal
 ---
 apiVersion: operator.projectcontour.io/v1alpha1
@@ -27,7 +34,7 @@ metadata:
 spec:
   gatewayClassRef: contour-internal-gatewayclass
   namespace:
-    name: contour-internal
+    name: test-local-gateway
   ingressClassName: contour-internal
   networkPublishing:
     envoy:
@@ -49,8 +56,8 @@ spec:
 kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
-  name: contour-internal
-  namespace: contour-internal
+  name: test-local-gateway
+  namespace: test-local-gateway
 spec:
   gatewayClassName: contour-internal-gatewayclass
   listeners:

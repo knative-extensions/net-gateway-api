@@ -171,9 +171,9 @@ jobs:
 
         # This tells the tests what namespace to look in for our kingress LB.
         echo "GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=contour-external" >> $GITHUB_ENV
+        echo "GATEWAY_NAMESPACE_OVERRIDE=test-gateway" >> $GITHUB_ENV
         echo "LOCAL_GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal" >> $GITHUB_ENV
+        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=test-local-gateway" >> $GITHUB_ENV
 
     - name: Upload Test Images
       run: |

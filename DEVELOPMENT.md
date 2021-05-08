@@ -72,33 +72,96 @@ _Adding the `upstream` remote sets you up nicely for regularly
 Once you reach this point you are ready to do a full build and deploy as
 described below.
 
-### Install service-apis
+### Execute conformance tests
+
+Currently this repo tests with Istio and Contour.
+Please follow [Test with Istio](#test-with-istio) or [Test with Contour](#test-with-contour).
+
+### Test with Istio
+
+#### Prepare test resources such as namespaces
 
 ```
-kubectl apply -k 'github.com/kubernetes-sigs/service-apis/config/crd?ref=99150ae530e97e2690bf690c077358e161490034'
+kubectl apply -f test/config/
 ```
 
-### Install Istio
+#### Install Gateway API CRDs
 
-Run the following command to install Istio for development purpose:
+```
+kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.2.0'
+```
+
+#### Deploy Istio
+
+Run the following command to install Istio (from HEAD) for development purpose:
 
 ```shell
-third_party/istio-latest/install-istio.sh istio-ci-no-mesh.yaml
+./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
 ```
 
-### Install Knative Serving
+#### Deploy GatewayClass and Gateway
 
-Run the following command to install Knative
+```
+kubectl apply -f ./third_party/istio-head/gateway/
+```
+
+#### Execute test
 
 ```shell
-kubectl apply --filename https://storage.googleapis.com/knative-nightly/serving/latest/serving-crds.yaml
-kubectl apply --filename https://storage.googleapis.com/knative-nightly/serving/latest/serving-core.yaml
+GATEWAY_OVERRIDE=istio-ingressgateway
+GATEWAY_NAMESPACE_OVERRIDE=istio-system
+IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/hosts/basics" \
+  --ingressClass=istio \
+  --ingressendpoint="${IPS[0]}"
 ```
 
-### Install Knative net-ingressv2
+Some tests are still not available. Please see https://github.com/knative-sandbox/net-ingressv2/issues/23.
+
+### Test with Contoour
+
+#### Prepare test resources such as namespaces
 
 ```
-KNATIVE_NAMESPACE="knative-serving"
-kubectl patch configmap/config-network -n ${KNATIVE_NAMESPACE} --type merge -p '{"data":{"ingress.class":"ingressv2.ingress.networking.knative.dev"}}'
-ko apply -f test/config/ -f config/
+kubectl apply -f test/config/
 ```
+
+#### Install Gateway API CRDs
+
+This step is not necessary for Contour as contour operator installs Gateway API CRDs.
+
+#### Deploy Contour
+
+Run the following command to install Contour and its operator (from HEAD).
+
+```shell
+./third_party/contour-head/install-operator.sh
+```
+
+#### Deploy GatewayClass and Gateway
+
+```
+ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \
+  sed 's/LoadBalancerService/NodePortService/g' | \
+  kubectl apply -f -
+
+ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
+  kubectl apply -f -
+```
+
+#### Execute test
+
+```shell
+GATEWAY_OVERRIDE=envoy
+GATEWAY_NAMESPACE_OVERRIDE=contour-external
+LOCAL_GATEWAY_OVERRIDE=envoy
+LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
+IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/hosts/basics" \
+  --ingressClass=contour \
+  --ingressendpoint="${IPS[0]}"
+```
+
+Some tests are still not available. Please see https://github.com/knative-sandbox/net-ingressv2/issues/36.

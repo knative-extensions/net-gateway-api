@@ -74,8 +74,8 @@ described below.
 
 ### Execute conformance tests
 
-Currently this repo tests with Istio and Contour.
-Please follow [Test with Istio](#test-with-istio) or [Test with Contour](#test-with-contour).
+Currently this repo tests with Istio and Contour. Please follow
+[Test with Istio](#test-with-istio) or [Test with Contour](#test-with-contour).
 
 ### Test with Istio
 
@@ -117,7 +117,8 @@ go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressC
   --ingressendpoint="${IPS[0]}"
 ```
 
-Some tests are still not available. Please see https://github.com/knative-sandbox/net-ingressv2/issues/23.
+Some tests are still not available. Please see
+https://github.com/knative-sandbox/net-ingressv2/issues/23.
 
 ### Test with Contoour
 
@@ -129,7 +130,8 @@ kubectl apply -f test/config/
 
 #### Install Gateway API CRDs
 
-This step is not necessary for Contour as contour operator installs Gateway API CRDs.
+This step is not necessary for Contour as contour operator installs Gateway API
+CRDs.
 
 #### Deploy Contour
 
@@ -164,4 +166,5 @@ go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressC
   --ingressendpoint="${IPS[0]}"
 ```
 
-Some tests are still not available. Please see https://github.com/knative-sandbox/net-ingressv2/issues/36.
+Some tests are still not available. Please see
+https://github.com/knative-sandbox/net-ingressv2/issues/36.

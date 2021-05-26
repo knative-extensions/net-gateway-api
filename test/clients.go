@@ -39,7 +39,7 @@ type Clients struct {
 	Dynamic          dynamic.Interface
 }
 
-// GatewayClients holds instances of interfaces for making requests to Knative
+// GatewayAPIClients holds instances of interfaces for making requests to Knative
 // networking clients.
 type GatewayAPIClients struct {
 	HTTPRoutes gwv1alpha1.HTTPRouteInterface

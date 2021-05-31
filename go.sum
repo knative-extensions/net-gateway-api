@@ -432,7 +432,6 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
-github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
 github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
@@ -1197,10 +1196,10 @@ k8s.io/utils v0.0.0-20201110183641-67b214c5f920 h1:CbnUZsM497iRC5QMVkHwyl8s2tB3g
 k8s.io/utils v0.0.0-20201110183641-67b214c5f920/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 knative.dev/hack v0.0.0-20210428122153-93ad9129c268 h1:lBIj9Epd9UQ55NEaHzAdY/UZbuaegCdGPKVC2+Z68Q0=
 knative.dev/hack v0.0.0-20210428122153-93ad9129c268/go.mod h1:PHt8x8yX5Z9pPquBEfIj0X66f8iWkWfR0S/sarACJrI=
-knative.dev/networking v0.0.0-20210526142327-c90fe70eb354 h1:3qt3rmWuRVWrQcTFT+voKJgRcMxypKLi9d1vjSemakM=
-knative.dev/networking v0.0.0-20210526142327-c90fe70eb354/go.mod h1:jHERS/qCx8Tpd06GJaUSlYuz8WMXwifpG2yZE9Ir7BQ=
-knative.dev/pkg v0.0.0-20210526081028-980a33719a10 h1:4tC0TcIx4EU6PCcRwdIiCWuKI3vpOgpQUrF1nUeF1t8=
-knative.dev/pkg v0.0.0-20210526081028-980a33719a10/go.mod h1:nOD9XjvR+UuO1fHZSaOhfTWDCIz06crh1qQppgZDzR0=
+knative.dev/networking v0.0.0-20210531042431-77a9c97d65c4 h1:h4NBetC58E90rU5iJ6bNDxRzttREOsnEqwQun4aApEM=
+knative.dev/networking v0.0.0-20210531042431-77a9c97d65c4/go.mod h1:uz3qq7Y/sPnTEreHs4RM7AS8NMjO19guYEw3zqaNIsI=
+knative.dev/pkg v0.0.0-20210528203030-47dfdcfaedfd h1:UEVVrLzbuwD6DGR6pBy41onVZI8lC9QCZboBs5qxeLc=
+knative.dev/pkg v0.0.0-20210528203030-47dfdcfaedfd/go.mod h1:nOD9XjvR+UuO1fHZSaOhfTWDCIz06crh1qQppgZDzR0=
 pgregory.net/rapid v0.3.3/go.mod h1:UYpPVyjFHzYBGHIxLFoupi8vwk6rXNzRY9OMvVxFIOU=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=

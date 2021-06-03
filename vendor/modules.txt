@@ -4,6 +4,8 @@ cloud.google.com/go/compute/metadata
 github.com/blendle/zapdriver
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/evanphx/json-patch/v5 v5.5.0
+github.com/evanphx/json-patch/v5
 # github.com/go-logr/logr v0.3.0
 github.com/go-logr/logr
 # github.com/gogo/protobuf v1.3.2
@@ -76,7 +78,7 @@ go.opencensus.io/trace/tracestate
 go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
 go.uber.org/multierr
-# go.uber.org/zap v1.16.0
+# go.uber.org/zap v1.17.0
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
@@ -212,8 +214,6 @@ google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/evanphx/json-patch.v4 v4.9.0
-gopkg.in/evanphx/json-patch.v4
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.3.0
@@ -397,7 +397,7 @@ k8s.io/utils/trace
 # knative.dev/hack v0.0.0-20210601210329-de04b70e00d0
 ## explicit
 knative.dev/hack
-# knative.dev/networking v0.0.0-20210602063131-a442bb6a4d29
+# knative.dev/networking v0.0.0-20210602143631-9c0fc00ae8fe
 ## explicit
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
@@ -417,7 +417,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20210602044730-a2869ae1dce3
+# knative.dev/pkg v0.0.0-20210602095030-0e61d6763dd6
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

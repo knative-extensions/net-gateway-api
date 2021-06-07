@@ -38,6 +38,7 @@ var istioStableTests = map[string]func(t *testing.T){
 	"websocket/split":              TestWebsocketSplit,
 	"grpc":                         TestGRPC,
 	"grpc/split":                   TestGRPCSplit,
+	"visibility":                   TestVisibility,
 }
 
 var contourStableTests = map[string]func(t *testing.T){

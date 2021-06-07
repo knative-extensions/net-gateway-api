@@ -142,6 +142,7 @@ jobs:
         # Replace cluster.local with random suffix.
         sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml
         sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway.yaml
+        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway-local.yaml
 
         # Deploy Istio
         ./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml

@@ -89,7 +89,7 @@ var dialBackoff = wait.Backoff{
 var testGateway = &gatewayv1alpha1.RouteGateways{
 	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "knative-serving",
+		Namespace: "istio-system",
 		Name:      "test-gateway",
 	}},
 }
@@ -97,7 +97,7 @@ var testGateway = &gatewayv1alpha1.RouteGateways{
 var testLocalGateway = &gatewayv1alpha1.RouteGateways{
 	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "knative-serving",
+		Namespace: "istio-system",
 		Name:      "test-local-gateway",
 	}},
 }
@@ -912,7 +912,7 @@ func getClusterIngress() (string, string) {
 	if gatewayNsOverride := os.Getenv("LOCAL_GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
 		namespace = gatewayNsOverride
 	}
-	name := "istio-ingressgateway"
+	name := "knative-local-gateway"
 	if gatewayOverride := os.Getenv("LOCAL_GATEWAY_OVERRIDE"); gatewayOverride != "" {
 		name = gatewayOverride
 	}

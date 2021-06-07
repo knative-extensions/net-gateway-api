@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 	"knative.dev/net-ingressv2/test"
 	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
@@ -59,13 +60,8 @@ func TestTagHeaders(t *testing.T) {
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
 					Headers: &gwv1alpha1.HTTPHeaderMatch{
-						Type:   gwv1alpha1.HeaderMatchExact,
+						Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
 						Values: map[string]string{network.TagHeaderName: tagName},
-					},
-					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/",
 					},
 				}},
 				Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -218,7 +214,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 			gwv1alpha1.HTTPRouteForwardTo{
 				Port:        &portNum,
 				ServiceName: &name,
-				Weight:      100 / splits,
+				Weight:      pointer.Int32Ptr(100 / splits),
 				Filters: []gwv1alpha1.HTTPRouteFilter{{
 					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{

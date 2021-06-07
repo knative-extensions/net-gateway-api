@@ -23,9 +23,10 @@ import (
 // +genclient
 // +genclient:nonNamespaced
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster,shortName=gc
+// +kubebuilder:resource:categories=gateway-api,scope=Cluster,shortName=gc
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Controller",type=string,JSONPath=`.spec.controller`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // GatewayClass describes a class of Gateways available to the user
 // for creating Gateway resources.
@@ -105,7 +106,7 @@ type ParametersReference struct {
 	// +kubebuilder:validation:Enum=Cluster;Namespace
 	// +kubebuilder:default=Cluster
 	// +optional
-	Scope string `json:"scope,omitempty"`
+	Scope *string `json:"scope,omitempty"`
 
 	// Namespace is the namespace of the referent.
 	// This field is required when scope is set to "Namespace" and ignored when
@@ -114,7 +115,7 @@ type ParametersReference struct {
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=253
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GatewayClassConditionType is the type for status conditions on

@@ -19,6 +19,9 @@ metadata:
   namespace: knative-serving
 spec:
   gatewayClassName: istio
+  addresses:
+  - type: NamedAddress
+    value: istio-ingressgateway.istio-system.svc.cluster.local
   listeners:
   - protocol: HTTP
     port: 80

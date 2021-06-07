@@ -22,7 +22,9 @@ import (
 
 // +genclient
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:categories=gateway-api
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // The TLSRoute resource is similar to TCPRoute, but can be configured
 // to match against TLS-specific metadata. This allows more flexibility
@@ -53,7 +55,7 @@ type TLSRouteSpec struct {
 	//
 	// +optional
 	// +kubebuilder:default={allow: "SameNamespace"}
-	Gateways RouteGateways `json:"gateways,omitempty"`
+	Gateways *RouteGateways `json:"gateways,omitempty"`
 }
 
 // TLSRouteStatus defines the observed state of TLSRoute
@@ -63,11 +65,35 @@ type TLSRouteStatus struct {
 
 // TLSRouteRule is the configuration for a given rule.
 type TLSRouteRule struct {
-	// Matches define conditions used for matching the rule against an
-	// incoming TLS handshake. Each match is independent, i.e. this
-	// rule will be matched if **any** one of the matches is satisfied.
-	// If unspecified, all requests from the associated gateway TLS
-	// listener will match.
+	// Matches define conditions used for matching the rule against incoming TLS
+	// connections. Each match is independent, i.e. this rule will be matched if
+	// **any** one of the matches is satisfied. If unspecified (i.e. empty),
+	// this Rule will match all requests for the associated Listener.
+	//
+	// Each client request MUST map to a maximum of one route rule. If a request
+	// matches multiple rules, matching precedence MUST be determined in order
+	// of the following criteria, continuing on ties:
+	//
+	// * The longest matching SNI.
+	// * The longest matching precise SNI (without a wildcard). This means that
+	//   "b.example.com" should be given precedence over "*.example.com".
+	// * The most specific match specified by ExtensionRef. Each implementation
+	//   that supports ExtensionRef may have different ways of determining the
+	//   specificity of the referenced extension.
+	//
+	// If ties still exist across multiple Routes, matching precedence MUST be
+	// determined in order of the following criteria, continuing on ties:
+	//
+	// * The oldest Route based on creation timestamp. For example, a Route with
+	//   a creation timestamp of "2020-09-08 01:02:03" is given precedence over
+	//   a Route with a creation timestamp of "2020-09-08 01:02:04".
+	// * The Route appearing first in alphabetical order by
+	//   "<namespace>/<name>". For example, foo/bar is given precedence over
+	//   foo/baz.
+	//
+	// If ties still exist within the Route that has been given precedence,
+	// matching precedence MUST be granted to the first matching rule meeting
+	// the above criteria.
 	//
 	// +optional
 	// +kubebuilder:validation:MaxItems=8

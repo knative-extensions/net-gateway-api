@@ -22,9 +22,10 @@ import (
 
 // +genclient
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:shortName=gtw
+// +kubebuilder:resource:categories=gateway-api,shortName=gtw
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Class",type=string,JSONPath=`.spec.gatewayClassName`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // Gateway represents an instantiation of a service-traffic handling
 // infrastructure by binding Listeners to a set of IP addresses.
@@ -293,7 +294,7 @@ type TLSOverridePolicy struct {
 	//
 	// +optional
 	// +kubebuilder:default=Deny
-	Certificate TLSRouteOverrideType `json:"certificate,omitempty"`
+	Certificate *TLSRouteOverrideType `json:"certificate,omitempty"`
 }
 
 // GatewayTLSConfig describes a TLS configuration.
@@ -321,19 +322,18 @@ type GatewayTLSConfig struct {
 	//
 	// +optional
 	// +kubebuilder:default=Terminate
-	Mode TLSModeType `json:"mode,omitempty"`
+	Mode *TLSModeType `json:"mode,omitempty"`
 
-	// CertificateRef is the reference to Kubernetes object that contain a
-	// TLS certificate and private key. This certificate MUST be used for
-	// TLS handshakes for the domain this GatewayTLSConfig is associated with.
+	// CertificateRef is a reference to a Kubernetes object that contains a TLS
+	// certificate and private key. This certificate is used to establish a TLS
+	// handshake for requests that match the hostname of the associated listener.
+	// The referenced object MUST reside in the same namespace as Gateway.
 	//
 	// This field is required when mode is set to "Terminate" (default) and
 	// optional otherwise.
 	//
-	// If an entry in this list omits or specifies the empty string for both
-	// the group and the resource, the resource defaults to "secrets". An
-	// implementation may support other resources (for example, resource
-	// "mycertificates" in group "networking.acme.io").
+	// CertificateRef can reference a standard Kubernetes resource, i.e. Secret,
+	// or an implementation-specific custom resource.
 	//
 	// Support: Core (Kubernetes Secrets)
 	//
@@ -353,7 +353,7 @@ type GatewayTLSConfig struct {
 	//
 	// +optional
 	// +kubebuilder:default={certificate:Deny}
-	RouteOverride TLSOverridePolicy `json:"routeOverride,omitempty"`
+	RouteOverride *TLSOverridePolicy `json:"routeOverride,omitempty"`
 
 	// Options are a list of key/value pairs to give extended options
 	// to the provider.
@@ -396,7 +396,7 @@ type RouteBindingSelector struct {
 	//
 	// +optional
 	// +kubebuilder:default={from: Same}
-	Namespaces RouteNamespaces `json:"namespaces,omitempty"`
+	Namespaces *RouteNamespaces `json:"namespaces,omitempty"`
 	// Selector specifies a set of route labels used for selecting
 	// routes to associate with the Gateway. If this Selector is defined,
 	// only routes matching the Selector are associated with the Gateway.
@@ -405,7 +405,7 @@ type RouteBindingSelector struct {
 	// Support: Core
 	//
 	// +optional
-	Selector metav1.LabelSelector `json:"selector,omitempty"`
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 	// Group is the group of the route resource to select. Omitting the value or specifying
 	// the empty string indicates the networking.x-k8s.io API group.
 	// For example, use the following to select an HTTPRoute:
@@ -426,7 +426,7 @@ type RouteBindingSelector struct {
 	// +kubebuilder:default=networking.x-k8s.io
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=253
-	Group string `json:"group,omitempty"`
+	Group *string `json:"group,omitempty"`
 	// Kind is the kind of the route resource to select.
 	//
 	// Kind MUST correspond to kinds of routes that are compatible with the
@@ -467,7 +467,7 @@ type RouteNamespaces struct {
 	//
 	// +optional
 	// +kubebuilder:default=Same
-	From RouteSelectType `json:"from,omitempty"`
+	From *RouteSelectType `json:"from,omitempty"`
 
 	// Selector must be specified when From is set to "Selector". In that case,
 	// only Routes in Namespaces matching this Selector will be selected by this
@@ -476,7 +476,7 @@ type RouteNamespaces struct {
 	// Support: Core
 	//
 	// +optional
-	Selector metav1.LabelSelector `json:"selector,omitempty"`
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
 
 // GatewayAddress describes an address that can be bound to a Gateway.
@@ -487,7 +487,7 @@ type GatewayAddress struct {
 	//
 	// +optional
 	// +kubebuilder:default=IPAddress
-	Type AddressType `json:"type,omitempty"`
+	Type *AddressType `json:"type,omitempty"`
 
 	// Value of the address. The validity of the values will depend
 	// on the type and support by the controller.
@@ -596,11 +596,11 @@ const (
 	// been recently created and no controller has reconciled it yet.
 	GatewayReasonNotReconciled GatewayConditionReason = "NotReconciled"
 
-	// This reason is used with the "Scheduled" condition when the Gateway
-	// is not scheduled because there is no controller that recognizes
-	// the GatewayClassName. This reason should only be set by
-	// a controller that has cluster-wide visibility of all the
-	// installed GatewayClasses.
+	// This reason is used with the "Scheduled" condition when the Gateway is
+	// not scheduled because there is no controller that recognizes the
+	// GatewayClassName. This reason has been deprecated and will be removed in
+	// a future release.
+	// +deprecated
 	GatewayReasonNoSuchGatewayClass GatewayConditionReason = "NoSuchGatewayClass"
 
 	// This reason is used with the "Scheduled" condition when the

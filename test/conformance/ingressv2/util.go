@@ -59,6 +59,18 @@ import (
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
+func pathMatchTypePtr(val gatewayv1alpha1.PathMatchType) *gatewayv1alpha1.PathMatchType {
+	return &val
+}
+
+func headerMatchTypePtr(val gatewayv1alpha1.HeaderMatchType) *gatewayv1alpha1.HeaderMatchType {
+	return &val
+}
+
+func gatewayAllowTypePtr(val gatewayv1alpha1.GatewayAllowType) *gatewayv1alpha1.GatewayAllowType {
+	return &val
+}
+
 var rootCAs = x509.NewCertPool()
 
 var dialBackoff = wait.Backoff{
@@ -69,16 +81,16 @@ var dialBackoff = wait.Backoff{
 	Cap:      10 * time.Second,
 }
 
-var testGateway = gatewayv1alpha1.RouteGateways{
-	Allow: gatewayv1alpha1.GatewayAllowFromList,
+var testGateway = &gatewayv1alpha1.RouteGateways{
+	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
 		Namespace: "knative-serving",
 		Name:      "test-gateway",
 	}},
 }
 
-var testLocalGateway = gatewayv1alpha1.RouteGateways{
-	Allow: gatewayv1alpha1.GatewayAllowFromList,
+var testLocalGateway = &gatewayv1alpha1.RouteGateways{
+	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
 	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
 		Namespace: "knative-serving",
 		Name:      "test-local-gateway",

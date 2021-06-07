@@ -22,8 +22,9 @@ import (
 
 // +genclient
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:shortName=bp
+// +kubebuilder:resource:categories=gateway-api,shortName=bp
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BackendPolicy defines policies associated with backends. For the purpose of
 // this API, a backend is defined as any resource that a route can forward
@@ -97,16 +98,20 @@ type BackendRef struct {
 
 // BackendTLSConfig describes TLS configuration for a backend.
 type BackendTLSConfig struct {
-	// CertificateAuthorityRef is a reference to a resource that includes
-	// trusted CA certificates for the associated backends. If an entry in this
-	// list omits or specifies the empty string for both the group and the
-	// resource, the resource defaults to "secrets". An implementation may
-	// support other resources (for example, resource "mycertificates" in group
-	// "networking.acme.io").
+	// CertificateAuthorityRef is a reference to a Kubernetes object that contains
+	// one or more trusted CA certificates. The CA certificates are used to establish
+	// a TLS handshake to backends listed in BackendRefs. The referenced object MUST
+	// reside in the same namespace as BackendPolicy.
 	//
-	// When stored in a Secret, certificates must be PEM encoded and specified
-	// within the "ca.crt" data field of the Secret. Multiple certificates can
-	// be specified, concatenated by new lines.
+	// CertificateAuthorityRef can reference a standard Kubernetes resource, i.e.
+	// ConfigMap, or an implementation-specific custom resource.
+	//
+	// When stored in a Secret, certificates must be PEM encoded and specified within
+	// the "ca.crt" data field of the Secret. When multiple certificates are specified,
+	// the certificates MUST be concatenated by new lines.
+	//
+	// CertificateAuthorityRef can also reference a standard Kubernetes resource, i.e.
+	// ConfigMap, or an implementation-specific custom resource.
 	//
 	// Support: Extended
 	//

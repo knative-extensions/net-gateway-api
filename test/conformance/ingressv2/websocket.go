@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/gorilla/websocket"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 	"knative.dev/net-ingressv2/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -105,11 +106,11 @@ func TestWebsocketSplit(t *testing.T) {
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 				Port:        &bluePortNum,
 				ServiceName: &blueName,
-				Weight:      1,
+				Weight:      pointer.Int32Ptr(1),
 			}, {
 				Port:        &greenPortNum,
 				ServiceName: &greenName,
-				Weight:      1,
+				Weight:      pointer.Int32Ptr(1),
 			}},
 		}}})
 	dialer := websocket.Dialer{

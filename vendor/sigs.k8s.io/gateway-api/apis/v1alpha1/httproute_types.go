@@ -22,8 +22,10 @@ import (
 
 // +genclient
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:categories=gateway-api
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Hostnames",type=string,JSONPath=`.spec.hostnames`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // HTTPRoute is the Schema for the HTTPRoute resource.
 type HTTPRoute struct {
@@ -52,7 +54,7 @@ type HTTPRouteSpec struct {
 	//
 	// +optional
 	// +kubebuilder:default={allow: "SameNamespace"}
-	Gateways RouteGateways `json:"gateways,omitempty"`
+	Gateways *RouteGateways `json:"gateways,omitempty"`
 
 	// Hostnames defines a set of hostname that should match against
 	// the HTTP Host header to select a HTTPRoute to process the request.
@@ -118,14 +120,16 @@ type HTTPRouteSpec struct {
 
 // RouteTLSConfig describes a TLS configuration defined at the Route level.
 type RouteTLSConfig struct {
-	// CertificateRef refers to a Kubernetes object that
-	// contains a TLS certificate and private key.
-	// This certificate MUST be used for TLS handshakes for the domain
-	// this RouteTLSConfig is associated with.
-	// If an entry in this list omits or specifies the empty
-	// string for both the group and kind, the resource defaults to "secrets".
-	// An implementation may support other resources (for example, resource
-	// "mycertificates" in group "networking.acme.io").
+	// CertificateRef is a reference to a Kubernetes object that contains a TLS
+	// certificate and private key. This certificate is used to establish a TLS
+	// handshake for requests that match the hostname of the associated HTTPRoute.
+	// The referenced object MUST reside in the same namespace as HTTPRoute.
+	//
+	// This field is required when the TLS configuration mode of the associated
+	// Gateway listener is set to "Passthrough".
+	//
+	// CertificateRef can reference a standard Kubernetes resource, i.e. Secret,
+	// or an implementation-specific custom resource.
 	//
 	// Support: Core (Kubernetes Secrets)
 	//
@@ -138,9 +142,8 @@ type RouteTLSConfig struct {
 // conditions, optionally executing additional processing steps, and forwarding
 // the request to an API object.
 type HTTPRouteRule struct {
-	// Matches define conditions used for matching the rule against
-	// incoming HTTP requests.
-	// Each match is independent, i.e. this rule will be matched
+	// Matches define conditions used for matching the rule against incoming
+	// HTTP requests. Each match is independent, i.e. this rule will be matched
 	// if **any** one of the matches is satisfied.
 	//
 	// For example, take the following matches configuration:
@@ -170,17 +173,27 @@ type HTTPRouteRule struct {
 	// HTTP request.
 	//
 	//
-	// A client request may match multiple HTTP route rules. Matching precedence
-	// MUST be determined in order of the following criteria, continuing on ties:
+	// Each client request MUST map to a maximum of one route rule. If a request
+	// matches multiple rules, matching precedence MUST be determined in order
+	// of the following criteria, continuing on ties:
 	//
 	// * The longest matching hostname.
 	// * The longest matching path.
-	// * The largest number of header matches
+	// * The largest number of header matches.
+	//
+	// If ties still exist across multiple Routes, matching precedence MUST be
+	// determined in order of the following criteria, continuing on ties:
+	//
 	// * The oldest Route based on creation timestamp. For example, a Route with
 	//   a creation timestamp of "2020-09-08 01:02:03" is given precedence over
 	//   a Route with a creation timestamp of "2020-09-08 01:02:04".
-	// * The Route appearing first in alphabetical order (namespace/name) for
-	//   example, foo/bar is given precedence over foo/baz.
+	// * The Route appearing first in alphabetical order by
+	//   "<namespace>/<name>". For example, foo/bar is given precedence over
+	//   foo/baz.
+	//
+	// If ties still exist within the Route that has been given precedence,
+	// matching precedence MUST be granted to the first matching rule meeting
+	// the above criteria.
 	//
 	// +optional
 	// +kubebuilder:validation:MaxItems=8
@@ -261,6 +274,23 @@ const (
 	HeaderMatchImplementationSpecific HeaderMatchType = "ImplementationSpecific"
 )
 
+// QueryParamMatchType specifies the semantics of how HTTP query parameter
+// values should be compared. Valid QueryParamMatchType values are:
+//
+// * "Exact"
+// * "RegularExpression"
+// * "ImplementationSpecific"
+//
+// +kubebuilder:validation:Enum=Exact;RegularExpression;ImplementationSpecific
+type QueryParamMatchType string
+
+// QueryParamMatchType constants.
+const (
+	QueryParamMatchExact                  QueryParamMatchType = "Exact"
+	QueryParamMatchRegularExpression      QueryParamMatchType = "RegularExpression"
+	QueryParamMatchImplementationSpecific QueryParamMatchType = "ImplementationSpecific"
+)
+
 // HTTPPathMatch describes how to select a HTTP route by matching the HTTP request path.
 type HTTPPathMatch struct {
 	// Type specifies how to match against the path Value.
@@ -276,12 +306,13 @@ type HTTPPathMatch struct {
 	//
 	// +optional
 	// +kubebuilder:default=Prefix
-	Type PathMatchType `json:"type,omitempty"`
+	Type *PathMatchType `json:"type,omitempty"`
 
 	// Value of the HTTP path to match against.
 	//
-	// +kubebuilder:validation:MinLength=1
-	Value string `json:"value"`
+	// +optional
+	// +kubebuilder:default="/"
+	Value *string `json:"value,omitempty"`
 }
 
 // HTTPHeaderMatch describes how to select a HTTP route by matching HTTP request
@@ -302,7 +333,7 @@ type HTTPHeaderMatch struct {
 	//
 	// +optional
 	// +kubebuilder:default=Exact
-	Type HeaderMatchType `json:"type,omitempty"`
+	Type *HeaderMatchType `json:"type,omitempty"`
 
 	// Values is a map of HTTP Headers to be matched.
 	// It MUST contain at least one entry.
@@ -313,6 +344,41 @@ type HTTPHeaderMatch struct {
 	//
 	// Multiple match values are ANDed together, meaning, a request
 	// must match all the specified headers to select the route.
+	Values map[string]string `json:"values"`
+}
+
+// HTTPQueryParamMatch describes how to select a HTTP route by matching HTTP
+// query parameters.
+type HTTPQueryParamMatch struct {
+	// Type specifies how to match against the value of the query parameter.
+	//
+	// Support: Extended (Exact)
+	//
+	// Support: Custom (RegularExpression, ImplementationSpecific)
+	//
+	// Since RegularExpression QueryParamMatchType has custom conformance,
+	// implementations can support POSIX, PCRE or any other dialects of regular
+	// expressions. Please read the implementation's documentation to determine
+	// the supported dialect.
+	//
+	// +optional
+	// +kubebuilder:default=Exact
+	Type *QueryParamMatchType `json:"type,omitempty"`
+
+	// Values is a map of HTTP query parameters to be matched. It MUST contain
+	// at least one entry.
+	//
+	// The query parameter name to match is the map key, and the value of the
+	// query parameter is the map value.
+	//
+	// Multiple match values are ANDed together, meaning, a request must match
+	// all the specified query parameters to select the route.
+	//
+	// HTTP query parameter matching MUST be case-sensitive for both keys and
+	// values. (See https://tools.ietf.org/html/rfc7230#section-2.7.3).
+	//
+	// Note that the query parameter key MUST always be an exact match by string
+	// comparison.
 	Values map[string]string `json:"values"`
 }
 
@@ -337,12 +403,17 @@ type HTTPRouteMatch struct {
 	//
 	// +optional
 	// +kubebuilder:default={type: "Prefix", value: "/"}
-	Path HTTPPathMatch `json:"path,omitempty"`
+	Path *HTTPPathMatch `json:"path,omitempty"`
 
 	// Headers specifies a HTTP request header matcher.
 	//
 	// +optional
 	Headers *HTTPHeaderMatch `json:"headers,omitempty"`
+
+	// QueryParams specifies a HTTP query parameter matcher.
+	//
+	// +optional
+	QueryParams *HTTPQueryParamMatch `json:"queryParams,omitempty"`
 
 	// ExtensionRef is an optional, implementation-specific extension to the
 	// "match" behavior. For example, resource "myroutematcher" in group
@@ -631,7 +702,7 @@ type HTTPRouteForwardTo struct {
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=1000000
-	Weight int32 `json:"weight,omitempty"`
+	Weight *int32 `json:"weight,omitempty"`
 
 	// Filters defined at this-level should be executed if and only if the
 	// request is being forwarded to the backend defined here.

@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/utils/pointer"
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
@@ -49,13 +50,13 @@ func TestRule(t *testing.T) {
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
 					Headers: &gwv1alpha1.HTTPHeaderMatch{
-						Type:   gwv1alpha1.HeaderMatchExact,
+						Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
 						Values: map[string]string{"Host": fooName + ".example.com"},
 					},
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/"),
 					},
 				}},
 				Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -72,13 +73,13 @@ func TestRule(t *testing.T) {
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
 					Headers: &gwv1alpha1.HTTPHeaderMatch{
-						Type:   gwv1alpha1.HeaderMatchExact,
+						Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
 						Values: map[string]string{"Host": barName + ".example.com"},
 					},
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/"),
 					},
 				}},
 				Filters: []gwv1alpha1.HTTPRouteFilter{{

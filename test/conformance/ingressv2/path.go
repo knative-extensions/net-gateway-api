@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/pkg/pool"
@@ -70,9 +71,9 @@ func TestPath(t *testing.T) {
 					}},
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/foo",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/foo"),
 					},
 				}},
 			},
@@ -90,9 +91,9 @@ func TestPath(t *testing.T) {
 					}},
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/bar",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/bar"),
 					},
 				}},
 			},
@@ -110,9 +111,9 @@ func TestPath(t *testing.T) {
 					}},
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/baz",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/baz"),
 					},
 				}},
 			},
@@ -183,7 +184,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 					{
 						Port:        &fooPortNum,
 						ServiceName: &fooName,
-						Weight:      1,
+						Weight:      pointer.Int32Ptr(1),
 						// Append different headers to each split, which lets us identify
 						// which backend we hit.
 						Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -196,7 +197,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 					{
 						Port:        &barPortNum,
 						ServiceName: &barName,
-						Weight:      1,
+						Weight:      pointer.Int32Ptr(1),
 						// Append different headers to each split, which lets us identify
 						// which backend we hit.
 						Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -208,9 +209,9 @@ func TestPathAndPercentageSplit(t *testing.T) {
 					},
 				},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
-					Path: gwv1alpha1.HTTPPathMatch{
-						Type:  gwv1alpha1.PathMatchPrefix,
-						Value: "/foo",
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+						Value: pointer.StringPtr("/foo"),
 					},
 				}},
 			},
@@ -218,7 +219,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 					Port:        &portNum,
 					ServiceName: &name,
-					Weight:      1,
+					Weight:      pointer.Int32Ptr(1),
 				}},
 				// Append different headers to each split, which lets us identify
 				// which backend we hit.

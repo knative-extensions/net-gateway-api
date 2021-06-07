@@ -35,7 +35,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			name:   "One gateway - it has Admitted condition true",
 			expect: true,
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{{
-				GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+				GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 				Conditions: []metav1.Condition{{
 					Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
 					Status: metav1.ConditionTrue,
@@ -44,7 +44,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 		}, {
 			name: "One gateway - it has Admitted condition false",
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{{
-				GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+				GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 				Conditions: []metav1.Condition{{
 					Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
 					Status: metav1.ConditionFalse,
@@ -53,14 +53,14 @@ func TestIsHTTPRouteReady(t *testing.T) {
 		}, {
 			name: "One gateway - it does not have Admitted condition",
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{{
-				GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+				GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 			}},
 		}, {
 			name:   "Two gateways - both have Admitted condition true",
 			expect: true,
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{
 				{
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 					Conditions: []metav1.Condition{
 						{
 							Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
@@ -68,7 +68,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 						},
 					},
 				}, {
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "bar", Namespace: "bar"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "bar", Namespace: "bar"},
 					Conditions: []metav1.Condition{
 						{
 							Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
@@ -81,7 +81,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			name: "Two gateways - one has Admitted condition false",
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{
 				{
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 					Conditions: []metav1.Condition{
 						{
 							Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
@@ -89,7 +89,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 						},
 					},
 				}, {
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "bar", Namespace: "bar"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "bar", Namespace: "bar"},
 					Conditions: []metav1.Condition{
 						{
 							Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
@@ -102,7 +102,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			name: "Two gateways - one does not have Admitted condition",
 			gatewayStatus: []gatewayv1alpha1.RouteGatewayStatus{
 				{
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "foo", Namespace: "foo"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "foo", Namespace: "foo"},
 					Conditions: []metav1.Condition{
 						{
 							Type:   string(gatewayv1alpha1.ConditionRouteAdmitted),
@@ -110,7 +110,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 						},
 					},
 				}, {
-					GatewayRef: gatewayv1alpha1.GatewayReference{Name: "bar", Namespace: "bar"},
+					GatewayRef: gatewayv1alpha1.RouteStatusGatewayReference{Name: "bar", Namespace: "bar"},
 				},
 			},
 		},

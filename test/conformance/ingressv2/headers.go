@@ -40,7 +40,6 @@ func TestTagHeaders(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	const (
 		tagName           = "the-tag"
@@ -55,7 +54,7 @@ func TestTagHeaders(t *testing.T) {
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &portNum,
+					Port:        portNumPtr(port),
 					ServiceName: &name,
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
@@ -73,7 +72,7 @@ func TestTagHeaders(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &portNum,
+					Port:        portNumPtr(port),
 					ServiceName: &name,
 				}},
 				Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -141,7 +140,6 @@ func TestPreSplitSetHeaders(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	const headerName = "Foo-Bar-Baz"
 
@@ -150,7 +148,7 @@ func TestPreSplitSetHeaders(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNum,
+				Port:        portNumPtr(port),
 				ServiceName: &name,
 			}},
 			Filters: []gwv1alpha1.HTTPRouteFilter{{
@@ -208,11 +206,10 @@ func TestPostSplitSetHeaders(t *testing.T) {
 	names := make(sets.String, splits)
 	for i := 0; i < splits; i++ {
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-		portNum := gwv1alpha1.PortNumber(port)
 
 		forwards = append(forwards,
 			gwv1alpha1.HTTPRouteForwardTo{
-				Port:        &portNum,
+				Port:        portNumPtr(port),
 				ServiceName: &name,
 				Weight:      pointer.Int32Ptr(100 / splits),
 				Filters: []gwv1alpha1.HTTPRouteFilter{{

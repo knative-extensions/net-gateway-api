@@ -31,7 +31,6 @@ func TestRewriteHost(t *testing.T) {
 	ctx, clients := context.Background(), test.Setup(t)
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	privateServiceName := test.ObjectNameForTest(t)
 	privateHostName := privateServiceName + "." + test.ServingNamespace + ".svc.cluster.local"
@@ -43,7 +42,7 @@ func TestRewriteHost(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNum,
+				Port:        portNumPtr(port),
 				ServiceName: &name,
 			}},
 		}},
@@ -61,15 +60,13 @@ func TestRewriteHost(t *testing.T) {
 		gwv1alpha1.Hostname(name + "." + "vanity.isalsomy.number"),
 	}
 
-	portNumIng := gwv1alpha1.PortNumber(80)
-
 	// Now create a RewriteHost ingress to point a custom Host at the Service
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
 		Gateways:  testGateway,
 		Hostnames: hosts,
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNumIng,
+				Port:        portNumPtr(80),
 				ServiceName: &privateServiceName,
 			}},
 			Filters: []gwv1alpha1.HTTPRouteFilter{

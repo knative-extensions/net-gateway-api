@@ -71,6 +71,11 @@ func gatewayAllowTypePtr(val gatewayv1alpha1.GatewayAllowType) *gatewayv1alpha1.
 	return &val
 }
 
+func portNumPtr(port int) *gatewayv1alpha1.PortNumber {
+	pn := gatewayv1alpha1.PortNumber(port)
+	return &pn
+}
+
 var rootCAs = x509.NewCertPool()
 
 var dialBackoff = wait.Backoff{

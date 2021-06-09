@@ -32,16 +32,3 @@ spec:
           knative-e2e-test: "net-ingressv2-local"
       namespaces:
         from: "All"
-  - protocol: HTTPS
-    port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2-local"
-      namespaces:
-        from: "All"

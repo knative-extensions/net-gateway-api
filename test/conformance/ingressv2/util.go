@@ -87,19 +87,11 @@ var dialBackoff = wait.Backoff{
 }
 
 var testGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
-	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "istio-system",
-		Name:      "test-gateway",
-	}},
+	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
 }
 
 var testLocalGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
-	GatewayRefs: []gatewayv1alpha1.GatewayReference{{
-		Namespace: "istio-system",
-		Name:      "test-local-gateway",
-	}},
+	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
 }
 
 // gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.

@@ -27,14 +27,13 @@ import (
 	// Allow E2E to run against a cluster using OpenID.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
-	"knative.dev/pkg/test"
 	gwversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
 )
 
 // Clients holds instances of interfaces for making requests to Knative Serving.
 type Clients struct {
-	KubeClient       *test.KubeClient
+	KubeClient       kubernetes.Interface
 	GatewayAPIClient *GatewayAPIClients
 	Dynamic          dynamic.Interface
 }
@@ -65,11 +64,11 @@ func NewClients(configPath string, clusterName string, namespace string) (*Clien
 // Knative Serving cluster specified by the rest Config. Clients can make requests within namespace.
 func NewClientsFromConfig(cfg *rest.Config, namespace string) (*Clients, error) {
 	clients := &Clients{}
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	var err error
+	clients.KubeClient, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
-	clients.KubeClient = &test.KubeClient{Interface: kubeClient}
 
 	clients.Dynamic, err = dynamic.NewForConfig(cfg)
 	if err != nil {

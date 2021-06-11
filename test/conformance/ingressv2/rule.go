@@ -35,9 +35,7 @@ func TestRule(t *testing.T) {
 	const headerName = "Foo-Bar-Baz"
 
 	fooName, fooPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	fooPortNum := gwv1alpha1.PortNumber(fooPort)
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	barPortNum := gwv1alpha1.PortNumber(barPort)
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
 		Gateways:  testGateway,
@@ -45,7 +43,7 @@ func TestRule(t *testing.T) {
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &fooPortNum,
+					Port:        portNumPtr(fooPort),
 					ServiceName: &fooName,
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{
@@ -68,7 +66,7 @@ func TestRule(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &barPortNum,
+					Port:        portNumPtr(barPort),
 					ServiceName: &barName,
 				}},
 				Matches: []gwv1alpha1.HTTPRouteMatch{{

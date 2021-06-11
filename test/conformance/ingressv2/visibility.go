@@ -39,7 +39,6 @@ func TestVisibility(t *testing.T) {
 
 	// Create the private backend
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	// Generate a different hostname for each of these tests, so that they do not fail when run concurrently.
 	var privateHostNames = map[string]gwv1alpha1.Hostname{
@@ -53,7 +52,7 @@ func TestVisibility(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNum,
+				Port:        portNumPtr(port),
 				ServiceName: &name,
 			}},
 		}},
@@ -79,7 +78,6 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 	namespace, name := getClusterIngress()
 	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
-	proxyPortNum := gwv1alpha1.PortNumber(proxyPort)
 
 	// Using fixed hostnames can lead to conflicts when -count=N>1
 	// so pseudo-randomize the hostnames to avoid conflicts.
@@ -90,7 +88,7 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 		Hostnames: []gwv1alpha1.Hostname{publicHostName},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &proxyPortNum,
+				Port:        portNumPtr(proxyPort),
 				ServiceName: &proxyName,
 			}},
 		}},
@@ -116,10 +114,9 @@ func TestVisibilitySplit(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		weight := percent
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-		portNum := gwv1alpha1.PortNumber(port)
 		backends = append(backends, gwv1alpha1.HTTPRouteForwardTo{
 			ServiceName: &name,
-			Port:        &portNum,
+			Port:        portNumPtr(port),
 			Weight:      &weight,
 
 			// Append different headers to each split, which lets us identify
@@ -160,7 +157,6 @@ func TestVisibilitySplit(t *testing.T) {
 	namespace, name := getClusterIngress()
 	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
-	proxyPortNum := gwv1alpha1.PortNumber(proxyPort)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
@@ -168,7 +164,7 @@ func TestVisibilitySplit(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(publicHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &proxyPortNum,
+				Port:        portNumPtr(proxyPort),
 				ServiceName: &proxyName,
 			}},
 		}},
@@ -230,18 +226,14 @@ func TestVisibilityPath(t *testing.T) {
 
 	// For /foo
 	fooName, fooPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	fooPortNum := gwv1alpha1.PortNumber(fooPort)
 
 	// For /bar
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	barPortNum := gwv1alpha1.PortNumber(barPort)
 
 	// For /baz
 	bazName, bazPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	bazPortNum := gwv1alpha1.PortNumber(bazPort)
 
 	mainName, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
@@ -254,7 +246,7 @@ func TestVisibilityPath(t *testing.T) {
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &fooPortNum,
+					Port:        portNumPtr(fooPort),
 					ServiceName: &fooName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -274,7 +266,7 @@ func TestVisibilityPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &barPortNum,
+					Port:        portNumPtr(barPort),
 					ServiceName: &barName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -294,7 +286,7 @@ func TestVisibilityPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &bazPortNum,
+					Port:        portNumPtr(bazPort),
 					ServiceName: &bazName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
@@ -314,7 +306,7 @@ func TestVisibilityPath(t *testing.T) {
 			},
 			{
 				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-					Port:        &portNum,
+					Port:        portNumPtr(port),
 					ServiceName: &mainName,
 				}},
 				// Append different headers to each split, which lets us identify
@@ -337,7 +329,6 @@ func TestVisibilityPath(t *testing.T) {
 	namespace, name := getClusterIngress()
 	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
-	proxyPortNum := gwv1alpha1.PortNumber(proxyPort)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
@@ -345,7 +336,7 @@ func TestVisibilityPath(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(publicHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &proxyPortNum,
+				Port:        portNumPtr(proxyPort),
 				ServiceName: &proxyName,
 			}},
 		}},

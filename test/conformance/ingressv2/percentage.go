@@ -46,10 +46,9 @@ func TestPercentage(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		weight := percent
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
-		portNum := gwv1alpha1.PortNumber(port)
 		backends = append(backends, gwv1alpha1.HTTPRouteForwardTo{
 			ServiceName: &name,
-			Port:        &portNum,
+			Port:        portNumPtr(port),
 			Weight:      &weight,
 			// Append different headers to each split, which lets us identify
 			// which backend we hit.

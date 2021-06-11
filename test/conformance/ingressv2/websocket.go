@@ -41,7 +41,6 @@ func TestWebsocket(t *testing.T) {
 
 	const suffix = "- pong"
 	name, port, _ := CreateWebsocketService(ctx, t, clients, suffix)
-	portNum := gwv1alpha1.PortNumber(port)
 
 	domain := name + ".example.com"
 
@@ -51,7 +50,7 @@ func TestWebsocket(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(domain)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &portNum,
+				Port:        portNumPtr(port),
 				ServiceName: &name,
 			}},
 		}}})
@@ -87,11 +86,9 @@ func TestWebsocketSplit(t *testing.T) {
 
 	const suffixBlue = "- blue"
 	blueName, bluePort, _ := CreateWebsocketService(ctx, t, clients, suffixBlue)
-	bluePortNum := gwv1alpha1.PortNumber(bluePort)
 
 	const suffixGreen = "- green"
 	greenName, greenPort, _ := CreateWebsocketService(ctx, t, clients, suffixGreen)
-	greenPortNum := gwv1alpha1.PortNumber(greenPort)
 
 	// The suffixes we expect to see.
 	want := sets.NewString(suffixBlue, suffixGreen)
@@ -104,11 +101,11 @@ func TestWebsocketSplit(t *testing.T) {
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(domain)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        &bluePortNum,
+				Port:        portNumPtr(bluePort),
 				ServiceName: &blueName,
 				Weight:      pointer.Int32Ptr(1),
 			}, {
-				Port:        &greenPortNum,
+				Port:        portNumPtr(greenPort),
 				ServiceName: &greenName,
 				Weight:      pointer.Int32Ptr(1),
 			}},

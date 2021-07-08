@@ -19,6 +19,15 @@ metadata:
     control-plane: contour-operator
   name: contour-external
 ---
+# workaround of net-contour/issues/549
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: contour-external
+  namespace: contour-external
+spec:
+  controller: example.com/ingress-controller
+---
 apiVersion: operator.projectcontour.io/v1alpha1
 kind: Contour
 metadata:

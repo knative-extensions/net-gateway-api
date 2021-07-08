@@ -48,7 +48,7 @@ func TestVisibility(t *testing.T) {
 	}
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway, // Ths field is not working on Contour - https://github.com/projectcontour/contour/issues/3615
+		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -144,7 +144,7 @@ func TestVisibilitySplit(t *testing.T) {
 	// Create a simple Ingress over the 10 Services.
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway, // Ths field is not working on Contour - https://github.com/projectcontour/contour/issues/3615
+		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: backends,
@@ -241,7 +241,7 @@ func TestVisibilityPath(t *testing.T) {
 	name := test.ObjectNameForTest(t)
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway, // Ths is not working on Contour - https://github.com/projectcontour/contour/issues/3615
+		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{

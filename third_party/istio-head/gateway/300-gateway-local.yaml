@@ -15,13 +15,13 @@
 kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
-  name: test-gateway
+  name: test-local-gateway
   namespace: istio-system
 spec:
   gatewayClassName: istio
   addresses:
   - type: NamedAddress
-    value: istio-ingressgateway.istio-system.svc.cluster.local
+    value: knative-local-gateway.istio-system.svc.cluster.local
   listeners:
   - protocol: HTTP
     port: 80
@@ -29,19 +29,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-ingressv2"
-      namespaces:
-        from: "All"
-  - protocol: HTTPS
-    port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2"
+          knative-e2e-test: "net-ingressv2-local"
       namespaces:
         from: "All"

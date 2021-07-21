@@ -22,6 +22,7 @@ import (
 
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
+	nettest "knative.dev/networking/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -33,12 +34,10 @@ func TestRewriteHost(t *testing.T) {
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 	privateServiceName := test.ObjectNameForTest(t)
-	privateHostName := privateServiceName + "." + test.ServingNamespace + ".svc.cluster.local"
+	privateHostName := privateServiceName + "." + test.ServingNamespace + ".svc." + nettest.NetworkingFlags.ClusterSuffix
 
 	// Create a simple Ingress over the Service.
-	// TODO: Make this HTTPRoute cluster local visibility.
 	_, _, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -49,8 +48,7 @@ func TestRewriteHost(t *testing.T) {
 	})
 
 	// Slap an ExternalName service in front of the kingress
-	namespace, name := getIngress()
-	loadbalancerAddress := name + "." + namespace + ".svc"
+	loadbalancerAddress := test.LocalGatewayAddress()
 	createExternalNameService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	// Using fixed hostnames can lead to conflicts when -count=N>1
@@ -62,7 +60,6 @@ func TestRewriteHost(t *testing.T) {
 
 	// Now create a RewriteHost ingress to point a custom Host at the Service
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: hosts,
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{

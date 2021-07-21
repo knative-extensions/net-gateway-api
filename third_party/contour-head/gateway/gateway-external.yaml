@@ -19,15 +19,6 @@ metadata:
     control-plane: contour-operator
   name: contour-external
 ---
-# workaround of net-contour/issues/549
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: contour-external
-  namespace: contour-external
-spec:
-  controller: example.com/ingress-controller
----
 apiVersion: operator.projectcontour.io/v1alpha1
 kind: Contour
 metadata:
@@ -54,34 +45,3 @@ spec:
     scope: Namespace
     name: contour-external
     namespace: contour-external
----
-kind: Gateway
-apiVersion: networking.x-k8s.io/v1alpha1
-metadata:
-  name: contour-external
-  namespace: contour-external
-spec:
-  gatewayClassName: contour-external-gatewayclass
-  listeners:
-  - protocol: HTTP
-    port: 80
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2"
-      namespaces:
-        from: "All"
-  - protocol: HTTPS
-    port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2"
-      namespaces:
-        from: "All"

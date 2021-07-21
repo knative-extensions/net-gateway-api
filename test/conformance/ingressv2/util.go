@@ -35,7 +35,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -50,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
+	netTest "knative.dev/networking/test"
 	"knative.dev/networking/test/types"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/reconciler"
@@ -58,6 +58,16 @@ import (
 
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
+
+var (
+	// httpRouteNameLabelKey is a label key for the HTTPRoute.
+	// Gateway selects the HTTPRoute which has the label.
+	httpRouteNameLabelKey = networking.GroupName + "/httpRoute"
+)
+
+func gatewayAddressTypePtr(addr gatewayv1alpha1.AddressType) *gatewayv1alpha1.AddressType {
+	return &addr
+}
 
 func pathMatchTypePtr(val gatewayv1alpha1.PathMatchType) *gatewayv1alpha1.PathMatchType {
 	return &val
@@ -76,6 +86,10 @@ func portNumPtr(port int) *gatewayv1alpha1.PortNumber {
 	return &pn
 }
 
+func routeSelectTypePtr(rst gatewayv1alpha1.RouteSelectType) *gatewayv1alpha1.RouteSelectType {
+	return &rst
+}
+
 var rootCAs = x509.NewCertPool()
 
 var dialBackoff = wait.Backoff{
@@ -85,20 +99,6 @@ var dialBackoff = wait.Backoff{
 	Steps:    100,
 	Cap:      10 * time.Second,
 }
-
-var testGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
-}
-
-var testLocalGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
-}
-
-// gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.
-var gatewayLabel = map[string]string{"knative-e2e-test": "net-ingressv2"}
-
-// gatewayLabel is added to HTTPRoute. The local gateway selects the generated HTTPRoute by this label.
-var gatewayLocalLabel = map[string]string{"knative-e2e-test": "net-ingressv2-local"}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.
@@ -683,20 +683,6 @@ func createPodAndService(ctx context.Context, t *testing.T, clients *test.Client
 // Option enables further configuration of a HTTPRoute.
 type Option func(*gatewayv1alpha1.HTTPRoute)
 
-// OverrideHTTPRouteAnnotation overrides the HTTPRoute annotation.
-func OverrideHTTPRouteAnnotation(annotations map[string]string) Option {
-	return func(hr *gatewayv1alpha1.HTTPRoute) {
-		hr.Annotations = annotations
-	}
-}
-
-// OverrideHTTPRouteLabel overrides the HTTPRoute label.
-func OverrideHTTPRouteLabel(labels map[string]string) Option {
-	return func(hr *gatewayv1alpha1.HTTPRoute) {
-		hr.Labels = labels
-	}
-}
-
 func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, func(context.Context, string, string) (net.Conn, error), context.CancelFunc) {
 	t.Helper()
 
@@ -720,18 +706,107 @@ func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients 
 	return hr, CreateDialContext(ctx, t, clients), cancel
 }
 
-// CreateHTTPRoute creates a HTTPRoute resource
+// isClusterLocal returns true if any of domains have the cluster local domain suffix.
+func isClusterLocal(domains []gatewayv1alpha1.Hostname) bool {
+	for _, d := range domains {
+		if strings.HasSuffix(string(d), netTest.NetworkingFlags.ClusterSuffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// CreateGateway creates a Gateway.
+func CreateGateway(ctx context.Context, t *testing.T, clients *test.Clients, hr *gatewayv1alpha1.HTTPRouteSpec, name string) (*gatewayv1alpha1.Gateway, context.CancelFunc) {
+	t.Helper()
+
+	listeners := make([]gatewayv1alpha1.Listener, 0, len(hr.Hostnames))
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{
+		httpRouteNameLabelKey: name,
+	}}
+
+	for _, host := range hr.Hostnames {
+		host := host
+		route := gatewayv1alpha1.RouteBindingSelector{
+			Namespaces: &gatewayv1alpha1.RouteNamespaces{
+				From: routeSelectTypePtr(gatewayv1alpha1.RouteSelectAll),
+			},
+			Selector: &labelSelector,
+			Kind:     "HTTPRoute",
+		}
+
+		listeners = append(listeners, gatewayv1alpha1.Listener{
+			Hostname: &host,
+			Port:     gatewayv1alpha1.PortNumber(80),
+			Protocol: gatewayv1alpha1.HTTPProtocolType,
+			Routes:   route})
+	}
+
+	var address []gatewayv1alpha1.GatewayAddress
+	var gatewayClass string
+	if isClusterLocal(hr.Hostnames) {
+		address = []gatewayv1alpha1.GatewayAddress{{Type: gatewayAddressTypePtr(gatewayv1alpha1.NamedAddressType), Value: test.LocalGatewayAddress()}}
+		gatewayClass = test.LocalGatewayClass()
+	} else {
+		address = []gatewayv1alpha1.GatewayAddress{{Type: gatewayAddressTypePtr(gatewayv1alpha1.NamedAddressType), Value: test.GatewayAddress()}}
+		gatewayClass = test.GatewayClass()
+	}
+
+	gw := &gatewayv1alpha1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: gatewayv1alpha1.GatewaySpec{
+			GatewayClassName: gatewayClass,
+			Listeners:        listeners,
+			Addresses:        address,
+		},
+	}
+
+	t.Cleanup(func() { clients.GatewayAPIClient.Gateways.Delete(ctx, gw.Name, metav1.DeleteOptions{}) })
+	if err := reconciler.RetryTestErrors(func(attempts int) (err error) {
+		if attempts > 0 {
+			t.Logf("Attempt %d creating gateway %s", attempts, gw.Name)
+		}
+		gw, err = clients.GatewayAPIClient.Gateways.Create(ctx, gw, metav1.CreateOptions{})
+		if err != nil {
+			t.Logf("Attempt %d creating gateway failed with: %v", attempts, err)
+		}
+		return err
+	}); err != nil {
+		t.Fatalf("Error creating Gateway %q: %v", gw.Name, err)
+	}
+
+	return gw, func() {
+		err := clients.GatewayAPIClient.Gateways.Delete(ctx, gw.Name, metav1.DeleteOptions{})
+		if err != nil {
+			t.Errorf("Error cleaning up Gateway %q: %v", gw.Name, err)
+		}
+	}
+}
+
+// CreateHTTPRoute creates a HTTPRoute resource with a corresponding Gateway.
 func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, context.CancelFunc) {
 	t.Helper()
 
 	name := test.ObjectNameForTest(t)
 
-	// Create a simple HTTPRoute over the Service.
+	gateway, cancel := CreateGateway(ctx, t, clients, &spec, name)
+
+	// Set spec.Gatewas in HTTPRoute to the gateway created.
+	spec.Gateways = &gatewayv1alpha1.RouteGateways{
+		Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowFromList),
+		GatewayRefs: []gatewayv1alpha1.GatewayReference{{
+			Namespace: gateway.Namespace,
+			Name:      gateway.Name,
+		}},
+	}
+
 	hr := &gatewayv1alpha1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: test.ServingNamespace,
-			Labels:    gatewayLabel,
+			Labels:    map[string]string{httpRouteNameLabelKey: name},
 		},
 		Spec: spec,
 	}
@@ -742,7 +817,10 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 
 	hrName := ktypes.NamespacedName{Name: hr.Name, Namespace: hr.Namespace}
 
-	t.Cleanup(func() { clients.GatewayAPIClient.HTTPRoutes.Delete(ctx, hr.Name, metav1.DeleteOptions{}) })
+	t.Cleanup(func() {
+		cancel()
+		clients.GatewayAPIClient.HTTPRoutes.Delete(ctx, hr.Name, metav1.DeleteOptions{})
+	})
 	if err := reconciler.RetryTestErrors(func(attempts int) (err error) {
 		if attempts > 0 {
 			t.Logf("Attempt %d creating ingress %s", attempts, hr.Name)
@@ -757,6 +835,7 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 	}
 
 	return hr, func() {
+		cancel()
 		err := clients.GatewayAPIClient.HTTPRoutes.Delete(ctx, hr.Name, metav1.DeleteOptions{})
 		if err != nil {
 			t.Errorf("Error cleaning up HTTPRoute %q: %v", hrName, err)
@@ -765,7 +844,6 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 }
 
 func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, *http.Client, context.CancelFunc) {
-
 	t.Helper()
 
 	// Create a client with a dialer based on the HTTPRoute' public load balancer.
@@ -885,32 +963,6 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 	}
 }
 
-func getIngress() (string, string) {
-	// TODO: Gateway expose these info?
-	namespace := "istio-system"
-	if gatewayNsOverride := os.Getenv("GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
-		namespace = gatewayNsOverride
-	}
-	name := "istio-ingressgateway"
-	if gatewayOverride := os.Getenv("GATEWAY_OVERRIDE"); gatewayOverride != "" {
-		name = gatewayOverride
-	}
-	return namespace, name
-}
-
-func getClusterIngress() (string, string) {
-	// TODO: Gateway expose these info?
-	namespace := "istio-system"
-	if gatewayNsOverride := os.Getenv("LOCAL_GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
-		namespace = gatewayNsOverride
-	}
-	name := "knative-local-gateway"
-	if gatewayOverride := os.Getenv("LOCAL_GATEWAY_OVERRIDE"); gatewayOverride != "" {
-		name = gatewayOverride
-	}
-	return namespace, name
-}
-
 // CreateDialContext looks up the endpoint information to create a "dialer" for
 // the provided HTTPRoute' public ingress loas balancer.  It can be used to
 // contact external-visibility services with an HTTP client via:
@@ -923,7 +975,8 @@ func getClusterIngress() (string, string) {
 func CreateDialContext(ctx context.Context, t *testing.T, clients *test.Clients) func(context.Context, string, string) (net.Conn, error) {
 	t.Helper()
 
-	namespace, name := getIngress()
+	address := strings.Split(test.GatewayAddress(), ".")
+	name, namespace := address[0], address[1]
 
 	var svc *corev1.Service
 	err := reconciler.RetryTestErrors(func(attempts int) (err error) {

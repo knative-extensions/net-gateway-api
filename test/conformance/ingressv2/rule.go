@@ -38,7 +38,6 @@ func TestRule(t *testing.T) {
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(fooName + ".example.com"), gwv1alpha1.Hostname(barName + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{

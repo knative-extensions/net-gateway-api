@@ -88,7 +88,7 @@ kubectl apply -f test/config/
 #### Install Gateway API CRDs
 
 ```
-kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.2.0'
+kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
 ```
 
 #### Deploy Istio
@@ -108,8 +108,7 @@ kubectl apply -f ./third_party/istio-head/gateway/
 #### Execute test
 
 ```shell
-GATEWAY_OVERRIDE=istio-ingressgateway
-GATEWAY_NAMESPACE_OVERRIDE=istio-system
+source third_party/istio-head/config.env
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
 go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/basics" \
@@ -155,10 +154,7 @@ ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
 #### Execute test
 
 ```shell
-GATEWAY_OVERRIDE=envoy
-GATEWAY_NAMESPACE_OVERRIDE=contour-external
-LOCAL_GATEWAY_OVERRIDE=envoy
-LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
+source third_party/contour-head/config.env
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
 go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/hosts/basics" \

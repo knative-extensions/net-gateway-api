@@ -49,7 +49,6 @@ func TestTagHeaders(t *testing.T) {
 	)
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
@@ -145,7 +144,6 @@ func TestPreSplitSetHeaders(t *testing.T) {
 	const headerName = "Foo-Bar-Baz"
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -225,7 +223,6 @@ func TestPostSplitSetHeaders(t *testing.T) {
 	// Create a simple Ingress over the 10 Services.
 	name := test.ObjectNameForTest(t)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: forwards,

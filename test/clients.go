@@ -41,6 +41,7 @@ type Clients struct {
 // networking clients.
 type GatewayAPIClients struct {
 	HTTPRoutes gwv1alpha1.HTTPRouteInterface
+	Gateways   gwv1alpha1.GatewayInterface
 }
 
 // NewClientsFromConfig instantiates and returns several clientsets required for making request to the
@@ -83,5 +84,6 @@ func newGatewayAPIClients(cfg *rest.Config, namespace string) (*GatewayAPIClient
 	}
 	return &GatewayAPIClients{
 		HTTPRoutes: cs.NetworkingV1alpha1().HTTPRoutes(namespace),
+		Gateways:   cs.NetworkingV1alpha1().Gateways(GatewayNamespace(namespace)),
 	}, nil
 }

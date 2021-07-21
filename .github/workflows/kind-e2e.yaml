@@ -141,8 +141,6 @@ jobs:
 
         # Replace cluster.local with random suffix.
         sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway.yaml
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway-local.yaml
 
         # Deploy Istio
         ./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
@@ -150,8 +148,8 @@ jobs:
         # Deploy gatewayclass and gateway.
         kubectl apply -f ./third_party/istio-head/gateway/
 
-        echo "GATEWAY_OVERRIDE=istio-ingressgateway" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=istio-system" >> $GITHUB_ENV
+        # Add gateway configuration.
+        cat ./third_party/istio-head/config.env >> $GITHUB_ENV
 
     - name: Install ingress provider (Contour)
       if: matrix.ingress == 'contour'
@@ -171,11 +169,8 @@ jobs:
         ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
           kubectl apply -f -
 
-        # This tells the tests what namespace to look in for our kingress LB.
-        echo "GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=contour-external" >> $GITHUB_ENV
-        echo "LOCAL_GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal" >> $GITHUB_ENV
+        # Add gateway configuration.
+        cat ./third_party/contour-head/config.env >> $GITHUB_ENV
 
     - name: Upload Test Images
       run: |

@@ -48,7 +48,6 @@ func TestVisibility(t *testing.T) {
 	}
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -56,7 +55,7 @@ func TestVisibility(t *testing.T) {
 				ServiceName: &name,
 			}},
 		}},
-	}, OverrideHTTPRouteLabel(gatewayLocalLabel))
+	})
 
 	// Ensure the service is not publicly accessible
 	for _, privateHostName := range privateHostNames {
@@ -75,8 +74,7 @@ func TestVisibility(t *testing.T) {
 
 func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clients, privateHostName string) {
 
-	namespace, name := getClusterIngress()
-	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
+	loadbalancerAddress := test.LocalGatewayAddress()
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	// Using fixed hostnames can lead to conflicts when -count=N>1
@@ -84,7 +82,6 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 	publicHostName := gwv1alpha1.Hostname(test.ObjectNameForTest(t) + ".publicproxy.example.com")
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{publicHostName},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -144,23 +141,20 @@ func TestVisibilitySplit(t *testing.T) {
 	// Create a simple Ingress over the 10 Services.
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: backends,
 		}},
-	}, OverrideHTTPRouteLabel(gatewayLocalLabel))
+	})
 
 	// Ensure we can't connect to the private resources
 	RuntimeRequestWithExpectations(ctx, t, client, "http://"+privateHostName, []ResponseExpectation{StatusCodeExpectation(sets.NewInt(http.StatusNotFound))}, true)
 
-	namespace, name := getClusterIngress()
-	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
+	loadbalancerAddress := test.LocalGatewayAddress()
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(publicHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
@@ -238,7 +232,6 @@ func TestVisibilityPath(t *testing.T) {
 	name := test.ObjectNameForTest(t)
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testLocalGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
@@ -316,20 +309,18 @@ func TestVisibilityPath(t *testing.T) {
 				}},
 			},
 		},
-	}, OverrideHTTPRouteLabel(gatewayLocalLabel))
+	})
 
 	// Ensure we can't connect to the private resources
 	for _, path := range []string{"", "/foo", "/bar", "/baz"} {
 		RuntimeRequestWithExpectations(ctx, t, client, "http://"+privateHostName+path, []ResponseExpectation{StatusCodeExpectation(sets.NewInt(http.StatusNotFound))}, true)
 	}
 
-	namespace, name := getClusterIngress()
-	loadbalancerAddress := fmt.Sprintf("%s.%s.svc.%s", name, namespace, nettest.NetworkingFlags.ClusterSuffix)
+	loadbalancerAddress := test.LocalGatewayAddress()
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(publicHostName)},
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{

@@ -47,7 +47,6 @@ func TestMultipleHosts(t *testing.T) {
 
 	// Create a simple HTTPRoute over the Service.
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: hosts,
 		Rules: []gwv1alpha1.HTTPRouteRule{{
 			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{

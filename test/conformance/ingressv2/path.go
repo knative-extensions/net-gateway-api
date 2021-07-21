@@ -50,7 +50,6 @@ func TestPath(t *testing.T) {
 	const headerName = "Which-Backend"
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
@@ -170,7 +169,6 @@ func TestPathAndPercentageSplit(t *testing.T) {
 	const headerName = "Which-Backend"
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
 		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
 		Rules: []gwv1alpha1.HTTPRouteRule{
 			{

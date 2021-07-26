@@ -210,10 +210,7 @@ func TestVisibilitySplit(t *testing.T) {
 		switch {
 		case want == 0.0 && got > 0.0:
 			// For 0% targets, we have tighter requirements.
-			// t.Errorf("Target %q received traffic, wanted none (0%% target).", name)
-
-			// TODO: How weight 0 is handled is not decided yet. https://github.com/kubernetes-sigs/gateway-api/issues/596
-			t.Skipf("Target %q received traffic, wanted none (0%% target).", name)
+			t.Errorf("Target %q received traffic, wanted none (0%% target).", name)
 		case math.Abs(got-want) > margin:
 			t.Errorf("Target %q received %f%%, wanted %f +/- %f", name, got, want, margin)
 		}

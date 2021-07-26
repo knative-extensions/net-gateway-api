@@ -120,10 +120,7 @@ func TestPercentage(t *testing.T) {
 		switch {
 		case want == 0.0 && got > 0.0:
 			// For 0% targets, we have tighter requirements.
-			// t.Errorf("Target %q received traffic, wanted none (0%% target).", name)
-
-			// TODO: Istio does not handle weight 0 correctly. https://github.com/istio/istio/issues/31745
-			t.Skipf("Target %q received traffic, wanted none (0%% target).", name)
+			t.Errorf("Target %q received traffic, wanted none (0%% target).", name)
 		case math.Abs(got-want) > margin:
 			t.Errorf("Target %q received %f%%, wanted %f +/- %f", name, got, want, margin)
 		}

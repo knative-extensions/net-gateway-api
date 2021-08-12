@@ -19,22 +19,13 @@ metadata:
     control-plane: contour-operator
   name: contour-internal
 ---
-# workaround of net-contour/issues/549
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: contour-internal
-  namespace: contour-internal
-spec:
-  controller: example.com/ingress-controller
----
 apiVersion: operator.projectcontour.io/v1alpha1
 kind: Contour
 metadata:
   name: contour-internal
   namespace: contour-internal
 spec:
-  gatewayClassRef: contour-internal-gatewayclass
+  gatewayControllerName: projectcontour.io/contour-internal/contour
   namespace:
     name: contour-internal
   ingressClassName: contour-internal
@@ -47,7 +38,7 @@ apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
   name: contour-internal-gatewayclass
 spec:
-  controller: projectcontour.io/contour-operator
+  controller: projectcontour.io/contour-internal/contour
   parametersRef:
     group: operator.projectcontour.io
     kind: Contour

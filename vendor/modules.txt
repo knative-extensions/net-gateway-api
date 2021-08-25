@@ -11,7 +11,7 @@ github.com/go-logr/logr
 # github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
-# github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+# github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 github.com/golang/groupcache/lru
 # github.com/golang/protobuf v1.5.2
 github.com/golang/protobuf/proto
@@ -439,7 +439,7 @@ k8s.io/utils/trace
 # knative.dev/hack v0.0.0-20210806075220-815cd312d65c
 ## explicit
 knative.dev/hack
-# knative.dev/networking v0.0.0-20210820164705-3e603fb4df8a
+# knative.dev/networking v0.0.0-20210824140523-51512a042e23
 ## explicit
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
@@ -459,7 +459,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20210822203034-3bed4dcf179c
+# knative.dev/pkg v0.0.0-20210824120823-a94f5f07b3c3
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

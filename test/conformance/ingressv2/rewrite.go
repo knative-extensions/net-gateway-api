@@ -22,7 +22,7 @@ import (
 
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // TestRewriteHost verifies that a RewriteHost rule can be used to implement vanity URLs.
@@ -36,15 +36,19 @@ func TestRewriteHost(t *testing.T) {
 	privateHostName := privateServiceName + "." + test.ServingNamespace + ".svc.cluster.local"
 
 	// Create a simple Ingress over the Service.
-	// TODO: Make this HTTPRoute cluster local visibility.
-	_, _, _ = CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
-		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(privateHostName)},
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        portNumPtr(port),
-				ServiceName: &name,
-			}},
+	_, _, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testLocalGateway,
+		}},
+		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(privateHostName)},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+				BackendRef: gatewayv1alpha2.BackendRef{
+					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						Port: portNumPtr(port),
+						Name: name,
+					}}},
+			},
 		}},
 	})
 
@@ -55,28 +59,40 @@ func TestRewriteHost(t *testing.T) {
 
 	// Using fixed hostnames can lead to conflicts when -count=N>1
 	// so pseudo-randomize the hostnames to avoid conflicts.
-	hosts := []gwv1alpha1.Hostname{
-		gwv1alpha1.Hostname(name + "." + "vanity.ismy.name"),
-		gwv1alpha1.Hostname(name + "." + "vanity.isalsomy.number"),
+	hosts := []gatewayv1alpha2.Hostname{
+		gatewayv1alpha2.Hostname(name + "." + "vanity.ismy.name"),
+		gatewayv1alpha2.Hostname(name + "." + "vanity.isalsomy.number"),
 	}
 
 	// Now create a RewriteHost ingress to point a custom Host at the Service
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testGateway,
+		}},
 		Hostnames: hosts,
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        portNumPtr(80),
-				ServiceName: &privateServiceName,
-			}},
-			Filters: []gwv1alpha1.HTTPRouteFilter{
-				{
-					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-						Set: map[string]string{"Host": privateHostName, ":Authority": privateHostName},
-					},
-				},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+				BackendRef: gatewayv1alpha2.BackendRef{
+					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						Port: portNumPtr(80),
+						Name: privateServiceName,
+					}}},
 			},
+			Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+				Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+					Set: []gatewayv1alpha2.HTTPHeader{
+						{
+							Name:  "Host",
+							Value: privateHostName,
+						},
+						// This is invalid since v1alpha2. We need to wait for https://github.com/kubernetes-sigs/gateway-api/pull/731
+						{
+							Name:  ":Authority",
+							Value: privateHostName,
+						},
+					},
+				}}},
 		}},
 	})
 

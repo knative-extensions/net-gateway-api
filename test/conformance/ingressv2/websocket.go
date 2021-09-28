@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"knative.dev/net-ingressv2/test"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // TestWebsocket verifies that websockets may be used via a simple Ingress.
@@ -45,14 +45,19 @@ func TestWebsocket(t *testing.T) {
 	domain := name + ".example.com"
 
 	// Create a simple Ingress over the Service.
-	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
-		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(domain)},
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        portNumPtr(port),
-				ServiceName: &name,
-			}},
+	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testGateway,
+		}},
+		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(domain)},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+				BackendRef: gatewayv1alpha2.BackendRef{
+					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						Port: portNumPtr(port),
+						Name: name,
+					}}},
+			},
 		}}})
 
 	dialer := websocket.Dialer{
@@ -96,19 +101,32 @@ func TestWebsocketSplit(t *testing.T) {
 	// Create a simple HTTPRoute over the Service.
 	name := test.ObjectNameForTest(t)
 	domain := name + ".example.com"
-	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
-		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(domain)},
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        portNumPtr(bluePort),
-				ServiceName: &blueName,
-				Weight:      pointer.Int32Ptr(1),
-			}, {
-				Port:        portNumPtr(greenPort),
-				ServiceName: &greenName,
-				Weight:      pointer.Int32Ptr(1),
-			}},
+	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testGateway,
+		}},
+		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(domain)},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
+				{
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Port: portNumPtr(bluePort),
+							Name: blueName,
+						},
+						Weight: pointer.Int32Ptr(1),
+					},
+				},
+				{
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Port: portNumPtr(greenPort),
+							Name: greenName,
+						},
+						Weight: pointer.Int32Ptr(1),
+					},
+				},
+			},
 		}}})
 	dialer := websocket.Dialer{
 		NetDialContext:   dialCtx,

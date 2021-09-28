@@ -13,35 +13,19 @@
 # limitations under the License.
 
 kind: Gateway
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 metadata:
   name: test-gateway
   namespace: istio-system
 spec:
   gatewayClassName: istio
   addresses:
-  - type: NamedAddress
+  - type: Hostname
     value: istio-ingressgateway.istio-system.svc.cluster.local
   listeners:
-  - protocol: HTTP
+  - name: default
     port: 80
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2"
+    protocol: HTTP
+    allowedRoutes:
       namespaces:
-        from: "All"
-  - protocol: HTTPS
-    port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          knative-e2e-test: "net-ingressv2"
-      namespaces:
-        from: "All"
+        from: All

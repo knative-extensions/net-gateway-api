@@ -1,4 +1,5 @@
 # cloud.google.com/go v0.95.0
+## explicit
 cloud.google.com/go/compute/metadata
 # github.com/blendle/zapdriver v1.3.1
 github.com/blendle/zapdriver
@@ -79,6 +80,7 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
 go.uber.org/multierr
 # go.uber.org/zap v1.19.1
+## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
@@ -86,6 +88,7 @@ go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 # golang.org/x/net v0.0.0-20210917221730-978cfadd31cf
+## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -120,6 +123,8 @@ golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 golang.org/x/time/rate
+# golang.org/x/tools v0.1.6
+## explicit
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 gomodules.xyz/jsonpatch/v2
 # google.golang.org/appengine v1.6.7
@@ -441,7 +446,7 @@ k8s.io/utils/trace
 # knative.dev/hack v0.0.0-20210806075220-815cd312d65c
 ## explicit
 knative.dev/hack
-# knative.dev/networking v0.0.0-20210923061513-b601bd95f39d
+# knative.dev/networking v0.0.0-20210914225408-69ad45454096
 ## explicit
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
@@ -461,7 +466,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20210927235013-221312a6a057
+# knative.dev/pkg v0.0.0-20210919202233-5ae482141474
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

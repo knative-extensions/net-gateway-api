@@ -1,5 +1,4 @@
-# cloud.google.com/go v0.95.0
-## explicit
+# cloud.google.com/go v0.96.0
 cloud.google.com/go/compute/metadata
 # github.com/blendle/zapdriver v1.3.1
 github.com/blendle/zapdriver
@@ -80,15 +79,13 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
 go.uber.org/multierr
 # go.uber.org/zap v1.19.1
-## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/net v0.0.0-20210917221730-978cfadd31cf
-## explicit
+# golang.org/x/net v0.0.0-20210928044308-7d9f5e0b762b
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -109,7 +106,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365
+# golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
@@ -123,8 +120,6 @@ golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 golang.org/x/time/rate
-# golang.org/x/tools v0.1.6
-## explicit
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 gomodules.xyz/jsonpatch/v2
 # google.golang.org/appengine v1.6.7
@@ -138,9 +133,9 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20210921142501-181ce0d877f6
+# google.golang.org/genproto v0.0.0-20210924002016-3dee208752a0
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.40.0
+# google.golang.org/grpc v1.41.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -178,6 +173,7 @@ google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/internal/transport/networktype
+google.golang.org/grpc/internal/xds/env
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
@@ -446,7 +442,7 @@ k8s.io/utils/trace
 # knative.dev/hack v0.0.0-20210806075220-815cd312d65c
 ## explicit
 knative.dev/hack
-# knative.dev/networking v0.0.0-20210914225408-69ad45454096
+# knative.dev/networking v0.0.0-20210929131523-79c6e05803c1
 ## explicit
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
@@ -466,7 +462,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20210919202233-5ae482141474
+# knative.dev/pkg v0.0.0-20210929111822-2267a4cbebb8
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -510,5 +506,5 @@ sigs.k8s.io/structured-merge-diff/v4/fieldpath
 sigs.k8s.io/structured-merge-diff/v4/schema
 sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
-# sigs.k8s.io/yaml v1.2.0
+# sigs.k8s.io/yaml v1.3.0
 sigs.k8s.io/yaml

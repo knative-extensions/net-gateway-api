@@ -25,10 +25,9 @@ function download_istio() {
 
   # Download and unpack Istio
 
-  ISTIO_VERSION=$(curl https://storage.googleapis.com/istio-build/dev/latest)
-
+  ISTIO_VERSION="1.11.2"
   ISTIO_TARBALL=istio-${ISTIO_VERSION}-${ARCH}.tar.gz
-  DOWNLOAD_URL=https://storage.googleapis.com/istio-build/dev/${ISTIO_VERSION}/${ISTIO_TARBALL}
+  DOWNLOAD_URL=https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/${ISTIO_TARBALL}
 
   ISTIO_TMP=$(mktemp -d)
   pushd $ISTIO_TMP

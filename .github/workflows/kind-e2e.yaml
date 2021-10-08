@@ -134,7 +134,7 @@ jobs:
         set -o pipefail
 
         # gateway-api CRD must be installed before Istio.
-        kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.4.0-rc1'
+        kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
 
         # Replace cluster.local with random suffix.
         sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml

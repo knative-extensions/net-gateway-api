@@ -22,7 +22,7 @@ import (
 
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 // TestBasics verifies that a no frills HTTPRoute exposes a simple Pod/Service via the public load balancer.
@@ -32,19 +32,14 @@ func TestBasics(t *testing.T) {
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-						Port: portNumPtr(port),
-						Name: name,
-					}}},
-			},
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{{
+			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+				Port:        portNumPtr(port),
+				ServiceName: &name,
+			}},
 		}},
 	})
 
@@ -59,19 +54,14 @@ func TestBasicsHTTP2(t *testing.T) {
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameH2C)
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-						Port: portNumPtr(port),
-						Name: name,
-					}}},
-			},
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{{
+			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+				Port:        portNumPtr(port),
+				ServiceName: &name,
+			}},
 		}},
 	})
 

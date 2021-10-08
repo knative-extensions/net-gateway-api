@@ -38,11 +38,10 @@ option java_package = "org.gnostic.v1";
 // hopefully unique enough to not conflict with things that may come along in
 // the future. 'GPB' is reserved for the protocol buffer implementation itself.
 //
-// "Gnostic Extension"
-option objc_class_prefix = "GNX";
+option objc_class_prefix = "GNX"; // "Gnostic Extension"
 
 // The Go package name.
-option go_package = "./extensions;gnostic_extension_v1";
+option go_package = "extensions;gnostic_extension_v1";
 
 // The version number of Gnostic.
 message Version {

@@ -28,7 +28,7 @@ import (
 	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/pkg/ptr"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 // TestTagHeaders verifies that an Ingress properly dispatches to backends based on the tag header
@@ -48,54 +48,39 @@ func TestTagHeaders(t *testing.T) {
 		backendWithoutTag = "no-tag"
 	)
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(port),
-							Name: name,
-						}}},
-				},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
-						Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
-						Name:  network.TagHeaderName,
-						Value: tagName,
-					}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(port),
+					ServiceName: &name,
 				}},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
-							Name:  backendHeader,
-							Value: backendWithTag,
-						}},
-					}},
-				},
+				Matches: []gwv1alpha1.HTTPRouteMatch{{
+					Headers: &gwv1alpha1.HTTPHeaderMatch{
+						Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
+						Values: map[string]string{network.TagHeaderName: tagName},
+					},
+				}},
+				Filters: []gwv1alpha1.HTTPRouteFilter{{
+					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+						Set: map[string]string{backendHeader: backendWithTag},
+					},
+				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(port),
-							Name: name,
-						}}},
-				},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
-							Name:  backendHeader,
-							Value: backendWithoutTag,
-						}},
-					}},
-				},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(port),
+					ServiceName: &name,
+				}},
+				Filters: []gwv1alpha1.HTTPRouteFilter{{
+					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+						Set: map[string]string{backendHeader: backendWithoutTag},
+					},
+				}},
 			},
 		},
 	})
@@ -159,26 +144,18 @@ func TestPreSplitSetHeaders(t *testing.T) {
 
 	const headerName = "Foo-Bar-Baz"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-						Port: portNumPtr(port),
-						Name: name,
-					}}},
-			},
-			Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-				Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-					Set: []gatewayv1alpha2.HTTPHeader{{
-						Name:  headerName,
-						Value: name,
-					}},
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{{
+			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+				Port:        portNumPtr(port),
+				ServiceName: &name,
+			}},
+			Filters: []gwv1alpha1.HTTPRouteFilter{{
+				Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+					Set: map[string]string{headerName: name},
 				}}},
 		}},
 	})
@@ -225,43 +202,33 @@ func TestPostSplitSetHeaders(t *testing.T) {
 		maxRequests = 100
 	)
 
-	backendRefs := make([]gatewayv1alpha2.HTTPBackendRef, 0, splits)
+	forwards := make([]gwv1alpha1.HTTPRouteForwardTo, 0, splits)
 
 	names := make(sets.String, splits)
 	for i := 0; i < splits; i++ {
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
-		backendRefs = append(backendRefs,
-			gatewayv1alpha2.HTTPBackendRef{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-						Port: portNumPtr(port),
-						Name: name,
-					},
-					Weight: pointer.Int32Ptr(100 / splits),
-				},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
-							Name:  headerName,
-							Value: name,
-						}},
-					}}},
-			},
-		)
+		forwards = append(forwards,
+			gwv1alpha1.HTTPRouteForwardTo{
+				Port:        portNumPtr(port),
+				ServiceName: &name,
+				Weight:      pointer.Int32Ptr(100 / splits),
+				Filters: []gwv1alpha1.HTTPRouteFilter{{
+					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+						Set: map[string]string{headerName: name},
+					}},
+				}})
 		names.Insert(name)
 	}
 
 	// Create a simple Ingress over the 10 Services.
 	name := test.ObjectNameForTest(t)
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: backendRefs,
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{{
+			ForwardTo: forwards,
 		}},
 	})
 

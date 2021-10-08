@@ -176,8 +176,6 @@ func StringForScalarNode(node *yaml.Node) (string, bool) {
 			return node.Value, true
 		case "!!str":
 			return node.Value, true
-		case "!!timestamp":
-			return node.Value, true
 		case "!!null":
 			return "", true
 		default:
@@ -241,15 +239,6 @@ func InvalidKeysInMap(m *yaml.Node, allowedKeys []string, allowedPatterns []*reg
 		}
 	}
 	return invalidKeys
-}
-
-// NewNullNode creates a new Null node.
-func NewNullNode() *yaml.Node {
-	node := &yaml.Node{
-		Kind: yaml.ScalarNode,
-		Tag:  "!!null",
-	}
-	return node
 }
 
 // NewMappingNode creates a new Mapping node.

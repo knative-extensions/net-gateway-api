@@ -27,7 +27,7 @@ import (
 	"knative.dev/net-ingressv2/test"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/pkg/pool"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 // TestPath verifies that an Ingress properly dispatches to backends based on the path of the URL.
@@ -49,107 +49,81 @@ func TestPath(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(fooPort),
-							Name: fooName,
-						}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(fooPort),
+					ServiceName: &fooName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
-								Name:  headerName,
-								Value: fooName,
-							}},
-						}},
-					},
+					Filters: []gwv1alpha1.HTTPRouteFilter{{
+						Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+							Set: map[string]string{headerName: fooName},
+						},
+					}},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPrefix),
+				Matches: []gwv1alpha1.HTTPRouteMatch{{
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
 						Value: pointer.StringPtr("/foo"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(barPort),
-							Name: barName,
-						}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(barPort),
+					ServiceName: &barName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
-								Name:  headerName,
-								Value: barName,
-							}},
-						}},
-					},
+					Filters: []gwv1alpha1.HTTPRouteFilter{{
+						Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+							Set: map[string]string{headerName: barName},
+						},
+					}},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPrefix),
+				Matches: []gwv1alpha1.HTTPRouteMatch{{
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
 						Value: pointer.StringPtr("/bar"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(bazPort),
-							Name: bazName,
-						}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(bazPort),
+					ServiceName: &bazName,
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
-								Name:  headerName,
-								Value: bazName,
-							}},
-						}},
-					},
+					Filters: []gwv1alpha1.HTTPRouteFilter{{
+						Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+							Set: map[string]string{headerName: bazName},
+						},
+					}},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPrefix),
+				Matches: []gwv1alpha1.HTTPRouteMatch{{
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
 						Value: pointer.StringPtr("/baz"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(port),
-							Name: name,
-						}},
-					// Append different headers to each split, which lets us identify
-					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
-								Name:  headerName,
-								Value: name,
-							}},
-						}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(port),
+					ServiceName: &name,
+				}},
+				// Append different headers to each split, which lets us identify
+				// which backend we hit.
+				Filters: []gwv1alpha1.HTTPRouteFilter{{
+					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+						Set: map[string]string{headerName: name},
 					},
 				}},
 			},
@@ -195,75 +169,58 @@ func TestPathAndPercentageSplit(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			testGateway,
-		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
+		Gateways:  testGateway,
+		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
+		Rules: []gwv1alpha1.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{
 					{
-						BackendRef: gatewayv1alpha2.BackendRef{
-							BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-								Port: portNumPtr(fooPort),
-								Name: fooName,
+						Port:        portNumPtr(fooPort),
+						ServiceName: &fooName,
+						Weight:      pointer.Int32Ptr(1),
+						// Append different headers to each split, which lets us identify
+						// which backend we hit.
+						Filters: []gwv1alpha1.HTTPRouteFilter{{
+							Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+								Set: map[string]string{headerName: fooName},
 							},
-							Weight: pointer.Int32Ptr(1),
-						},
-						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-								Set: []gatewayv1alpha2.HTTPHeader{{
-									Name:  headerName,
-									Value: fooName,
-								}},
-							}},
-						},
+						}},
 					},
 					{
-						BackendRef: gatewayv1alpha2.BackendRef{
-							BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-								Port: portNumPtr(barPort),
-								Name: barName,
+						Port:        portNumPtr(barPort),
+						ServiceName: &barName,
+						Weight:      pointer.Int32Ptr(1),
+						// Append different headers to each split, which lets us identify
+						// which backend we hit.
+						Filters: []gwv1alpha1.HTTPRouteFilter{{
+							Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+								Set: map[string]string{headerName: barName},
 							},
-							Weight: pointer.Int32Ptr(1),
-						},
-						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-								Set: []gatewayv1alpha2.HTTPHeader{{
-									Name:  headerName,
-									Value: barName,
-								}},
-							}},
-						},
+						}},
 					},
 				},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPrefix),
+				Matches: []gwv1alpha1.HTTPRouteMatch{{
+					Path: &gwv1alpha1.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
 						Value: pointer.StringPtr("/foo"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Port: portNumPtr(port),
-							Name: name,
-						}},
-					// Append different headers to each split, which lets us identify
-					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
-								Name:  headerName,
-								Value: name,
-							}},
-						}},
+				ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
+					Port:        portNumPtr(port),
+					ServiceName: &name,
+					Weight:      pointer.Int32Ptr(1),
+				}},
+				// Append different headers to each split, which lets us identify
+				// which backend we hit.
+				Filters: []gwv1alpha1.HTTPRouteFilter{{
+					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
+						Set: map[string]string{headerName: name},
 					},
 				}},
 			},

@@ -1,7 +1,7 @@
 # Knative net-gateway-api
 
 [![GoDoc](https://godoc.org/knative.dev/net-gateway-api?status.svg)](https://godoc.org/knative.dev/net-gateway-api)
-[![Go Report Card](https://goreportcard.com/badge/knative/net-gateway-api)](https://goreportcard.com/report/knative/net-ingressv2)
+[![Go Report Card](https://goreportcard.com/badge/knative/net-gateway-api)](https://goreportcard.com/report/knative/net-gateway-api)
 
 This repository contains a KIngress implementation and testing for Knative
 integration with the 

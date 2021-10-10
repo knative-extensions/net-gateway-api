@@ -26,7 +26,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
 	nettest "knative.dev/networking/test"
 	"knative.dev/pkg/pool"

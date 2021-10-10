@@ -10,7 +10,7 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: ./src/knative.dev/net-ingressv2
+    working-directory: ./src/knative.dev/net-gateway-api
 
 jobs:
   e2e-tests:
@@ -72,7 +72,7 @@ jobs:
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
       with:
-        path: ./src/knative.dev/net-ingressv2
+        path: ./src/knative.dev/net-gateway-api
 
     - name: Install KinD
       run: |
@@ -201,7 +201,7 @@ jobs:
         SLACK_USERNAME: github-actions
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-        SLACK_CHANNEL: 'net-ingressv2'
+        SLACK_CHANNEL: 'net-gateway-api'
         SLACK_COLOR: '#8E1600'
         MSG_MINIMAL: 'true'
         SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.

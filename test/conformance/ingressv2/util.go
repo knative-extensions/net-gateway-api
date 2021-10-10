@@ -48,7 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/test/types"
 	"knative.dev/pkg/network"
@@ -95,10 +95,10 @@ var testLocalGateway = &gatewayv1alpha1.RouteGateways{
 }
 
 // gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.
-var gatewayLabel = map[string]string{"knative-e2e-test": "net-ingressv2"}
+var gatewayLabel = map[string]string{"knative-e2e-test": "net-gateway-api"}
 
 // gatewayLabel is added to HTTPRoute. The local gateway selects the generated HTTPRoute by this label.
-var gatewayLocalLabel = map[string]string{"knative-e2e-test": "net-ingressv2-local"}
+var gatewayLocalLabel = map[string]string{"knative-e2e-test": "net-gateway-api-local"}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.

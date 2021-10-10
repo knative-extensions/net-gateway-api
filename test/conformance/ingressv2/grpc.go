@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	ping "knative.dev/networking/test/test_images/grpc-ping/proto"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -56,7 +56,7 @@ func TestGRPC(t *testing.T) {
 			}},
 		}}})
 
-	// TODO: https://github.com/knative-sandbox/net-ingressv2/issues/18
+	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/18
 	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
 	client := &http.Client{Transport: &uaRoundTripper{RoundTripper: &http.Transport{DialContext: dialCtx}}}
 	waitForBackend(t, client, "http://"+name+".example.com")
@@ -121,7 +121,7 @@ func TestGRPCSplit(t *testing.T) {
 			},
 		}}})
 
-	// TODO: https://github.com/knative-sandbox/net-ingressv2/issues/18
+	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/18
 	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
 	client := &http.Client{Transport: &uaRoundTripper{RoundTripper: &http.Transport{DialContext: dialCtx}}}
 	waitForBackend(t, client, "http://"+name+".example.com")

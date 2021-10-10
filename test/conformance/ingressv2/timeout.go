@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -66,7 +66,7 @@ func TestTimeout(t *testing.T) {
 		delay: timeout,
 	}}
 
-	// TODO: https://github.com/knative-sandbox/net-ingressv2/issues/18
+	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/18
 	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
 	waitForBackend(t, client, "http://"+name+".example.com?initialTimeout=0&timeout=0")
 

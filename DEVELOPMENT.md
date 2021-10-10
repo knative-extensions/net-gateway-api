@@ -2,7 +2,7 @@
 
 This doc explains how to setup a development environment so you can get started
 [contributing](https://www.knative.dev/contributing/) to Knative
-`net-ingressv2`. Also take a look at:
+`net-gateway-api`. Also take a look at:
 
 - [The pull request workflow](https://knative.dev/community/contributing/reviewing/)
 
@@ -21,7 +21,7 @@ Before submitting a PR, see also [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 You must install these tools:
 
-1. [`go`](https://golang.org/doc/install): The language Knative `net-ingressv2`
+1. [`go`](https://golang.org/doc/install): The language Knative `net-gateway-api`
    is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external dependencies.
@@ -47,7 +47,7 @@ export PATH="${PATH}:${GOPATH}/bin"
 ### Checkout your fork
 
 The Go tools require that you clone the repository to the
-`src/knative.dev/net-ingressv2` directory in your
+`src/knative.dev/net-gateway-api` directory in your
 [`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
 
 To check out this repository:
@@ -60,9 +60,9 @@ To check out this repository:
 ```shell
 mkdir -p ${GOPATH}/src/knative.dev
 cd ${GOPATH}/src/knative.dev
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/net-ingressv2.git
-cd net-ingressv2
-git remote add upstream https://github.com/knative-sandbox/net-ingressv2.git
+git clone git@github.com:${YOUR_GITHUB_USERNAME}/net-gateway-api.git
+cd net-gateway-api
+git remote add upstream https://github.com/knative-sandbox/net-gateway-api.git
 git remote set-url --push upstream no_push
 ```
 
@@ -118,7 +118,7 @@ go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressC
 ```
 
 Some tests are still not available. Please see
-https://github.com/knative-sandbox/net-ingressv2/issues/23.
+https://github.com/knative-sandbox/net-gateway-api/issues/23.
 
 ### Test with Contoour
 
@@ -167,4 +167,4 @@ go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressC
 ```
 
 Some tests are still not available. Please see
-https://github.com/knative-sandbox/net-ingressv2/issues/36.
+https://github.com/knative-sandbox/net-gateway-api/issues/36.

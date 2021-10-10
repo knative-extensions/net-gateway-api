@@ -4,8 +4,8 @@ approvers:
 - technical-oversight-committee
 - knative-release-leads
 - networking-wg-leads
-- net-ingressv2-approvers
+- net-gateway-api-approvers
 
 reviewers:
 - networking-wg-leads
-- net-ingressv2-approvers
+- net-gateway-api-approvers

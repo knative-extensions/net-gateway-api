@@ -1,10 +1,11 @@
-# Knative net-ingressv2
+# Knative net-gateway-api
 
-[![GoDoc](https://godoc.org/knative.dev/net-ingressv2?status.svg)](https://godoc.org/knative.dev/net-ingressv2)
-[![Go Report Card](https://goreportcard.com/badge/knative/net-ingressv2)](https://goreportcard.com/report/knative/net-ingressv2)
+[![GoDoc](https://godoc.org/knative.dev/net-gateway-api?status.svg)](https://godoc.org/knative.dev/net-gateway-api)
+[![Go Report Card](https://goreportcard.com/badge/knative/net-gateway-api)](https://goreportcard.com/report/knative/net-ingressv2)
 
-This repository contains
-[Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) conformance tests.
+This repository contains a KIngress implementation and testing for Knative
+integration with the 
+[Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 The tests are same with
 [Knative networking](https://github.com/knative/networking/tree/main/test/conformance)
 but against Gateway API resources without Knative Ingress.

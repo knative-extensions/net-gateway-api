@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/knative/net-gateway-api)](https://goreportcard.com/report/knative/net-gateway-api)
 
 This repository contains a KIngress implementation and testing for Knative
-integration with the 
+integration with the
 [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 The tests are same with
 [Knative networking](https://github.com/knative/networking/tree/main/test/conformance)

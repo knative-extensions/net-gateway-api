@@ -21,8 +21,8 @@ package fake
 import (
 	context "context"
 
-	filtered "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/httproute/filtered"
-	factoryfiltered "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/filtered"
+	filtered "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/httproute/filtered"
+	factoryfiltered "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/filtered"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"

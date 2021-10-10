@@ -21,9 +21,9 @@ package fake
 import (
 	context "context"
 
-	externalversions "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
-	fake "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
-	factory "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory"
+	externalversions "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
+	fake "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
+	factory "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

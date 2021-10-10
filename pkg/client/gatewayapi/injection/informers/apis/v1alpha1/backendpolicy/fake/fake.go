@@ -21,8 +21,8 @@ package fake
 import (
 	context "context"
 
-	backendpolicy "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/backendpolicy"
-	fake "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/fake"
+	backendpolicy "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/backendpolicy"
+	fake "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/fake"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

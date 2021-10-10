@@ -23,13 +23,13 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	apis "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis"
-	internalinterfaces "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
+	versioned "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
+	apis "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis"
+	internalinterfaces "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
 )
 
 // SharedInformerOption defines the functional option type for SharedInformerFactory.

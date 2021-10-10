@@ -19,14 +19,14 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	networkingv1alpha1 "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/typed/apis/v1alpha1"
-	fakenetworkingv1alpha1 "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/typed/apis/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
+	clientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
+	networkingv1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/typed/apis/v1alpha1"
+	fakenetworkingv1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/typed/apis/v1alpha1/fake"
 )
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.

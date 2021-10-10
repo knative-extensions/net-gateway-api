@@ -19,8 +19,8 @@ limitations under the License.
 package apis
 
 import (
-	v1alpha1 "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1"
-	internalinterfaces "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
+	v1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1"
+	internalinterfaces "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

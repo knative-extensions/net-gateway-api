@@ -22,13 +22,13 @@ import (
 	"context"
 	time "time"
 
-	versioned "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	internalinterfaces "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
+	versioned "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
+	internalinterfaces "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/internalinterfaces"
+	v1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha1"
 	apisv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 

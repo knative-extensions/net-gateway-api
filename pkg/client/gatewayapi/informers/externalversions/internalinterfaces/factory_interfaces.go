@@ -21,10 +21,10 @@ package internalinterfaces
 import (
 	time "time"
 
-	versioned "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	cache "k8s.io/client-go/tools/cache"
+	versioned "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
 )
 
 // NewInformerFunc takes versioned.Interface and time.Duration to return a SharedIndexInformer.

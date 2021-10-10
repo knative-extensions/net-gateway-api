@@ -3,11 +3,16 @@ module knative.dev/net-gateway-api
 go 1.16
 
 require (
+	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
+	github.com/go-openapi/spec v0.20.2 // indirect
 	github.com/google/go-cmp v0.5.6
+	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/nak3/net-gateway-api v0.0.0-20211007044130-71b331688a24
+	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/onsi/gomega v1.10.3 // indirect
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.41.0
+	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	k8s.io/api v0.21.4
 	k8s.io/apimachinery v0.21.4
 	k8s.io/client-go v0.21.4

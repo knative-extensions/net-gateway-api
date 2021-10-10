@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
+	"knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/scheme"
 	v1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 

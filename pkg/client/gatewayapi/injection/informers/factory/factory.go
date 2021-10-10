@@ -21,8 +21,8 @@ package factory
 import (
 	context "context"
 
-	externalversions "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
-	client "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/client"
+	externalversions "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
+	client "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -50,7 +50,7 @@ func Get(ctx context.Context) externalversions.SharedInformerFactory {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		logging.FromContext(ctx).Panic(
-			"Unable to fetch github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions.SharedInformerFactory from context.")
+			"Unable to fetch knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions.SharedInformerFactory from context.")
 	}
 	return untyped.(externalversions.SharedInformerFactory)
 }

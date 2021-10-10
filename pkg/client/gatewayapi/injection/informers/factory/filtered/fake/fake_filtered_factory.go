@@ -21,10 +21,10 @@ package fakeFilteredFactory
 import (
 	context "context"
 
-	externalversions "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
-	fake "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
-	filtered "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/filtered"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	externalversions "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions"
+	fake "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
+	filtered "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/filtered"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"

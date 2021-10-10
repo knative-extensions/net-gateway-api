@@ -21,15 +21,23 @@ package gateway
 import (
 	context "context"
 
-	v1alpha1 "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1"
-	factory "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	cache "k8s.io/client-go/tools/cache"
+	versioned "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
+	v1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1"
+	client "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client"
+	factory "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory"
+	apisv1alpha1 "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha1"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
+	gatewayapiapisv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
+	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -41,12 +49,58 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
+func withDynamicInformer(ctx context.Context) context.Context {
+	inf := &wrapper{client: client.Get(ctx)}
+	return context.WithValue(ctx, Key{}, inf)
+}
+
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1alpha1.GatewayInformer {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		logging.FromContext(ctx).Panic(
-			"Unable to fetch github.com/nak3/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1.GatewayInformer from context.")
+			"Unable to fetch knative.dev/net-gateway-api/pkg/client/gatewayapi/informers/externalversions/apis/v1alpha1.GatewayInformer from context.")
 	}
 	return untyped.(v1alpha1.GatewayInformer)
+}
+
+type wrapper struct {
+	client versioned.Interface
+
+	namespace string
+}
+
+var _ v1alpha1.GatewayInformer = (*wrapper)(nil)
+var _ apisv1alpha1.GatewayLister = (*wrapper)(nil)
+
+func (w *wrapper) Informer() cache.SharedIndexInformer {
+	return cache.NewSharedIndexInformer(nil, &gatewayapiapisv1alpha1.Gateway{}, 0, nil)
+}
+
+func (w *wrapper) Lister() apisv1alpha1.GatewayLister {
+	return w
+}
+
+func (w *wrapper) Gateways(namespace string) apisv1alpha1.GatewayNamespaceLister {
+	return &wrapper{client: w.client, namespace: namespace}
+}
+
+func (w *wrapper) List(selector labels.Selector) (ret []*gatewayapiapisv1alpha1.Gateway, err error) {
+	lo, err := w.client.NetworkingV1alpha1().Gateways(w.namespace).List(context.TODO(), v1.ListOptions{
+		LabelSelector: selector.String(),
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
+	if err != nil {
+		return nil, err
+	}
+	for idx := range lo.Items {
+		ret = append(ret, &lo.Items[idx])
+	}
+	return ret, nil
+}
+
+func (w *wrapper) Get(name string) (*gatewayapiapisv1alpha1.Gateway, error) {
+	return w.client.NetworkingV1alpha1().Gateways(w.namespace).Get(context.TODO(), name, v1.GetOptions{
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
 }

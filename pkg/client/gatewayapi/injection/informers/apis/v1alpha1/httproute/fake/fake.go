@@ -21,8 +21,8 @@ package fake
 import (
 	context "context"
 
-	httproute "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/httproute"
-	fake "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/fake"
+	httproute "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/httproute"
+	fake "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/factory/fake"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

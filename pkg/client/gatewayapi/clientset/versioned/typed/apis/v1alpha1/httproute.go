@@ -22,11 +22,11 @@ import (
 	"context"
 	"time"
 
-	scheme "github.com/nak3/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	scheme "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/scheme"
 	v1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 

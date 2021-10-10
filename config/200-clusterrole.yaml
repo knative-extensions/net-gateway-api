@@ -1,0 +1,23 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: knative-gateway-api-admin
+  labels:
+    serving.knative.dev/release: devel
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      serving.knative.dev/controller: "true"
+rules: [] # Rules are automatically filled in by the controller manager.
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: knative-gateway-api-core
+  labels:
+    serving.knative.dev/release: devel
+    serving.knative.dev/controller: "true"
+rules:
+  - apiGroups: ["networking.x-k8s.io"]
+    resources: ["httproutes", "gateways"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

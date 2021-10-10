@@ -29,6 +29,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-ingressv2-local"
+          knative-e2e-test: "net-gateway-api-local"
       namespaces:
         from: "All"

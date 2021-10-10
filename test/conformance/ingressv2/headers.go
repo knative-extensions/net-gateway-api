@@ -24,7 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/pkg/ptr"

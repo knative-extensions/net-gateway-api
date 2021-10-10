@@ -30,7 +30,7 @@ import (
 	"github.com/gorilla/websocket"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 

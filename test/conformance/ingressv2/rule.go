@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"k8s.io/utils/pointer"
-	"knative.dev/net-ingressv2/test"
+	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )

@@ -1,4 +1,4 @@
-module knative.dev/net-ingressv2
+module knative.dev/net-gateway-api
 
 go 1.16
 

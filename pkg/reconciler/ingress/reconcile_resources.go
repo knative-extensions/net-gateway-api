@@ -75,6 +75,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 			updated, err := c.gwapiclient.NetworkingV1alpha1().HTTPRoutes(origin.Namespace).Update(
 				ctx, origin, metav1.UpdateOptions{})
 			if err != nil {
+				recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
 				return nil, fmt.Errorf("failed to update HTTPRoute: %w", err)
 			}
 			return updated, nil

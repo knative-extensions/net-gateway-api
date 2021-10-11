@@ -231,7 +231,7 @@ func ing(opts ...IngressOption) *v1alpha1.Ingress {
 
 func withGatewayAPIClass(i *v1alpha1.Ingress) {
 	withAnnotation(map[string]string{
-		networking.IngressClassAnnotationKey: GatewayAPIIngressClassName,
+		networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
 	})(i)
 }
 

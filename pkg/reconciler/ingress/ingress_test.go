@@ -61,7 +61,7 @@ func TestReconcile(t *testing.T) {
 		}
 
 		ingr := ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
-			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, GatewayAPIIngressClassName,
+			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
 			controller.Options{
 				ConfigStore: &testConfigStore{
 					config: defaultConfig,

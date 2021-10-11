@@ -40,6 +40,11 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
+const (
+	// gatewayAPIIngressClassName is the class name to reconcile.
+	gatewayAPIIngressClassName = "gateway-api.ingress.networking.knative.dev"
+)
+
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(
@@ -58,9 +63,9 @@ func NewController(
 		httprouteLister: httprouteInformer.Lister(),
 	}
 
-	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, GatewayAPIIngressClassName, true)
+	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, gatewayAPIIngressClassName, true)
 
-	impl := ingressreconciler.NewImpl(ctx, c, GatewayAPIIngressClassName, func(impl *controller.Impl) controller.Options {
+	impl := ingressreconciler.NewImpl(ctx, c, gatewayAPIIngressClassName, func(impl *controller.Impl) controller.Options {
 		configsToResync := []interface{}{
 			&network.Config{},
 			&config.Gateway{},

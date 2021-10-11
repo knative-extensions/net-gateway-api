@@ -41,9 +41,6 @@ import (
 const (
 	notReconciledReason  = "ReconcileIngressFailed"
 	notReconciledMessage = "Ingress reconciliation failed"
-
-	// GatewayAPIIngressClassName is the class name to reconcile.
-	GatewayAPIIngressClassName = "gateway-api.ingress.networking.knative.dev"
 )
 
 // Reconciler implements controller.Reconciler for Route resources.

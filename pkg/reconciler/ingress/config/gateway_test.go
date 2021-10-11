@@ -13,3 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package config
+
+import (
+	"testing"
+
+	. "knative.dev/pkg/configmap/testing"
+)
+
+func TestGateway(t *testing.T) {
+	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+
+	if _, err := NewGatewayFromConfigMap(cm); err != nil {
+		t.Error("NewContourFromConfigMap(actual) =", err)
+	}
+
+	if _, err := NewGatewayFromConfigMap(example); err != nil {
+		t.Error("NewContourFromConfigMap(example) =", err)
+	}
+}

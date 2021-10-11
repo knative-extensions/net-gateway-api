@@ -151,7 +151,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						Rules: []gwv1alpha1.HTTPRouteRule{{
 							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 								Port:        portNumPtr(123),
-								ServiceName: stringPtr("goo"),
+								ServiceName: pointer.StringPtr("goo"),
 								Weight:      pointer.Int32Ptr(int32(12)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -163,7 +163,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}, {
 								Port:        portNumPtr(124),
-								ServiceName: stringPtr("doo"),
+								ServiceName: pointer.StringPtr("doo"),
 								Weight:      pointer.Int32Ptr(int32(88)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -206,7 +206,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						Rules: []gwv1alpha1.HTTPRouteRule{{
 							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 								Port:        portNumPtr(123),
-								ServiceName: stringPtr("goo"),
+								ServiceName: pointer.StringPtr("goo"),
 								Weight:      pointer.Int32Ptr(int32(12)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -218,7 +218,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}, {
 								Port:        portNumPtr(124),
-								ServiceName: stringPtr("doo"),
+								ServiceName: pointer.StringPtr("doo"),
 								Weight:      pointer.Int32Ptr(int32(88)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -309,7 +309,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						{
 							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 								Port:        portNumPtr(123),
-								ServiceName: stringPtr("goo"),
+								ServiceName: pointer.StringPtr("goo"),
 								Weight:      pointer.Int32Ptr(int32(100)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -342,7 +342,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								}},
 							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 								Port:        portNumPtr(124),
-								ServiceName: stringPtr("doo"),
+								ServiceName: pointer.StringPtr("doo"),
 								Weight:      pointer.Int32Ptr(int32(100)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
@@ -404,7 +404,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						{
 							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
 								Port:        portNumPtr(123),
-								ServiceName: stringPtr("goo"),
+								ServiceName: pointer.StringPtr("goo"),
 								Weight:      pointer.Int32Ptr(int32(100)),
 								Filters: []gwv1alpha1.HTTPRouteFilter{{
 									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,

@@ -51,10 +51,6 @@ func pathMatchTypePtr(val gwv1alpha1.PathMatchType) *gwv1alpha1.PathMatchType {
 	return &val
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 // LongestHost returns the "longest" host.
 // The length is:
 // 1. the length of the hostnames.

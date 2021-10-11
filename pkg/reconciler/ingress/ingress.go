@@ -93,7 +93,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 			return err
 		}
 
-		ready, err := IsHTTPRouteReady(httproutes)
+		ready, err := isHTTPRouteReady(httproutes)
 		if err != nil {
 			return err
 		}
@@ -132,9 +132,9 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	return nil
 }
 
-// IsHTTPRouteReady will check the status conditions of the ingress and return true if
+// isHTTPRouteReady will check the status conditions of the ingress and return true if
 // all gateways have been admitted.
-func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
+func isHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
 	if r.Status.Gateways == nil {
 		return false, nil
 	}

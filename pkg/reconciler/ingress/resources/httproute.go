@@ -93,7 +93,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gwv1alpha1.HTTPRouteRule
 	rules := []gwv1alpha1.HTTPRouteRule{}
 
 	for _, path := range rule.HTTP.Paths {
-		var forwards []gwv1alpha1.HTTPRouteForwardTo
+		forwards := make([]gwv1alpha1.HTTPRouteForwardTo, 0, len(path.Splits))
 		var preFilters []gwv1alpha1.HTTPRouteFilter
 
 		if path.AppendHeaders != nil {

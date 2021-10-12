@@ -65,7 +65,7 @@ func makeHTTPRouteSpec(
 	rule *netv1alpha1.IngressRule,
 ) gwv1alpha1.HTTPRouteSpec {
 
-	hostnames := []gwv1alpha1.Hostname{}
+	hostnames := make([]gwv1alpha1.Hostname, 0, len(rule.Hosts))
 	for _, hostname := range rule.Hosts {
 		hostnames = append(hostnames, gwv1alpha1.Hostname(hostname))
 	}

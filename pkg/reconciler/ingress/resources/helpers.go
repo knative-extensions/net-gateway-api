@@ -45,5 +45,5 @@ func pathMatchTypePtr(val gwv1alpha1.PathMatchType) *gwv1alpha1.PathMatchType {
 // 2. the first alphabetical order.
 func LongestHost(hosts []string) string {
 	sort.Strings(hosts)
-	return hosts[0]
+	return hosts[len(hosts)-1]
 }

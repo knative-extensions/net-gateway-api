@@ -41,16 +41,16 @@ const (
 
 var (
 	// defaultIstioGateway is the default gateway.
-	defaultIstioGateway = &types.NamespacedName{"istio-system", "test-gateway"}
+	defaultIstioGateway = &types.NamespacedName{Namespace: "istio-system", Name: "test-gateway"}
 
 	// defaultIstioLocalGateway is the default local gateway:
-	defaultIstioLocalGateway = &types.NamespacedName{"istio-system", "test-local-gateway"}
+	defaultIstioLocalGateway = &types.NamespacedName{Namespace: "istio-system", Name: "test-local-gateway"}
 
 	// defaultLocalGatewayService holds the default local gateway service.
-	defaultLocalGatewayService = &types.NamespacedName{"istio-system", "knative-local-gateway"}
+	defaultLocalGatewayService = &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"}
 
 	// defaultGatewayService is the default gateway service.
-	defaultGatewayService = &types.NamespacedName{"istio-system", "istio-ingressgateway"}
+	defaultGatewayService = &types.NamespacedName{Namespace: "istio-system", Name: "istio-ingressgateway"}
 )
 
 type GatewayConfig struct {

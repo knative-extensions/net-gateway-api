@@ -19,20 +19,8 @@ package resources
 import (
 	"sort"
 
-	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
-
-// Visibility converts netv1alpha1.IngressVisibility to string.
-func Visibility(visibility netv1alpha1.IngressVisibility) string {
-	switch visibility {
-	case netv1alpha1.IngressVisibilityClusterLocal:
-		return "cluster-local"
-	case netv1alpha1.IngressVisibilityExternalIP:
-		return ""
-	}
-	return ""
-}
 
 func gatewayAllowTypePtr(val gwv1alpha1.GatewayAllowType) *gwv1alpha1.GatewayAllowType {
 	return &val

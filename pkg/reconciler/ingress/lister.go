@@ -61,10 +61,10 @@ func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1al
 		return nil, fmt.Errorf("failed to get internal service: %w", err)
 	}
 
-	var readyIPs []string
+	readyIPs := sets.NewString()
 	for _, sub := range eps.Subsets {
 		for _, address := range sub.Addresses {
-			readyIPs = append(readyIPs, address.IP)
+			readyIPs.Insert(address.IP)
 		}
 	}
 	if len(readyIPs) == 0 {
@@ -73,8 +73,7 @@ func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1al
 	return l.getIngressUrls(ing, readyIPs)
 }
 
-func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, gatewayIps []string) ([]status.ProbeTarget, error) {
-	ips := sets.NewString(gatewayIps...)
+func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips sets.String) ([]status.ProbeTarget, error) {
 
 	targets := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
 	for _, rule := range ing.Spec.Rules {

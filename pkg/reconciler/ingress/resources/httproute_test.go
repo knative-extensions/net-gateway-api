@@ -466,11 +466,11 @@ var testConfig = &config.Config{
 		Gateways: map[v1alpha1.IngressVisibility]*config.GatewayConfig{
 			v1alpha1.IngressVisibilityExternalIP: {
 				GatewayClass: testGatewayClass,
-				Gateway:      &types.NamespacedName{"test-ns", "foo"},
+				Gateway:      &types.NamespacedName{Namespace: "test-ns", Name: "foo"},
 			},
 			v1alpha1.IngressVisibilityClusterLocal: {
 				GatewayClass: testGatewayClass,
-				Gateway:      &types.NamespacedName{"test-ns", "foo-local"},
+				Gateway:      &types.NamespacedName{Namespace: "test-ns", Name: "foo-local"},
 			},
 		}},
 }

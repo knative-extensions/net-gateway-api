@@ -124,11 +124,11 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 }
 
 // LookupGateway returns a gateway given a visibility config.
-func (c *Gateway) LookupGateway(visibility v1alpha1.IngressVisibility) string {
+func (c *Gateway) LookupGateway(visibility v1alpha1.IngressVisibility) (string, string, error) {
 	if c.Gateways[visibility] == nil {
-		return ""
+		return "", "", nil
 	}
-	return c.Gateways[visibility].Gateway
+	return cache.SplitMetaNamespaceKey(c.Gateways[visibility].Gateway)
 }
 
 // LookupGatewayClass returns a gatewayclass given a visibility config.

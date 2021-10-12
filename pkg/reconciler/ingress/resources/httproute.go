@@ -21,7 +21,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
@@ -73,7 +72,7 @@ func makeHTTPRouteSpec(
 	rules := makeHTTPRouteRule(rule)
 
 	gatewayConfig := config.FromContext(ctx).Gateway
-	ns, name, _ := cache.SplitMetaNamespaceKey(gatewayConfig.LookupGateway(rule.Visibility))
+	ns, name, _ := gatewayConfig.LookupGateway(rule.Visibility)
 
 	gatewayRef := gwv1alpha1.GatewayReference{
 		Namespace: ns,

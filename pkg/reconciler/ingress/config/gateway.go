@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/yaml"
 
@@ -36,24 +37,26 @@ const (
 
 	// defaultGatewayClass is the gatewayclass name for the gateway.
 	defaultGatewayClass = "istio"
+)
 
+var (
 	// defaultIstioGateway is the default gateway.
-	defaultIstioGateway = "istio-system/test-gateway"
+	defaultIstioGateway = &types.NamespacedName{"istio-system", "test-gateway"}
 
 	// defaultIstioLocalGateway is the default local gateway:
-	defaultIstioLocalGateway = "istio-system/test-local-gateway"
+	defaultIstioLocalGateway = &types.NamespacedName{"istio-system", "test-local-gateway"}
 
 	// defaultLocalGatewayService holds the default local gateway service.
-	defaultLocalGatewayService = "istio-system/knative-local-gateway"
+	defaultLocalGatewayService = &types.NamespacedName{"istio-system", "knative-local-gateway"}
 
 	// defaultGatewayService is the default gateway service.
-	defaultGatewayService = "istio-system/istio-ingressgateway"
+	defaultGatewayService = &types.NamespacedName{"istio-system", "istio-ingressgateway"}
 )
 
 type GatewayConfig struct {
-	GatewayClass string `json:"class,omitempty"`
-	Gateway      string `json:"gateway,omitempty"`
-	Service      string `json:"service,omitempty"`
+	GatewayClass string                `json:"class,omitempty"`
+	Gateway      *types.NamespacedName `json:"gateway,omitempty"`
+	Service      *types.NamespacedName `json:"service,omitempty"`
 }
 
 // Gateway maps gateways to routes by matching the gateway's
@@ -104,12 +107,12 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		}
 
 		// See if the Service is a valid namespace/name token.
-		if _, _, err := cache.SplitMetaNamespaceKey(value.Service); err != nil {
+		if _, _, err := cache.SplitMetaNamespaceKey(value.Service.String()); err != nil {
 			return nil, err
 		}
 
 		// See if the Gateway is a valid namespace/name token.
-		if _, _, err := cache.SplitMetaNamespaceKey(value.Gateway); err != nil {
+		if _, _, err := cache.SplitMetaNamespaceKey(value.Gateway.String()); err != nil {
 			return nil, err
 		}
 
@@ -124,11 +127,11 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 }
 
 // LookupGateway returns a gateway given a visibility config.
-func (c *Gateway) LookupGateway(visibility v1alpha1.IngressVisibility) (string, string, error) {
+func (c *Gateway) LookupGateway(visibility v1alpha1.IngressVisibility) *types.NamespacedName {
 	if c.Gateways[visibility] == nil {
-		return "", "", nil
+		return nil
 	}
-	return cache.SplitMetaNamespaceKey(c.Gateways[visibility].Gateway)
+	return c.Gateways[visibility].Gateway
 }
 
 // LookupGatewayClass returns a gatewayclass given a visibility config.
@@ -140,9 +143,9 @@ func (c *Gateway) LookupGatewayClass(visibility v1alpha1.IngressVisibility) stri
 }
 
 // LookupService returns a gateway service address given a visibility config.
-func (c *Gateway) LookupService(visibility v1alpha1.IngressVisibility) string {
+func (c *Gateway) LookupService(visibility v1alpha1.IngressVisibility) *types.NamespacedName {
 	if c.Gateways[visibility] == nil {
-		return ""
+		return nil
 	}
 	return c.Gateways[visibility].Service
 }

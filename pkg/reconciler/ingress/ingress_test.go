@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
 	network "knative.dev/networking/pkg"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -95,7 +96,7 @@ var (
 			Gateways: map[v1alpha1.IngressVisibility]*config.GatewayConfig{
 				v1alpha1.IngressVisibilityExternalIP: {},
 				v1alpha1.IngressVisibilityClusterLocal: {
-					Service: "istio-system/knative-local-gateway",
+					Service: &types.NamespacedName{"istio-system", "knative-local-gateway"},
 				}},
 		},
 	}

@@ -72,11 +72,11 @@ func makeHTTPRouteSpec(
 	rules := makeHTTPRouteRule(rule)
 
 	gatewayConfig := config.FromContext(ctx).Gateway
-	ns, name, _ := gatewayConfig.LookupGateway(rule.Visibility)
+	namespacedNameGateway := gatewayConfig.LookupGateway(rule.Visibility)
 
 	gatewayRef := gwv1alpha1.GatewayReference{
-		Namespace: ns,
-		Name:      name,
+		Namespace: namespacedNameGateway.Namespace,
+		Name:      namespacedNameGateway.Name,
 	}
 
 	return gwv1alpha1.HTTPRouteSpec{

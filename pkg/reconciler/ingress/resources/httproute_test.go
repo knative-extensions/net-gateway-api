@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	"knative.dev/networking/pkg/apis/networking"
@@ -466,11 +467,11 @@ var testConfig = &config.Config{
 		Gateways: map[v1alpha1.IngressVisibility]*config.GatewayConfig{
 			v1alpha1.IngressVisibilityExternalIP: {
 				GatewayClass: testGatewayClass,
-				Gateway:      "test-ns/foo",
+				Gateway:      &types.NamespacedName{"test-ns", "foo"},
 			},
 			v1alpha1.IngressVisibilityClusterLocal: {
 				GatewayClass: testGatewayClass,
-				Gateway:      "test-ns/foo-local",
+				Gateway:      &types.NamespacedName{"test-ns", "foo-local"},
 			},
 		}},
 }

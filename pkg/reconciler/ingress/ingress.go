@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -109,14 +108,14 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	if ready {
 		gatewayConfig := config.FromContext(ctx).Gateway
 
-		ns, name, _ := cache.SplitMetaNamespaceKey(gatewayConfig.LookupService(v1alpha1.IngressVisibilityExternalIP))
+		namespacedNameService := gatewayConfig.LookupService(v1alpha1.IngressVisibilityExternalIP)
 		publicLbs := []v1alpha1.LoadBalancerIngressStatus{
-			{DomainInternal: network.GetServiceHostname(name, ns)},
+			{DomainInternal: network.GetServiceHostname(namespacedNameService.Name, namespacedNameService.Namespace)},
 		}
 
-		ns, name, _ = cache.SplitMetaNamespaceKey(gatewayConfig.LookupService(v1alpha1.IngressVisibilityClusterLocal))
+		namespacedNameLocalService := gatewayConfig.LookupService(v1alpha1.IngressVisibilityClusterLocal)
 		privateLbs := []v1alpha1.LoadBalancerIngressStatus{
-			{DomainInternal: network.GetServiceHostname(name, ns)},
+			{DomainInternal: network.GetServiceHostname(namespacedNameLocalService.Name, namespacedNameLocalService.Namespace)},
 		}
 
 		ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)

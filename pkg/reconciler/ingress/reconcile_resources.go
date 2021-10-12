@@ -26,11 +26,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/controller"
-
-	//	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 )
 
 // reconcileHTTPRoute reconciles HTTPRoute.

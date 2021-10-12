@@ -25,13 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
 	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
-
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
 const (
@@ -58,12 +57,12 @@ var (
 func TestMakeHTTPRoute(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		ci       *v1alpha1.Ingress
+		ing      *v1alpha1.Ingress
 		expected []*gwv1alpha1.HTTPRoute
 	}{
 		{
 			name: "single external domain with split and cluster local",
-			ci: &v1alpha1.Ingress{
+			ing: &v1alpha1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testIngressName,
 					Namespace: testNamespace,
@@ -251,7 +250,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 			},
 		}, {
 			name: "multiple paths with header conditions",
-			ci: &v1alpha1.Ingress{
+			ing: &v1alpha1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testIngressName,
 					Namespace: testNamespace,
@@ -364,7 +363,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 			}},
 		}, {
 			name: "single with host rewrite",
-			ci: &v1alpha1.Ingress{
+			ing: &v1alpha1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testIngressName,
 					Namespace: testNamespace,
@@ -436,16 +435,16 @@ func TestMakeHTTPRoute(t *testing.T) {
 			}},
 		}} {
 		t.Run(tc.name, func(t *testing.T) {
-			for i, rule := range tc.ci.Spec.Rules {
+			for i, rule := range tc.ing.Spec.Rules {
 				rule := rule
 				tcs := &testConfigStore{config: testConfig}
 				ctx := tcs.ToContext(context.Background())
 
-				route, err := MakeHTTPRoute(ctx, tc.ci, &rule)
+				route, err := MakeHTTPRoute(ctx, tc.ing, &rule)
 				if err != nil {
 					t.Fatal("MakeHTTPRoute failed:", err)
 				}
-				tc.expected[i].OwnerReferences = []metav1.OwnerReference{*kmeta.NewControllerRef(tc.ci)}
+				tc.expected[i].OwnerReferences = []metav1.OwnerReference{*kmeta.NewControllerRef(tc.ing)}
 				if diff := cmp.Diff(tc.expected[i], route); diff != "" {
 					t.Error("Unexpected HTTPRoute (-want +got):", diff)
 				}

@@ -19,10 +19,6 @@ aliases:
   - dsimansk
   - navidshaikh
   - rhuss
-  container-freezer-approvers:
-  - julz
-  - markusthoemmes
-  - psschwei
   control-protocol-approvers:
   - devguyio
   - eric-sap
@@ -146,7 +142,7 @@ aliases:
   - nicolaferraro
   - rhuss
   knative-admin:
-  - benmoss
+  - ZhiminXiang
   - bsnchan
   - dprotaso
   - evankanderson
@@ -161,31 +157,9 @@ aliases:
   - rhuss
   - thisisnotapril
   - vaikas
-  knative-milestone-maintainers:
-  - ZhiminXiang
-  - akashrv
-  - aslom
-  - chaodaiG
-  - csantanapr
-  - dprotaso
-  - evankanderson
-  - josephburnett
-  - julz
-  - k4leung4
-  - lionelvillard
-  - markusthoemmes
-  - matzew
-  - mikehelmick
-  - n3wscott
-  - nak3
-  - navidshaikh
-  - rhuss
-  - tcnghia
-  - vagababov
-  - vaikas
   knative-release-leads:
-  - benmoss
-  - julz
+  - ZhiminXiang
+  - evankanderson
   knative-robots:
   - knative-prow-releaser-robot
   - knative-prow-robot
@@ -200,11 +174,11 @@ aliases:
   net-contour-approvers:
   - dprotaso
   - tcnghia
-  net-gateway-api-approvers:
+  net-http01-approvers:
+  - tcnghia
+  net-ingressv2-approvers:
   - markusthoemmes
   - nak3
-  - tcnghia
-  net-http01-approvers:
   - tcnghia
   net-istio-approvers:
   - JRBANCEL

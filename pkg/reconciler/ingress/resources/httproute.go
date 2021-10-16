@@ -104,7 +104,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gwv1alpha1.HTTPRouteRule
 				}}}
 		}
 
-		set := map[string]string{}
+		var set map[string]string
 		if path.RewriteHost != "" {
 			set = map[string]string{"Host": path.RewriteHost, ":Authority": path.RewriteHost}
 		}
@@ -134,7 +134,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gwv1alpha1.HTTPRouteRule
 
 		var headersMatch *gwv1alpha1.HTTPHeaderMatch
 		if path.Headers != nil {
-			header := map[string]string{}
+			header := make(map[string]string, len(path.Headers))
 			for k, v := range path.Headers {
 				header[k] = v.Exact
 			}

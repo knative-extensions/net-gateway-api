@@ -21,7 +21,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/yaml"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -98,24 +97,12 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 	c := Gateway{Gateways: map[v1alpha1.IngressVisibility]*GatewayConfig{}}
 
 	for key, value := range entry {
-		key, value := key, value
 		// Check that the visibility makes sense.
 		switch key {
 		case v1alpha1.IngressVisibilityClusterLocal, v1alpha1.IngressVisibilityExternalIP:
 		default:
 			return nil, fmt.Errorf("unrecognized visibility: %q", key)
 		}
-
-		// See if the Service is a valid namespace/name token.
-		if _, _, err := cache.SplitMetaNamespaceKey(value.Service.String()); err != nil {
-			return nil, err
-		}
-
-		// See if the Gateway is a valid namespace/name token.
-		if _, _, err := cache.SplitMetaNamespaceKey(value.Gateway.String()); err != nil {
-			return nil, err
-		}
-
 		if value.GatewayClass == "" {
 			// TODO: set default instead of error?
 			return nil, fmt.Errorf("visibility %q must set class", key)

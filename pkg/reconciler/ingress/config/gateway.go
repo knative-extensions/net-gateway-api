@@ -65,7 +65,7 @@ type Gateway struct {
 	// labels matching a particular selector, it will use the
 	// corresponding gateway.  If multiple selectors match, we choose
 	// the most specific selector.
-	Gateways map[v1alpha1.IngressVisibility]*GatewayConfig
+	Gateways map[v1alpha1.IngressVisibility]GatewayConfig
 }
 
 // NewGatewayFromConfigMap creates a Gateway from the supplied ConfigMap
@@ -74,7 +74,7 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 	if !ok {
 		// These are the defaults.
 		return &Gateway{
-			Gateways: map[v1alpha1.IngressVisibility]*GatewayConfig{
+			Gateways: map[v1alpha1.IngressVisibility]GatewayConfig{
 				v1alpha1.IngressVisibilityExternalIP:   {GatewayClass: defaultGatewayClass, Gateway: defaultIstioGateway, Service: defaultGatewayService},
 				v1alpha1.IngressVisibilityClusterLocal: {GatewayClass: defaultGatewayClass, Gateway: defaultIstioLocalGateway, Service: defaultLocalGatewayService},
 			},
@@ -94,7 +94,6 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 			return nil, fmt.Errorf("visibility %q must not be empty", vis)
 		}
 	}
-	c := Gateway{Gateways: map[v1alpha1.IngressVisibility]*GatewayConfig{}}
 
 	for key, value := range entry {
 		// Check that the visibility makes sense.
@@ -103,36 +102,18 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		default:
 			return nil, fmt.Errorf("unrecognized visibility: %q", key)
 		}
+		if value.Gateway == nil {
+			// TODO: set default instead of error?
+			return nil, fmt.Errorf("visibility %q must set gateway", key)
+		}
+		if value.Service == nil {
+			// TODO: set default instead of error?
+			return nil, fmt.Errorf("visibility %q must set service", key)
+		}
 		if value.GatewayClass == "" {
 			// TODO: set default instead of error?
-			return nil, fmt.Errorf("visibility %q must set class", key)
+			return nil, fmt.Errorf("visibility %q must set gatewayclass", key)
 		}
-
-		c.Gateways[key] = &value
 	}
-	return &c, nil
-}
-
-// LookupGateway returns a gateway given a visibility config.
-func (c *Gateway) LookupGateway(visibility v1alpha1.IngressVisibility) *types.NamespacedName {
-	if c.Gateways[visibility] == nil {
-		return nil
-	}
-	return c.Gateways[visibility].Gateway
-}
-
-// LookupGatewayClass returns a gatewayclass given a visibility config.
-func (c *Gateway) LookupGatewayClass(visibility v1alpha1.IngressVisibility) string {
-	if c.Gateways[visibility] == nil {
-		return ""
-	}
-	return c.Gateways[visibility].GatewayClass
-}
-
-// LookupService returns a gateway service address given a visibility config.
-func (c *Gateway) LookupService(visibility v1alpha1.IngressVisibility) *types.NamespacedName {
-	if c.Gateways[visibility] == nil {
-		return nil
-	}
-	return c.Gateways[visibility].Service
+	return &Gateway{Gateways: entry}, nil
 }

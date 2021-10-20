@@ -53,7 +53,7 @@ type gatewayPodTargetLister struct {
 
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
 	gatewayConfig := config.FromContext(ctx).Gateway
-	namespacedNameLocalService := gatewayConfig.LookupService(v1alpha1.IngressVisibilityClusterLocal)
+	namespacedNameLocalService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityClusterLocal].Service
 
 	eps, err := l.endpointsLister.Endpoints(namespacedNameLocalService.Namespace).Get(namespacedNameLocalService.Name)
 	if err != nil {

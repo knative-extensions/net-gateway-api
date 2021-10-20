@@ -463,7 +463,7 @@ func (t *testConfigStore) ToContext(ctx context.Context) context.Context {
 
 var testConfig = &config.Config{
 	Gateway: &config.Gateway{
-		Gateways: map[v1alpha1.IngressVisibility]*config.GatewayConfig{
+		Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
 			v1alpha1.IngressVisibilityExternalIP: {
 				GatewayClass: testGatewayClass,
 				Gateway:      &types.NamespacedName{Namespace: "test-ns", Name: "foo"},

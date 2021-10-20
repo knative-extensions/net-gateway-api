@@ -108,12 +108,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	if ready {
 		gatewayConfig := config.FromContext(ctx).Gateway
 
-		namespacedNameService := gatewayConfig.LookupService(v1alpha1.IngressVisibilityExternalIP)
+		namespacedNameService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Service
 		publicLbs := []v1alpha1.LoadBalancerIngressStatus{
 			{DomainInternal: network.GetServiceHostname(namespacedNameService.Name, namespacedNameService.Namespace)},
 		}
 
-		namespacedNameLocalService := gatewayConfig.LookupService(v1alpha1.IngressVisibilityClusterLocal)
+		namespacedNameLocalService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityClusterLocal].Service
 		privateLbs := []v1alpha1.LoadBalancerIngressStatus{
 			{DomainInternal: network.GetServiceHostname(namespacedNameLocalService.Name, namespacedNameLocalService.Namespace)},
 		}

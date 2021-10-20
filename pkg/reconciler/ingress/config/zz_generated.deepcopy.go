@@ -58,17 +58,9 @@ func (in *Gateway) DeepCopyInto(out *Gateway) {
 	*out = *in
 	if in.Gateways != nil {
 		in, out := &in.Gateways, &out.Gateways
-		*out = make(map[v1alpha1.IngressVisibility]*GatewayConfig, len(*in))
+		*out = make(map[v1alpha1.IngressVisibility]GatewayConfig, len(*in))
 		for key, val := range *in {
-			var outVal *GatewayConfig
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(GatewayConfig)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return

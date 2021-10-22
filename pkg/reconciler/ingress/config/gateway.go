@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2021 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,10 +40,10 @@ const (
 
 var (
 	// defaultIstioGateway is the default gateway.
-	defaultIstioGateway = &types.NamespacedName{Namespace: "istio-system", Name: "test-gateway"}
+	defaultIstioGateway = &types.NamespacedName{Namespace: "istio-system", Name: "knative-gateway"}
 
 	// defaultIstioLocalGateway is the default local gateway:
-	defaultIstioLocalGateway = &types.NamespacedName{Namespace: "istio-system", Name: "test-local-gateway"}
+	defaultIstioLocalGateway = &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"}
 
 	// defaultLocalGatewayService holds the default local gateway service.
 	defaultLocalGatewayService = &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"}

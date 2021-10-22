@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	sharedmain.Main("controller",
+	sharedmain.Main("net-gateway-api-controller",
 		ingress.NewController,
 	)
 }

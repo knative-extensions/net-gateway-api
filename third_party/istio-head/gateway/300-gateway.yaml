@@ -15,7 +15,7 @@
 kind: Gateway
 apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
-  name: test-gateway
+  name: knative-gateway
   namespace: istio-system
 spec:
   gatewayClassName: istio

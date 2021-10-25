@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CONTOUR_OPERATOR_VERSION="main" # This is for controlling which version of contour-operator we want to use.
+CONTOUR_OPERATOR_VERSION="v1.19.0" # This is for controlling which version of contour-operator we want to use.
 YAML_URL="https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_OPERATOR_VERSION}/examples/operator/operator.yaml"
 
 kubectl apply -f $YAML_URL

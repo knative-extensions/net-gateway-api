@@ -33,7 +33,7 @@ func (in *Config) DeepCopyInto(out *Config) {
 	if in.Network != nil {
 		in, out := &in.Network, &out.Network
 		*out = new(pkg.Config)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Gateway != nil {
 		in, out := &in.Gateway, &out.Gateway

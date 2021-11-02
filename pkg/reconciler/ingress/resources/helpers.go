@@ -43,6 +43,15 @@ func pathMatchTypePtr(val gwv1alpha1.PathMatchType) *gwv1alpha1.PathMatchType {
 // The length is:
 // 1. the length of the hostnames.
 // 2. the first alphabetical order.
+//
+// For example, "hello-example.default.svc.cluster.local" will be
+// returned from the following hosts in KIngress.
+//
+//  - hosts:
+//    - hello.default
+//    - hello.default.svc
+//    - hello.default.svc.cluster.local
+//
 func LongestHost(hosts []string) string {
 	sort.Strings(hosts)
 	return hosts[len(hosts)-1]

@@ -63,7 +63,7 @@ func NewController(
 		httprouteLister: httprouteInformer.Lister(),
 	}
 
-	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, gatewayAPIIngressClassName, true)
+	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, gatewayAPIIngressClassName, false)
 
 	impl := ingressreconciler.NewImpl(ctx, c, gatewayAPIIngressClassName, func(impl *controller.Impl) controller.Options {
 		configsToResync := []interface{}{

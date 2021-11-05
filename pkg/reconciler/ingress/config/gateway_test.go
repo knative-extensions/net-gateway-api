@@ -23,16 +23,13 @@ import (
 )
 
 func TestGateway(t *testing.T) {
-	cm, _ := ConfigMapsFromTestFile(t, GatewayConfigName)
+	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
 
 	if _, err := NewGatewayFromConfigMap(cm); err != nil {
 		t.Error("NewContourFromConfigMap(actual) =", err)
 	}
 
-	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/171
-	/*
-		if _, err := NewGatewayFromConfigMap(example); err != nil {
-			t.Error("NewContourFromConfigMap(example) =", err)
-		}
-	*/
+	if _, err := NewGatewayFromConfigMap(example); err != nil {
+		t.Error("NewContourFromConfigMap(example) =", err)
+	}
 }

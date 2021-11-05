@@ -31,18 +31,15 @@ jobs:
         - k8s-version: v1.20.7
           kind-version: v0.11.1
           kind-image-sha: sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9
+          ingress: istio
         - k8s-version: v1.21.1
           kind-version: v0.11.1
           kind-image-sha: sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
+          ingress: contour
         - k8s-version: v1.22.2
           kind-version: v0.11.1
           kind-image-sha: sha256:f638a08c1f68fe2a99e724ace6df233a546eaf6713019a0b310130a4f91ebe7f
-
-        test-suite:
-        - ./test/conformance
-
-        istio-version:
-        - latest
+          ingress: istio
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -120,27 +117,6 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
-    - name: Install Istio
-      run: |
-        set -o pipefail
-
-        # gateway-api CRD must be installed before Istio.
-        kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
-
-        echo "GATEWAY_OVERRIDE=istio-ingressgateway" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=istio-system" >> $GITHUB_ENV
-
-        echo ">> Bringing up Istio"
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml
-        # Deploy Istio
-        ./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
-
-        # Istio v1.11 should be able to run istioctl only
-        # as https://github.com/istio/istio/pull/32653 fixed the blocker.
-        #
-        # curl -sL https://istio.io/downloadIstioctl | sh -
-        # $HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort
-
     - name: Install Knative net-gateway-api
       run: |
         set -o pipefail
@@ -155,28 +131,9 @@ jobs:
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
 
-    - name: Wait for Ready
-      run: |
-        echo Waiting for Pods to become ready.
-        kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-        # For debugging.
-        kubectl get pods --all-namespaces
-
     - name: Run e2e Tests
       run: |
-        set -x
-
-        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
-        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-
-        # Run the tests tagged as e2e on the KinD cluster.
-        go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
-           --enable-alpha --enable-beta \
-           --skip-tests="tls,retry,httpoption" \
-           --ingressendpoint="${IPS[0]}" \
-           --ingressClass=gateway-api.ingress.networking.knative.dev \
-           --cluster-suffix=$CLUSTER_SUFFIX
+        ./test/e2e-kind-${{ matrix.ingress }}.sh
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

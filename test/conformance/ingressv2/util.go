@@ -95,10 +95,10 @@ var testLocalGateway = &gatewayv1alpha1.RouteGateways{
 }
 
 // gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.
-var gatewayLabel = map[string]string{"knative-e2e-test": "net-gateway-api"}
+var gatewayLabel = map[string]string{"networking.knative.dev/visibility": ""}
 
 // gatewayLabel is added to HTTPRoute. The local gateway selects the generated HTTPRoute by this label.
-var gatewayLocalLabel = map[string]string{"knative-e2e-test": "net-gateway-api-local"}
+var gatewayLocalLabel = map[string]string{"networking.knative.dev/visibility": "cluster-local"}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.

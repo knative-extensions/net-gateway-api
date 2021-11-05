@@ -1,4 +1,4 @@
-name: KinD e2e tests
+name: KinD conformance tests
 
 on:
   pull_request:
@@ -24,6 +24,9 @@ jobs:
         - v1.21.1
         - v1.22.2
 
+        test-suite:
+        - ./test/conformance/ingressv2
+
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
         # See: https://github.com/kubernetes-sigs/kind/releases
@@ -31,18 +34,17 @@ jobs:
         - k8s-version: v1.20.7
           kind-version: v0.11.1
           kind-image-sha: sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9
+          ingress: istio
         - k8s-version: v1.21.1
           kind-version: v0.11.1
           kind-image-sha: sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
+          ingress: contour
         - k8s-version: v1.22.2
           kind-version: v0.11.1
           kind-image-sha: sha256:f638a08c1f68fe2a99e724ace6df233a546eaf6713019a0b310130a4f91ebe7f
+          ingress: istio
 
-        test-suite:
-        - ./test/conformance
 
-        istio-version:
-        - latest
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -120,48 +122,62 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
-    - name: Install Istio
+    - name: Prepare test namespaces
+      run: |
+        set -o pipefail
+
+        kubectl apply -f test/config/
+
+    - name: Install ingress provider (Istio)
+      if: matrix.ingress == 'istio'
       run: |
         set -o pipefail
 
         # gateway-api CRD must be installed before Istio.
         kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
 
-        echo "GATEWAY_OVERRIDE=istio-ingressgateway" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=istio-system" >> $GITHUB_ENV
-
-        echo ">> Bringing up Istio"
+        # Replace cluster.local with random suffix.
         sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml
+        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway.yaml
+        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway-local.yaml
+
         # Deploy Istio
         ./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
 
-        # Istio v1.11 should be able to run istioctl only
-        # as https://github.com/istio/istio/pull/32653 fixed the blocker.
-        #
-        # curl -sL https://istio.io/downloadIstioctl | sh -
-        # $HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort
+        # Deploy gatewayclass and gateway.
+        kubectl apply -f ./third_party/istio-head/gateway/
 
-    - name: Install Knative net-gateway-api
+        echo "GATEWAY_OVERRIDE=istio-ingressgateway" >> $GITHUB_ENV
+        echo "GATEWAY_NAMESPACE_OVERRIDE=istio-system" >> $GITHUB_ENV
+
+    - name: Install ingress provider (Contour)
+      if: matrix.ingress == 'contour'
       run: |
         set -o pipefail
 
-        # Build and Publish our containers to the docker daemon (including test assets)
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
-        ko resolve -f test/config/ -f config/ | kubectl apply -f -
+        # Deploy Contour
+        ./third_party/contour-head/install-operator.sh
+
+        # wait for operator deployment to be Available
+        kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
+
+        ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \
+          sed 's/LoadBalancerService/NodePortService/g' | \
+          kubectl apply -f -
+
+        ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
+          kubectl apply -f -
+
+        # This tells the tests what namespace to look in for our kingress LB.
+        echo "GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
+        echo "GATEWAY_NAMESPACE_OVERRIDE=contour-external" >> $GITHUB_ENV
+        echo "LOCAL_GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
+        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal" >> $GITHUB_ENV
 
     - name: Upload Test Images
       run: |
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
-
-    - name: Wait for Ready
-      run: |
-        echo Waiting for Pods to become ready.
-        kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-        # For debugging.
-        kubectl get pods --all-namespaces
 
     - name: Run e2e Tests
       run: |
@@ -172,10 +188,9 @@ jobs:
 
         # Run the tests tagged as e2e on the KinD cluster.
         go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
+           --ingressClass=${{ matrix.ingress }} \
            --enable-alpha --enable-beta \
-           --skip-tests="tls,retry,httpoption" \
            --ingressendpoint="${IPS[0]}" \
-           --ingressClass=gateway-api.ingress.networking.knative.dev \
            --cluster-suffix=$CLUSTER_SUFFIX
 
     - name: Post failure notice to Slack

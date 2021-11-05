@@ -21,7 +21,7 @@ spec:
   gatewayClassName: istio
   addresses:
   - type: NamedAddress
-    value: istio-ingressgateway.istio-system.svc.cluster.local
+    value: istio-ingressgateway
   listeners:
   - protocol: HTTP
     port: 80
@@ -29,7 +29,7 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api"
+          networking.knative.dev/visibility: ""
       namespaces:
         from: "All"
   - protocol: HTTPS
@@ -42,6 +42,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api"
+          networking.knative.dev/visibility: ""
       namespaces:
         from: "All"

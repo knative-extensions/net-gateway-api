@@ -60,7 +60,7 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api"
+          networking.knative.dev/visibility: ""
       namespaces:
         from: "All"
   - protocol: HTTPS
@@ -73,6 +73,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api"
+          networking.knative.dev/visibility: ""
       namespaces:
         from: "All"

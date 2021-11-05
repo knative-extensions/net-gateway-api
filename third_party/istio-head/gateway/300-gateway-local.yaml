@@ -21,7 +21,7 @@ spec:
   gatewayClassName: istio
   addresses:
   - type: NamedAddress
-    value: knative-local-gateway.istio-system.svc.cluster.local
+    value: knative-local-gateway
   listeners:
   - protocol: HTTP
     port: 80
@@ -29,6 +29,6 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api-local"
+          networking.knative.dev/visibility: "cluster-local"
       namespaces:
         from: "All"

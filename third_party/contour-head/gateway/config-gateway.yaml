@@ -12,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: GatewayClass
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: istio
-spec:
-  controller: istio.io/gateway-controller
+  name: config-gateway
+  namespace: knative-serving
+  labels:
+    serving.knative.dev/release: devel
+data:
+  visibility: |
+    ExternalIP:
+      class: contour
+      gateway: contour-external/contour-external
+      service: contour-external/envoy
+    ClusterLocal:
+      class: contour
+      gateway: contour-internal/contour-internal
+      service: contour-internal/envoy

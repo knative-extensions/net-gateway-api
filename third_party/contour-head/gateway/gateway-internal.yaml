@@ -65,19 +65,15 @@ spec:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api-local"
+          networking.knative.dev/visibility: "cluster-local"
       namespaces:
         from: "All"
   - protocol: HTTPS
     port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
     routes:
       kind: HTTPRoute
       selector:
         matchLabels:
-          knative-e2e-test: "net-gateway-api-local"
+          networking.knative.dev/visibility: "cluster-local"
       namespaces:
         from: "All"

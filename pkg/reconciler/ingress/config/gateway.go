@@ -21,6 +21,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/yaml"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -53,9 +54,15 @@ var (
 )
 
 type GatewayConfig struct {
-	GatewayClass string                `json:"class,omitempty"`
-	Gateway      *types.NamespacedName `json:"gateway,omitempty"`
-	Service      *types.NamespacedName `json:"service,omitempty"`
+	GatewayClass string
+	Gateway      *types.NamespacedName
+	Service      *types.NamespacedName
+}
+
+type visibilityValue struct {
+	GatewayClass string `json:"class,omitempty"`
+	Gateway      string `json:"gateway,omitempty"`
+	Service      string `json:"service,omitempty"`
 }
 
 // Gateway maps gateways to routes by matching the gateway's
@@ -81,8 +88,8 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		}, nil
 	}
 
-	entry := make(map[v1alpha1.IngressVisibility]GatewayConfig)
-	if err := yaml.Unmarshal([]byte(v), &entry); err != nil {
+	visConfig := make(map[v1alpha1.IngressVisibility]visibilityValue)
+	if err := yaml.Unmarshal([]byte(v), &visConfig); err != nil {
 		return nil, err
 	}
 
@@ -90,30 +97,45 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		v1alpha1.IngressVisibilityClusterLocal,
 		v1alpha1.IngressVisibilityExternalIP,
 	} {
-		if _, ok := entry[vis]; !ok {
+		if _, ok := visConfig[vis]; !ok {
 			return nil, fmt.Errorf("visibility %q must not be empty", vis)
 		}
 	}
 
-	for key, value := range entry {
+	entry := make(map[v1alpha1.IngressVisibility]GatewayConfig)
+	for key, value := range visConfig {
 		// Check that the visibility makes sense.
 		switch key {
 		case v1alpha1.IngressVisibilityClusterLocal, v1alpha1.IngressVisibilityExternalIP:
 		default:
 			return nil, fmt.Errorf("unrecognized visibility: %q", key)
 		}
-		if value.Gateway == nil {
-			// TODO: set default instead of error?
-			return nil, fmt.Errorf("visibility %q must set gateway", key)
-		}
-		if value.Service == nil {
-			// TODO: set default instead of error?
-			return nil, fmt.Errorf("visibility %q must set service", key)
-		}
 		if value.GatewayClass == "" {
-			// TODO: set default instead of error?
 			return nil, fmt.Errorf("visibility %q must set gatewayclass", key)
+		}
+		gateway, err := parseNamespacedName(value.Gateway)
+		if err != nil {
+			return nil, fmt.Errorf("visibility %q failed to parse gateway: %w", key, err)
+		}
+		service, err := parseNamespacedName(value.Service)
+		if err != nil {
+			return nil, fmt.Errorf("visibility %q failed to parse service: %w", key, err)
+		}
+		entry[key] = GatewayConfig{
+			GatewayClass: value.GatewayClass,
+			Gateway:      gateway,
+			Service:      service,
 		}
 	}
 	return &Gateway{Gateways: entry}, nil
+}
+
+func parseNamespacedName(namespacedName string) (*types.NamespacedName, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(namespacedName)
+	if err != nil {
+		return nil, err
+	} else if namespace == "" || name == "" {
+		return nil, fmt.Errorf("missing namespace or name in %q", namespacedName)
+	}
+	return &types.NamespacedName{Namespace: namespace, Name: name}, nil
 }

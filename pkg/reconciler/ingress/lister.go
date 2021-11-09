@@ -52,12 +52,26 @@ type gatewayPodTargetLister struct {
 }
 
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
-	gatewayConfig := config.FromContext(ctx).Gateway
-	namespacedNameLocalService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityClusterLocal].Service
+	var err error
+	visibilityToEndpointIPs := map[v1alpha1.IngressVisibility]sets.String{}
 
-	eps, err := l.endpointsLister.Endpoints(namespacedNameLocalService.Namespace).Get(namespacedNameLocalService.Name)
+	if visibilityToEndpointIPs[v1alpha1.IngressVisibilityClusterLocal], err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal); err != nil {
+		return nil, err
+	}
+	if visibilityToEndpointIPs[v1alpha1.IngressVisibilityExternalIP], err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP); err != nil {
+		return nil, err
+	}
+
+	return l.getIngressUrls(ing, visibilityToEndpointIPs)
+}
+
+func (l *gatewayPodTargetLister) endpointIPs(ctx context.Context, visibility v1alpha1.IngressVisibility) (sets.String, error) {
+	gatewayConfig := config.FromContext(ctx).Gateway
+	service := gatewayConfig.Gateways[visibility].Service
+
+	eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get internal service: %w", err)
+		return nil, fmt.Errorf("failed to get endpoints: %w", err)
 	}
 
 	readyIPs := sets.NewString()
@@ -69,10 +83,10 @@ func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1al
 	if len(readyIPs) == 0 {
 		return nil, fmt.Errorf("no gateway pods available")
 	}
-	return l.getIngressUrls(ing, readyIPs)
+	return readyIPs, nil
 }
 
-func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips sets.String) ([]status.ProbeTarget, error) {
+func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips map[v1alpha1.IngressVisibility]sets.String) ([]status.ProbeTarget, error) {
 
 	targets := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
 	for _, rule := range ing.Spec.Rules {
@@ -83,7 +97,7 @@ func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips sets.
 
 		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
 			target = status.ProbeTarget{
-				PodIPs: ips,
+				PodIPs: ips[rule.Visibility],
 			}
 			if ing.Spec.HTTPOption == v1alpha1.HTTPOptionRedirected {
 				target.PodPort = HTTPSPortExternal
@@ -94,7 +108,7 @@ func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips sets.
 			}
 		} else {
 			target = status.ProbeTarget{
-				PodIPs:  ips,
+				PodIPs:  ips[rule.Visibility],
 				PodPort: HTTPPortInternal,
 				URLs:    domainsToURL(domains, scheme),
 			}

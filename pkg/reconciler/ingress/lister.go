@@ -53,16 +53,16 @@ type gatewayPodTargetLister struct {
 
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
 	var err error
-	visibilityToEndpointIPs := map[v1alpha1.IngressVisibility]sets.String{}
+	var privateIPs, publicIPs sets.String
 
-	if visibilityToEndpointIPs[v1alpha1.IngressVisibilityClusterLocal], err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal); err != nil {
+	if privateIPs, err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal); err != nil {
 		return nil, err
 	}
-	if visibilityToEndpointIPs[v1alpha1.IngressVisibilityExternalIP], err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP); err != nil {
+	if publicIPs, err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP); err != nil {
 		return nil, err
 	}
 
-	return l.getIngressUrls(ing, visibilityToEndpointIPs)
+	return l.getIngressUrls(ing, privateIPs, publicIPs)
 }
 
 func (l *gatewayPodTargetLister) endpointIPs(ctx context.Context, visibility v1alpha1.IngressVisibility) (sets.String, error) {
@@ -86,7 +86,7 @@ func (l *gatewayPodTargetLister) endpointIPs(ctx context.Context, visibility v1a
 	return readyIPs, nil
 }
 
-func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips map[v1alpha1.IngressVisibility]sets.String) ([]status.ProbeTarget, error) {
+func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, privateIPs, publicIPs sets.String) ([]status.ProbeTarget, error) {
 
 	targets := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
 	for _, rule := range ing.Spec.Rules {
@@ -97,7 +97,7 @@ func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips map[v
 
 		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
 			target = status.ProbeTarget{
-				PodIPs: ips[rule.Visibility],
+				PodIPs: publicIPs,
 			}
 			if ing.Spec.HTTPOption == v1alpha1.HTTPOptionRedirected {
 				target.PodPort = HTTPSPortExternal
@@ -108,7 +108,7 @@ func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, ips map[v
 			}
 		} else {
 			target = status.ProbeTarget{
-				PodIPs:  ips[rule.Visibility],
+				PodIPs:  privateIPs,
 				PodPort: HTTPPortInternal,
 				URLs:    domainsToURL(domains, scheme),
 			}

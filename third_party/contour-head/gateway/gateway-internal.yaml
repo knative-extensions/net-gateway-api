@@ -70,6 +70,10 @@ spec:
         from: "All"
   - protocol: HTTPS
     port: 443
+    tls:
+      mode: Terminate
+      routeOverride:
+        certificate: Allow
     routes:
       kind: HTTPRoute
       selector:

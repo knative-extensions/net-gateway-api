@@ -52,13 +52,12 @@ type gatewayPodTargetLister struct {
 }
 
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
-	var err error
-	var privateIPs, publicIPs sets.String
-
-	if privateIPs, err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal); err != nil {
+	privateIPs, err := l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal)
+	if err != nil {
 		return nil, err
 	}
-	if publicIPs, err = l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP); err != nil {
+	publicIPs, err := l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP)
+	if err != nil {
 		return nil, err
 	}
 

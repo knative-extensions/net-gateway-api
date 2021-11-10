@@ -20,6 +20,7 @@ set -euo pipefail
 
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+UNSUPPORTED_TESTS=""
 
 # gateway-api CRD must be installed before Istio.
 kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
@@ -35,5 +36,6 @@ echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
    --ingressClass=istio \
    --enable-alpha --enable-beta \
+   --skip-tests="${UNSUPPORTED_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --cluster-suffix=$CLUSTER_SUFFIX

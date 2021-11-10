@@ -24,9 +24,6 @@ jobs:
         - v1.21.1
         - v1.22.2
 
-        test-suite:
-        - ./test/conformance/ingressv2
-
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
         # See: https://github.com/kubernetes-sigs/kind/releases
@@ -124,55 +121,7 @@ jobs:
 
     - name: Prepare test namespaces
       run: |
-        set -o pipefail
-
         kubectl apply -f test/config/
-
-    - name: Install ingress provider (Istio)
-      if: matrix.ingress == 'istio'
-      run: |
-        set -o pipefail
-
-        # gateway-api CRD must be installed before Istio.
-        kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
-
-        # Replace cluster.local with random suffix.
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/istio-kind-no-mesh.yaml
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway.yaml
-        sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" third_party/istio-head/gateway/300-gateway-local.yaml
-
-        # Deploy Istio
-        ./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
-
-        # Deploy gatewayclass and gateway.
-        kubectl apply -f ./third_party/istio-head/gateway/
-
-        echo "GATEWAY_OVERRIDE=istio-ingressgateway" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=istio-system" >> $GITHUB_ENV
-
-    - name: Install ingress provider (Contour)
-      if: matrix.ingress == 'contour'
-      run: |
-        set -o pipefail
-
-        # Deploy Contour
-        ./third_party/contour-head/install-operator.sh
-
-        # wait for operator deployment to be Available
-        kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
-
-        ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \
-          sed 's/LoadBalancerService/NodePortService/g' | \
-          kubectl apply -f -
-
-        ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
-          kubectl apply -f -
-
-        # This tells the tests what namespace to look in for our kingress LB.
-        echo "GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=contour-external" >> $GITHUB_ENV
-        echo "LOCAL_GATEWAY_OVERRIDE=envoy" >> $GITHUB_ENV
-        echo "LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal" >> $GITHUB_ENV
 
     - name: Upload Test Images
       run: |
@@ -181,17 +130,7 @@ jobs:
 
     - name: Run e2e Tests
       run: |
-        set -x
-
-        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
-        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-
-        # Run the tests tagged as e2e on the KinD cluster.
-        go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
-           --ingressClass=${{ matrix.ingress }} \
-           --enable-alpha --enable-beta \
-           --ingressendpoint="${IPS[0]}" \
-           --cluster-suffix=$CLUSTER_SUFFIX
+        ./test/kind-conformance-${{ matrix.ingress }}.sh
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

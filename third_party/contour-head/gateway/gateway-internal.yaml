@@ -31,6 +31,11 @@ spec:
   ingressClassName: contour-internal
   networkPublishing:
     envoy:
+      containerPorts:
+      - name: http
+        portNumber: 8081
+      - name: https
+        portNumber: 8443
       type: ClusterIPService
 ---
 kind: GatewayClass

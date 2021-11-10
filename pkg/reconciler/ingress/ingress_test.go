@@ -94,10 +94,13 @@ var (
 		Network: &network.Config{},
 		Gateway: &config.Gateway{
 			Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP: {},
+				v1alpha1.IngressVisibilityExternalIP: {
+					Service: &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
+				},
 				v1alpha1.IngressVisibilityClusterLocal: {
 					Service: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
-				}},
+				},
+			},
 		},
 	}
 )

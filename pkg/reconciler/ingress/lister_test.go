@@ -22,26 +22,24 @@ import (
 	"net/url"
 	"testing"
 
-	"knative.dev/networking/pkg/apis/networking"
-
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/status"
-
 	"knative.dev/pkg/kmeta"
-
-	"github.com/google/go-cmp/cmp"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 )
 
 var (
-	privateNS   = "istio-system"
-	privateName = "knative-local-gateway"
+	testNamespace = "istio-system"
+	publicName    = "istio-gateway"
+	privateName   = "knative-local-gateway"
 )
 
 func TestListProbeTargets(t *testing.T) {
@@ -55,6 +53,7 @@ func TestListProbeTargets(t *testing.T) {
 		name: "single address to probe",
 		objects: []runtime.Object{
 			privateEndpointsOneAddr,
+			publicEndpointsOneAddr,
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{
@@ -69,14 +68,32 @@ func TestListProbeTargets(t *testing.T) {
 			},
 		},
 	}, {
-		name:    "no endpoint to probe",
-		objects: []runtime.Object{},
+		name: "no local endpoint to probe",
+		objects: []runtime.Object{
+			publicEndpointsOneAddr,
+		},
 		ing:     ing(withBasicSpec, withGatewayAPIClass),
-		wantErr: fmt.Errorf("failed to get internal service: endpoints %q not found", "knative-local-gateway"),
+		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", privateName),
 	}, {
-		name: "endpoint without address to probe",
+		name: "no external endpoint to probe",
+		objects: []runtime.Object{
+			privateEndpointsOneAddr,
+		},
+		ing:     ing(withBasicSpec, withGatewayAPIClass),
+		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", "istio-gateway"),
+	}, {
+		name: "local endpoint without address to probe",
 		objects: []runtime.Object{
 			privateEndpointsNoAddr,
+			publicEndpointsOneAddr,
+		},
+		ing:     ing(withBasicSpec, withGatewayAPIClass),
+		wantErr: fmt.Errorf("no gateway pods available"),
+	}, {
+		name: "external endpoint without address to probe",
+		objects: []runtime.Object{
+			privateEndpointsOneAddr,
+			publicEndpointsNoAddr,
 		},
 		ing:     ing(withBasicSpec, withGatewayAPIClass),
 		wantErr: fmt.Errorf("no gateway pods available"),
@@ -84,6 +101,7 @@ func TestListProbeTargets(t *testing.T) {
 		name: "endpoint with single address to probe (https redirected)",
 		objects: []runtime.Object{
 			privateEndpointsOneAddr,
+			publicEndpointsOneAddr,
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
 		want: []status.ProbeTarget{{
@@ -99,6 +117,7 @@ func TestListProbeTargets(t *testing.T) {
 		name: "endpoint with multiple addresses and subsets to probe",
 		objects: []runtime.Object{
 			privateEndpointsMultiAddrMultiSubset,
+			publicEndpointsMultiAddrMultiSubset,
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{{
@@ -140,12 +159,28 @@ func TestListProbeTargets(t *testing.T) {
 var (
 	privateEndpointsOneAddr = &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: privateNS,
+			Namespace: testNamespace,
 			Name:      privateName,
 		},
 		Subsets: []corev1.EndpointSubset{{
 			Ports: []corev1.EndpointPort{{
-				Name: "asdf",
+				Name: "http",
+				Port: 8081,
+			}},
+			Addresses: []corev1.EndpointAddress{{
+				IP: "1.2.3.4",
+			}},
+		}},
+	}
+
+	publicEndpointsOneAddr = &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      publicName,
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Ports: []corev1.EndpointPort{{
+				Name: "http",
 				Port: 8080,
 			}},
 			Addresses: []corev1.EndpointAddress{{
@@ -153,10 +188,36 @@ var (
 			}},
 		}},
 	}
+
 	privateEndpointsMultiAddrMultiSubset = &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: privateNS,
+			Namespace: testNamespace,
 			Name:      privateName,
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Ports: []corev1.EndpointPort{{
+				Name: "asdf",
+				Port: 1234,
+			}},
+			Addresses: []corev1.EndpointAddress{{
+				IP: "2.3.4.5",
+			}},
+		}, {
+			Ports: []corev1.EndpointPort{{
+				Name: "asdf",
+				Port: 4321,
+			}},
+			Addresses: []corev1.EndpointAddress{{
+				IP: "3.4.5.6",
+			}, {
+				IP: "4.3.2.1",
+			}},
+		}},
+	}
+	publicEndpointsMultiAddrMultiSubset = &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      publicName,
 		},
 		Subsets: []corev1.EndpointSubset{{
 			Ports: []corev1.EndpointPort{{
@@ -180,8 +241,20 @@ var (
 	}
 	privateEndpointsNoAddr = &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: privateNS,
+			Namespace: testNamespace,
 			Name:      privateName,
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Ports: []corev1.EndpointPort{{
+				Name: "fdsa",
+				Port: 32,
+			}},
+		}},
+	}
+	publicEndpointsNoAddr = &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      publicName,
 		},
 		Subsets: []corev1.EndpointSubset{{
 			Ports: []corev1.EndpointPort{{

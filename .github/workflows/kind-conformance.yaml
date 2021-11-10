@@ -130,7 +130,7 @@ jobs:
 
     - name: Run e2e Tests
       run: |
-        ./test/conformance-kind-${{ matrix.ingress }}.sh
+        ./test/kind-conformance-${{ matrix.ingress }}.sh
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

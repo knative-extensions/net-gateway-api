@@ -99,7 +99,8 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 }
 
 func TestVisibilitySplit(t *testing.T) {
-	t.Parallel()
+	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/185
+	// t.Parallel()
 	ctx, clients := context.Background(), test.Setup(t)
 
 	// Use a post-split injected header to establish which split we are sending traffic to.

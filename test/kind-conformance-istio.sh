@@ -34,7 +34,6 @@ kubectl apply -f ./third_party/istio-head/gateway/
 
 echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
-   --ingressClass=istio \
    --enable-alpha --enable-beta \
    --skip-tests="${UNSUPPORTED_TESTS}" \
    --ingressendpoint="${IPS[0]}" \

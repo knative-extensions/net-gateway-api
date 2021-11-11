@@ -20,7 +20,7 @@ set -euo pipefail
 
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-UNSUPPORTED_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,visibility/split,headers/tags,host-rewrite,visibility/split"
+UNSUPPORTED_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite"
 
 export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
@@ -40,7 +40,6 @@ ko resolve -f ./third_party/contour-head/gateway/ | \
 
 echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
-   --ingressClass=contour \
    --enable-alpha --enable-beta \
    --skip-tests="${UNSUPPORTED_TESTS}" \
    --ingressendpoint="${IPS[0]}" \

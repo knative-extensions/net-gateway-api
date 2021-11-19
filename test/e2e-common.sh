@@ -40,25 +40,13 @@ function test_setup() {
 
   # Bringing up controllers.
   echo ">> Bringing up controller"
-  ko apply -f config/
+  ko apply -f config/ || return 1
 
-  scale_deployment net-gateway-api-controller "${CONTROL_NAMESPACE}"
+  kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
 
   # Wait for pods to be running.
   echo ">> Waiting for controller components to be running..."
-  wait_until_pods_running "${CONTROL_NAMESPACE}" || return 1
-
-  # Wait for a new leader controller to prevent race conditions during service reconciliation.
-  wait_for_leader_controller || failed=1
-}
-
-function scale_deployment() {
-    # Make sure all pods run in leader-elected mode.
-    kubectl -n "$2" scale deployment "$1" --replicas=0 || failed=1
-    # Give it time to kill the pods.
-    sleep 5
-    # Scale up components for HA tests
-    kubectl -n "$2" scale deployment "$1" --replicas=2 || failed=1
+  kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
 }
 
 # Add function call to trap
@@ -73,20 +61,4 @@ function add_trap() {
     [[ -n "${current_trap}" ]] && new_cmd="${current_trap};${new_cmd}"
     trap -- "${new_cmd}" $trap_signal
   done
-}
-
-function wait_for_leader_controller() {
-  echo -n "Waiting for leader Controller"
-  for i in {1..150}; do # timeout after 5 minutes
-    local leader=$(kubectl get lease -n "${CONTROL_NAMESPACE}" -ojsonpath='{.items[*].spec.holderIdentity}' | cut -d"_" -f1 | grep "^net-gateway-api-controller-" | head -1)
-    # Make sure the leader pod exists.
-    if [ -n "${leader}" ] && kubectl get pod "${leader}" -n "${CONTROL_NAMESPACE}" >/dev/null 2>&1; then
-      echo -e "\nNew leader Controller has been elected"
-      return 0
-    fi
-    echo -n "."
-    sleep 2
-  done
-  echo -e "\n\nERROR: timeout waiting for leader controller"
-  return 1
 }

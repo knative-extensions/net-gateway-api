@@ -43,7 +43,6 @@ jobs:
 
     env:
       GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
       KO_DOCKER_REPO: kind.local
       # Use a semi-random cluster suffix, but somewhat predictable
       # so reruns don't just give us a completely new value.
@@ -122,8 +121,6 @@ jobs:
         set -o pipefail
 
         # Build and Publish our containers to the docker daemon (including test assets)
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
         ko resolve -f test/config/ -f config/ | kubectl apply -f -
 
     - name: Upload Test Images

@@ -18,17 +18,20 @@ metadata:
   name: net-gateway-api-controller
   namespace: knative-serving
   labels:
-    samples.knative.dev/release: devel
+    networking.knative.dev/ingress-provider: net-gateway-api
+    app.kubernetes.io/component: net-gateway-api
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/name: knative-serving
+    serving.knative.dev/release: devel
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: controller
+      app: net-gateway-api-controller
   template:
     metadata:
       labels:
-        app: controller
-        samples.knative.dev/release: devel
+        app: net-gateway-api-controller
     spec:
       # To avoid node becoming SPOF, spread our replicas to different nodes.
       affinity:
@@ -57,6 +60,8 @@ spec:
         ports:
         - name: metrics
           containerPort: 9090
+        - name: profiling
+          containerPort: 8008
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -67,7 +72,7 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
         - name: METRICS_DOMAIN
-          value: knative.dev/samples
+          value: knative.dev/net-gateway-api
 
         securityContext:
           allowPrivilegeEscalation: false

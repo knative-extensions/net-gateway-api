@@ -35,6 +35,12 @@ go_test_e2e -timeout=20m -tags=e2e -parallel=12 \
   --skip-tests="${UNSUPPORTED_TESTS}" \
   --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
 
+# Give the controller time to sync with the rest of the system components.
+sleep 30
+
+go_test_e2e -timeout=15m -failfast -parallel=1 ./test/ha -spoofinterval="10ms" \
+  --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
+
 (( failed )) && dump_cluster_state
 (( failed )) && fail_test
 

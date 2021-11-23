@@ -45,7 +45,6 @@ jobs:
 
     env:
       GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
       KO_DOCKER_REPO: kind.local
       # Use a semi-random cluster suffix, but somewhat predictable
       # so reruns don't just give us a completely new value.
@@ -61,7 +60,7 @@ jobs:
       working-directory: ./
       run: |
         echo '::group:: install ko'
-        curl -L https://github.com/google/ko/releases/download/v0.6.0/ko_0.6.0_Linux_x86_64.tar.gz | tar xzf - ko
+        curl -L https://github.com/google/ko/releases/download/v0.9.3/ko_0.9.3_Linux_x86_64.tar.gz | tar xzf - ko
         chmod +x ./ko
         sudo mv ko /usr/local/bin
         echo '::endgroup::'

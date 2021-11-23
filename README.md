@@ -25,8 +25,8 @@ kubectl apply -f https://github.com/knative/serving/releases/latest/download/ser
 
 - Install net-gateway-api
 
-```
-ko resolve -f config/ | kubectl apply -f -
+```bash
+ko apply -f config/
 ```
 
 - Then install Istio:

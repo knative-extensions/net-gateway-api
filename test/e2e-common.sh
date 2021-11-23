@@ -40,7 +40,7 @@ function test_setup() {
 
   # Bringing up controllers.
   echo ">> Bringing up controller"
-  ko resolve -f config/ | kubectl apply -f -
+  ko apply -f config/
 
   scale_deployment net-gateway-api-controller "${CONTROL_NAMESPACE}"
 

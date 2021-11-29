@@ -22,12 +22,6 @@ initialize "$@" --skip-istio-addon
 UNSUPPORTED_TESTS="tls,retry,httpoption"
 failed=0
 
-echo ">> Bringing up Istio"
-./third_party/istio-head/install-istio.sh istio-ci-no-mesh.yaml
-
-echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/istio-head/gateway/
-
 echo ">> Running e2e tests"
 go_test_e2e -timeout=20m -tags=e2e -parallel=12 \
   ./test/conformance \

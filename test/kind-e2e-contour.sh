@@ -27,13 +27,13 @@ export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 
 echo ">> Bringing up Contour"
-./third_party/contour-head/install-operator.sh
+./third_party/contour/install-operator.sh
 
 # wait for operator deployment to be Available
 kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
 
 echo ">> Deploy Gateway API resources"
-ko resolve -f ./third_party/contour-head/gateway/ | \
+ko resolve -f ./third_party/contour/gateway/ | \
   sed 's/LoadBalancerService/NodePortService/g' | \
   kubectl apply -f -
 

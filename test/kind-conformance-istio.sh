@@ -26,11 +26,11 @@ UNSUPPORTED_TESTS=""
 kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
 
 echo ">> Bringing up Istio"
-sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" ./third_party/istio-head/istio-kind-no-mesh.yaml
-./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
+sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" ./third_party/istio/istio-kind-no-mesh.yaml
+./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
 
 echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/istio-head/gateway/
+kubectl apply -f ./third_party/istio/gateway/
 
 echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \

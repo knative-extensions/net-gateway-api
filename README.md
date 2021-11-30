@@ -27,8 +27,8 @@ ko apply -f config/
 - Then install Istio:
 
 ```bash
-./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
-kubectl apply -f third_party/istio-head/gateway/
+./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
+kubectl apply -f third_party/istio/gateway/
 ```
 
 - Configure Knative Serving to use the proper "ingress.class":

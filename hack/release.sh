@@ -23,6 +23,8 @@ source $(dirname $0)/../vendor/knative.dev/hack/release.sh
 declare -A COMPONENTS
 COMPONENTS=(
   ["net-gateway-api.yaml"]="config"
+  ["istio-gateway.yaml"]="third_party/istio/gateway"
+  ["contour-gateway.yaml"]="third_party/contour/gateway"
 )
 readonly COMPONENTS
 

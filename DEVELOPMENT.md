@@ -96,13 +96,13 @@ kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.2.0'
 Run the following command to install Istio (from HEAD) for development purpose:
 
 ```shell
-./third_party/istio-head/install-istio.sh istio-kind-no-mesh.yaml
+./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
 ```
 
 #### Deploy GatewayClass and Gateway
 
 ```
-kubectl apply -f ./third_party/istio-head/gateway/
+kubectl apply -f ./third_party/istio/gateway/
 ```
 
 #### Execute test
@@ -138,17 +138,17 @@ CRDs.
 Run the following command to install Contour and its operator (from HEAD).
 
 ```shell
-./third_party/contour-head/install-operator.sh
+./third_party/contour/install-operator.sh
 ```
 
 #### Deploy GatewayClass and Gateway
 
 ```
-ko resolve -f ./third_party/contour-head/gateway/gateway-external.yaml | \
+ko resolve -f ./third_party/contour/gateway/gateway-external.yaml | \
   sed 's/LoadBalancerService/NodePortService/g' | \
   kubectl apply -f -
 
-ko resolve -f ./third_party/contour-head/gateway/gateway-internal.yaml | \
+ko resolve -f ./third_party/contour/gateway/gateway-internal.yaml | \
   kubectl apply -f -
 ```
 

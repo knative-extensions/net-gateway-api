@@ -49,10 +49,10 @@ function test_setup() {
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
 
   echo ">> Bringing up Istio"
-  ./third_party/istio-head/install-istio.sh istio-ci-no-mesh.yaml
+  ./third_party/istio/install-istio.sh istio-ci-no-mesh.yaml
 
   echo ">> Deploy Gateway API resources"
-  kubectl apply -f ./third_party/istio-head/gateway/
+  kubectl apply -f ./third_party/istio/gateway/
 
   wait_until_service_has_external_http_address istio-system istio-ingressgateway
 }

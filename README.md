@@ -9,7 +9,16 @@ net-gateway-api repository contains a KIngress implementation and testing for Kn
 integration with the
 [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 
+This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact.
+You can also find the tested Ingress and unavailable features [here](docs/test-version.md).
+
 ## Getting started
+
+- Load tested environment versions
+
+```
+source ./hack/test-env.sh
+```
 
 - Install Knative Serving
 
@@ -24,10 +33,14 @@ kubectl apply -f https://github.com/knative/serving/releases/latest/download/ser
 ko apply -f config/
 ```
 
-- Then install Istio:
+- Then install Istio and its gateway resources:
+
+__NOTE__ You can find the Istio version to be installed in `./hack/test-env.sh`.
 
 ```bash
-./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
+curl -sL https://istio.io/downloadIstioctl | sh -
+$HOME/.istioctl/bin/istioctl install -y
+
 kubectl apply -f third_party/istio/gateway/
 ```
 

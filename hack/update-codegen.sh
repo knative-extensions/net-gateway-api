@@ -53,3 +53,14 @@ group "Update deps post-codegen"
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh
+
+group "Update tested version docs"
+
+source ${REPO_ROOT_DIR}/hack/test-env.sh
+template=$(cat ${REPO_ROOT_DIR}/docs/.test-version.template)
+eval "echo \"${template}\"" > ${REPO_ROOT_DIR}/docs/test-version.md
+
+group "Update gateway API CRDs"
+
+echo "# Generated with \"kubectl kustomize https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}\"" > ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
+kubectl kustomize "https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}" >> ${REPO_ROOT_DIR}/config/100-gateway-api.yaml

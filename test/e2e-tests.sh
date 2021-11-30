@@ -19,14 +19,13 @@ source $(dirname $0)/e2e-common.sh
 # Script entry point.
 initialize "$@" --skip-istio-addon
 
-UNSUPPORTED_TESTS="tls,retry,httpoption"
 failed=0
 
 echo ">> Running e2e tests"
 go_test_e2e -timeout=20m -tags=e2e -parallel=12 \
   ./test/conformance \
   --enable-alpha --enable-beta \
-  --skip-tests="${UNSUPPORTED_TESTS}" \
+  --skip-tests="${ISTIO_UNSUPPORTED_TESTS}" \
   --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
 
 # Give the controller time to sync with the rest of the system components.

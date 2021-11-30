@@ -18,16 +18,18 @@
 
 set -euo pipefail
 
+source $(dirname $0)/../hack/test-env.sh
+
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
 UNSUPPORTED_TESTS=""
 
 # gateway-api CRD must be installed before Istio.
-kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0'
+kubectl apply -k "github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}"
 
 echo ">> Bringing up Istio"
-sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" ./third_party/istio/istio-kind-no-mesh.yaml
-./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
+curl -sL https://istio.io/downloadIstioctl | sh -
+$HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
 
 echo ">> Deploy Gateway API resources"
 kubectl apply -f ./third_party/istio/gateway/

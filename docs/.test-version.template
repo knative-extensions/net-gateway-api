@@ -1,0 +1,19 @@
+<!--
+  This documentation is inserted in release note for each release.
+  All variables are defined in `hack/test-env.sh`.
+-->
+
+The following Gateway API version and Ingress were tested as part of the release.
+
+### Tested Gateway API version
+
+| Tested Gateway API       |
+| ------------------------ |
+| "${GATEWAY_API_VERSION}" |
+
+### Tested Ingress
+
+| Ingress | Tested version          | Unavailable features           |
+| ------- | ----------------------- | ------------------------------ |
+| Istio   | v"${ISTIO_VERSION}"     | "${ISTIO_UNSUPPORTED_TESTS}"   |
+| Contour | "${CONTOUR_VERSION}"    | "${CONTOUR_UNSUPPORTED_TESTS}" |

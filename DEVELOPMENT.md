@@ -85,18 +85,27 @@ Currently this repo tests with Istio and Contour. Please follow
 kubectl apply -f test/config/
 ```
 
+#### Load tested environment versions
+
+```
+source ./hack/test-env.sh
+```
+
 #### Install Gateway API CRDs
 
 ```
-kubectl apply -k 'github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.2.0'
+kubectl apply -k "github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}"
 ```
 
 #### Deploy Istio
 
-Run the following command to install Istio (from HEAD) for development purpose:
+Run the following command to install Istio:
+
+__NOTE__ You can find the Istio version to be installed in `./hack/test-env.sh`.
 
 ```shell
-./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
+curl -sL https://istio.io/downloadIstioctl | sh -
+$HOME/.istioctl/bin/istioctl install -y
 ```
 
 #### Deploy GatewayClass and Gateway
@@ -128,6 +137,12 @@ https://github.com/knative-sandbox/net-gateway-api/issues/23.
 kubectl apply -f test/config/
 ```
 
+#### Load tested environment versions
+
+```
+source ./hack/test-env.sh
+```
+
 #### Install Gateway API CRDs
 
 This step is not necessary for Contour as contour operator installs Gateway API
@@ -135,10 +150,12 @@ CRDs.
 
 #### Deploy Contour
 
-Run the following command to install Contour and its operator (from HEAD).
+Run the following command to install Contour and its operator.
+
+__NOTE__ You can find the Contour version to be installed in `./hack/test-env.sh`.
 
 ```shell
-./third_party/contour/install-operator.sh
+kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
 ```
 
 #### Deploy GatewayClass and Gateway

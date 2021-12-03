@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+source $(dirname $0)/../hack/test-env.sh
+
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
 UNSUPPORTED_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite"
@@ -28,7 +30,7 @@ export LOCAL_GATEWAY_OVERRIDE=envoy
 export LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
 
 echo ">> Bringing up Contour"
-./third_party/contour/install-operator.sh
+kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
 
 # wait for operator deployment to be Available
 kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'

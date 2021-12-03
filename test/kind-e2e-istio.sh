@@ -18,14 +18,15 @@
 
 set -euo pipefail
 
+source $(dirname $0)/../hack/test-env.sh
+
 CONTROL_NAMESPACE=knative-serving
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-UNSUPPORTED_TESTS="tls,retry,httpoption"
 
 echo ">> Bringing up Istio"
-sed -ie "s/cluster\.local/${CLUSTER_SUFFIX}/g" ./third_party/istio/istio-kind-no-mesh.yaml
-./third_party/istio/install-istio.sh istio-kind-no-mesh.yaml
+curl -sL https://istio.io/downloadIstioctl | sh -
+$HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
 
 echo ">> Deploy Gateway API resources"
 kubectl apply -f ./third_party/istio/gateway/
@@ -39,7 +40,7 @@ kubectl get pods --all-namespaces
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
    --enable-alpha --enable-beta \
-   --skip-tests="${UNSUPPORTED_TESTS}" \
+   --skip-tests="${ISTIO_UNSUPPORTED_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
    --cluster-suffix=${CLUSTER_SUFFIX}

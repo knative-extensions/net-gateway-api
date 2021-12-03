@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 The Knative Authors
+# Copyright 2021 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source $(dirname $0)/../download-istio.sh
-
-# Download Istio
-download_istio HEAD
-trap cleanup_istio EXIT
-
-# Install Istio with VirtualService status enabled
-${ISTIO_DIR}/bin/istioctl install -f "$(dirname $0)/$1" -y
+export GATEWAY_API_VERSION="v0.3.0"
+export ISTIO_VERSION="1.11.2"
+export ISTIO_UNSUPPORTED_TESTS="tls,retry,httpoption"
+export CONTOUR_VERSION="v1.19.0"
+export CONTOUR_UNSUPPORTED_TESTS="tls,retry,httpoption,basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,update,host-rewrite"

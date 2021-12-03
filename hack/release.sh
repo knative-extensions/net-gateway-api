@@ -66,4 +66,4 @@ function build_release() {
   ARTIFACTS_TO_PUBLISH="${all_yamls[@]}"
 }
 
-main $@
+main $@ --release-notes "docs/test-version.md"

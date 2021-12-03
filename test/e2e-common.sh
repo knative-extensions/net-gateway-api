@@ -16,6 +16,7 @@
 
 # This script includes common functions for testing setup and teardown.
 source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
+source $(dirname $0)/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
 
@@ -49,7 +50,8 @@ function test_setup() {
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
 
   echo ">> Bringing up Istio"
-  ./third_party/istio/install-istio.sh istio-ci-no-mesh.yaml
+  curl -sL https://istio.io/downloadIstioctl | sh -
+  $HOME/.istioctl/bin/istioctl install -y
 
   echo ">> Deploy Gateway API resources"
   kubectl apply -f ./third_party/istio/gateway/

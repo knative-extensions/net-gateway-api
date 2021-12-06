@@ -62,5 +62,10 @@ eval "echo \"${template}\"" > ${REPO_ROOT_DIR}/docs/test-version.md
 
 group "Update gateway API CRDs"
 
-echo "# Generated with \"kubectl kustomize https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}\"" > ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
-kubectl kustomize "https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}" >> ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
+if command -v kubectl &> /dev/null
+then
+  echo "# Generated with \"kubectl kustomize https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}\"" > ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
+  kubectl kustomize "https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}" >> ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
+else
+  echo "Skipping: kubectl command does not exist."
+fi

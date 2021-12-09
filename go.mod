@@ -3,13 +3,8 @@ module knative.dev/net-gateway-api
 go 1.16
 
 require (
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.5 // indirect
-	github.com/go-openapi/spec v0.19.6 // indirect
-	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/google/go-cmp v0.5.6
 	github.com/gorilla/websocket v1.4.2
-	github.com/mailru/easyjson v0.7.7 // indirect
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.42.0
 	k8s.io/api v0.21.4

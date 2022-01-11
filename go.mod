@@ -7,14 +7,14 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.42.0
-	k8s.io/api v0.21.4
-	k8s.io/apimachinery v0.21.4
-	k8s.io/client-go v0.21.4
-	k8s.io/code-generator v0.21.4
-	k8s.io/utils v0.0.0-20210305010621-2afb4311ab10
-	knative.dev/hack v0.0.0-20211216134818-6fc030496333
-	knative.dev/networking v0.0.0-20211216134818-62aefa409453
-	knative.dev/pkg v0.0.0-20211216142117-79271798f696
+	k8s.io/api v0.22.5
+	k8s.io/apimachinery v0.22.5
+	k8s.io/client-go v0.22.5
+	k8s.io/code-generator v0.22.5
+	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
+	knative.dev/hack v0.0.0-20220110200259-f08cb0dcdee7
+	knative.dev/networking v0.0.0-20220107020122-0dbedcd88acf
+	knative.dev/pkg v0.0.0-20220105211333-96f18522d78d
 	sigs.k8s.io/gateway-api v0.3.0
 	sigs.k8s.io/yaml v1.3.0
 )

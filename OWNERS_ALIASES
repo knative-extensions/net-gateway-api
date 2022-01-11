@@ -99,6 +99,7 @@ aliases:
   - matzew
   eventing-rabbitmq-approvers:
   - benmoss
+  - gvmw
   - salaboy
   - xtreme-sameer-vohra
   eventing-redis-approvers:
@@ -194,9 +195,11 @@ aliases:
   - ZhiminXiang
   - tcnghia
   net-contour-approvers:
+  - carlisia
   - dprotaso
   - tcnghia
   net-gateway-api-approvers:
+  - carlisia
   - nak3
   - tcnghia
   net-http01-approvers:

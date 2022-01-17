@@ -26,6 +26,9 @@ import (
 
 	_ "k8s.io/code-generator/cmd/deepcopy-gen"
 
+	// For chaos testing the leaderelection stuff.
+	_ "knative.dev/pkg/leaderelection/chaosduck"
+
 	// codegen: hack/generate-knative.sh
 	_ "knative.dev/pkg/hack"
 

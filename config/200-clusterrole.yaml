@@ -32,6 +32,6 @@ metadata:
     serving.knative.dev/release: devel
     serving.knative.dev/controller: "true"
 rules:
-  - apiGroups: ["networking.x-k8s.io"]
+  - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes", "gateways"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

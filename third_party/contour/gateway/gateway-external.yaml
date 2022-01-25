@@ -34,45 +34,23 @@ spec:
       type: LoadBalancerService
 ---
 kind: GatewayClass
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 metadata:
   name: contour-external-gatewayclass
 spec:
-  controller: projectcontour.io/contour-external/contour
-  parametersRef:
-    group: operator.projectcontour.io
-    kind: Contour
-    scope: Namespace
-    name: contour-external
-    namespace: contour-external
+  controllerName: projectcontour.io/contour-external/contour
 ---
 kind: Gateway
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 metadata:
-  name: contour-external
+  name: knative-gateway
   namespace: contour-external
 spec:
   gatewayClassName: contour-external-gatewayclass
   listeners:
-  - protocol: HTTP
+  - name: default
     port: 80
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          networking.knative.dev/visibility: ""
+    protocol: HTTP
+    allowedRoutes:
       namespaces:
-        from: "All"
-  - protocol: HTTPS
-    port: 443
-    tls:
-      mode: Terminate
-      routeOverride:
-        certificate: Allow
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          networking.knative.dev/visibility: ""
-      namespaces:
-        from: "All"
+        from: All

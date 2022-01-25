@@ -18,17 +18,17 @@ package resources
 
 import (
 	"context"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
-
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.
@@ -36,14 +36,14 @@ func MakeHTTPRoute(
 	ctx context.Context,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gwv1alpha1.HTTPRoute, error) {
+) (*gwv1alpha2.HTTPRoute, error) {
 
 	visibility := ""
 	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
 		visibility = "cluster-local"
 	}
 
-	return &gwv1alpha1.HTTPRoute{
+	return &gwv1alpha2.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
@@ -62,11 +62,11 @@ func MakeHTTPRoute(
 func makeHTTPRouteSpec(
 	ctx context.Context,
 	rule *netv1alpha1.IngressRule,
-) gwv1alpha1.HTTPRouteSpec {
+) gwv1alpha2.HTTPRouteSpec {
 
-	hostnames := make([]gwv1alpha1.Hostname, 0, len(rule.Hosts))
+	hostnames := make([]gwv1alpha2.Hostname, 0, len(rule.Hosts))
 	for _, hostname := range rule.Hosts {
-		hostnames = append(hostnames, gwv1alpha1.Hostname(hostname))
+		hostnames = append(hostnames, gwv1alpha2.Hostname(hostname))
 	}
 
 	rules := makeHTTPRouteRule(rule)
@@ -74,84 +74,136 @@ func makeHTTPRouteSpec(
 	gatewayConfig := config.FromContext(ctx).Gateway
 	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
 
-	gatewayRef := gwv1alpha1.GatewayReference{
-		Namespace: namespacedNameGateway.Namespace,
-		Name:      namespacedNameGateway.Name,
+	gatewayRef := gwv1alpha2.ParentRef{
+		Namespace: namespacePtr(gwv1alpha2.Namespace(namespacedNameGateway.Namespace)),
+		Name:      gwv1alpha2.ObjectName(namespacedNameGateway.Name),
 	}
 
-	return gwv1alpha1.HTTPRouteSpec{
+	return gwv1alpha2.HTTPRouteSpec{
 		Hostnames: hostnames,
 		Rules:     rules,
-		Gateways: &gwv1alpha1.RouteGateways{
-			Allow:       gatewayAllowTypePtr(gwv1alpha1.GatewayAllowFromList),
-			GatewayRefs: []gwv1alpha1.GatewayReference{gatewayRef},
-		},
+		CommonRouteSpec: gwv1alpha2.CommonRouteSpec{ParentRefs: []gwv1alpha2.ParentRef{
+			gatewayRef,
+		}},
 	}
 }
 
-func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gwv1alpha1.HTTPRouteRule {
-	rules := []gwv1alpha1.HTTPRouteRule{}
+func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gwv1alpha2.HTTPRouteRule {
+	rules := []gwv1alpha2.HTTPRouteRule{}
 
 	for _, path := range rule.HTTP.Paths {
-		forwards := make([]gwv1alpha1.HTTPRouteForwardTo, 0, len(path.Splits))
-		var preFilters []gwv1alpha1.HTTPRouteFilter
+		backendRefs := make([]gwv1alpha2.HTTPBackendRef, 0, len(path.Splits))
+		var preFilters []gwv1alpha2.HTTPRouteFilter
 
 		if path.AppendHeaders != nil {
-			preFilters = []gwv1alpha1.HTTPRouteFilter{{
-				Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-					Set: path.AppendHeaders,
+			headers := []gwv1alpha2.HTTPHeader{}
+			for k, v := range path.AppendHeaders {
+				header := gwv1alpha2.HTTPHeader{
+					Name:  gwv1alpha2.HTTPHeaderName(k),
+					Value: v,
+				}
+				headers = append(headers, header)
+			}
+
+			// Sort HTTPHeader as the order is random.
+			sort.Sort(HTTPHeaderList(headers))
+
+			preFilters = []gwv1alpha2.HTTPRouteFilter{{
+				Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
+					Set: headers,
 				}}}
 		}
 
-		var set map[string]string
-		if path.RewriteHost != "" {
-			set = map[string]string{"Host": path.RewriteHost, ":Authority": path.RewriteHost}
-		}
 		for _, split := range path.Splits {
+			headers := []gwv1alpha2.HTTPHeader{}
+			for k, v := range split.AppendHeaders {
+				header := gwv1alpha2.HTTPHeader{
+					Name:  gwv1alpha2.HTTPHeaderName(k),
+					Value: v,
+				}
+				headers = append(headers, header)
+			}
+
+			// Sort HTTPHeader as the order is random.
+			sort.Sort(HTTPHeaderList(headers))
+
 			name := split.IngressBackend.ServiceName
-			forward := gwv1alpha1.HTTPRouteForwardTo{
-				Port:        portNumPtr(split.ServicePort.IntValue()),
-				ServiceName: &name,
-				Weight:      pointer.Int32Ptr(int32(split.Percent)),
-				Filters: []gwv1alpha1.HTTPRouteFilter{{
-					Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-						Set: kmeta.UnionMaps(split.AppendHeaders, set),
+			backendRef := gwv1alpha2.HTTPBackendRef{
+				BackendRef: gwv1alpha2.BackendRef{
+					BackendObjectReference: gwv1alpha2.BackendObjectReference{
+						Port: portNumPtr(split.ServicePort.IntValue()),
+						Name: gwv1alpha2.ObjectName(name),
+					},
+					Weight: pointer.Int32Ptr(int32(split.Percent)),
+				},
+				Filters: []gwv1alpha2.HTTPRouteFilter{{
+					Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
+						Set: headers,
 					}},
 				}}
-			forwards = append(forwards, forward)
+			backendRefs = append(backendRefs, backendRef)
 		}
 
 		pathPrefix := "/"
 		if path.Path != "" {
 			pathPrefix = path.Path
 		}
-		pathMatch := gwv1alpha1.HTTPPathMatch{
-			Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+		pathMatch := gwv1alpha2.HTTPPathMatch{
+			Type:  pathMatchTypePtr(gwv1alpha2.PathMatchPathPrefix),
 			Value: pointer.StringPtr(pathPrefix),
 		}
 
-		var headersMatch *gwv1alpha1.HTTPHeaderMatch
-		if path.Headers != nil {
-			header := make(map[string]string, len(path.Headers))
-			for k, v := range path.Headers {
-				header[k] = v.Exact
+		headerMatchList := []gwv1alpha2.HTTPHeaderMatch{}
+		for k, v := range path.Headers {
+			headerMatch := gwv1alpha2.HTTPHeaderMatch{
+				Type:  headerMatchTypePtr(gwv1alpha2.HeaderMatchExact),
+				Name:  gwv1alpha2.HTTPHeaderName(k),
+				Value: v.Exact,
 			}
-			headersMatch = &gwv1alpha1.HTTPHeaderMatch{
-				Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
-				Values: header,
-			}
+			headerMatchList = append(headerMatchList, headerMatch)
 		}
 
-		matches := []gwv1alpha1.HTTPRouteMatch{{Path: &pathMatch, Headers: headersMatch}}
+		// Sort HTTPHeaderMatch as the order is random.
+		sort.Sort(HTTPHeaderMatchList(headerMatchList))
 
-		rule := gwv1alpha1.HTTPRouteRule{
-			ForwardTo: forwards,
-			Filters:   preFilters,
-			Matches:   matches,
+		matches := []gwv1alpha2.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
+
+		rule := gwv1alpha2.HTTPRouteRule{
+			BackendRefs: backendRefs,
+			Filters:     preFilters,
+			Matches:     matches,
 		}
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+type HTTPHeaderList []gwv1alpha2.HTTPHeader
+
+func (h HTTPHeaderList) Len() int {
+	return len(h)
+}
+
+func (h HTTPHeaderList) Less(i, j int) bool {
+	return h[i].Name > h[j].Name
+}
+
+func (h HTTPHeaderList) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+type HTTPHeaderMatchList []gwv1alpha2.HTTPHeaderMatch
+
+func (h HTTPHeaderMatchList) Len() int {
+	return len(h)
+}
+
+func (h HTTPHeaderMatchList) Less(i, j int) bool {
+	return h[i].Name > h[j].Name
+}
+
+func (h HTTPHeaderMatchList) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
 }

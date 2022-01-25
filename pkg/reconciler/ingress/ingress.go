@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
@@ -32,7 +32,7 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 
 	gwapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	gwlisters "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha1"
+	gwlisters "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
@@ -128,11 +128,11 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if
 // all gateways have been admitted.
-func isHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) bool {
-	if r.Status.Gateways == nil {
+func isHTTPRouteReady(r *gatewayv1alpha2.HTTPRoute) bool {
+	if r.Status.Parents == nil {
 		return false
 	}
-	for _, gw := range r.Status.Gateways {
+	for _, gw := range r.Status.Parents {
 		if !isGatewayAdmitted(gw) {
 			// Return false if _any_ of the gateways isn't admitted yet.
 			return false
@@ -141,9 +141,9 @@ func isHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) bool {
 	return true
 }
 
-func isGatewayAdmitted(gw gatewayv1alpha1.RouteGatewayStatus) bool {
+func isGatewayAdmitted(gw gatewayv1alpha2.RouteParentStatus) bool {
 	for _, condition := range gw.Conditions {
-		if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) {
+		if condition.Type == string(gatewayv1alpha2.ConditionRouteAccepted) {
 			return condition.Status == metav1.ConditionTrue
 		}
 	}

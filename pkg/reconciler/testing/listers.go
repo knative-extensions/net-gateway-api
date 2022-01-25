@@ -22,7 +22,7 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	networking "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeservingclientset "knative.dev/networking/pkg/client/clientset/versioned/fake"
@@ -30,7 +30,7 @@ import (
 	"knative.dev/pkg/reconciler/testing"
 
 	fakegatewayapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/fake"
-	gwlisters "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha1"
+	gwlisters "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
 )
 
 var clientSetSchemes = []func(*runtime.Scheme) error{
@@ -92,7 +92,7 @@ func (l *Listers) GetIngressLister() networkinglisters.IngressLister {
 
 // GetHTTPRouteLister get lister for HTTPProxy resource.
 func (l *Listers) GetHTTPRouteLister() gwlisters.HTTPRouteLister {
-	return gwlisters.NewHTTPRouteLister(l.IndexerFor(&gwv1alpha1.HTTPRoute{}))
+	return gwlisters.NewHTTPRouteLister(l.IndexerFor(&gwv1alpha2.HTTPRoute{}))
 }
 
 // GetEndpointsLister get lister for K8s Endpoints resource.

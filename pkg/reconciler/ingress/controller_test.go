@@ -30,8 +30,8 @@ import (
 
 	. "knative.dev/pkg/reconciler/testing"
 
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/gateway/fake"
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha1/httproute/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/gateway/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/httproute/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 

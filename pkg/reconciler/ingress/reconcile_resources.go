@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -35,7 +35,7 @@ import (
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context, ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gwv1alpha1.HTTPRoute, error) {
+) (*gwv1alpha2.HTTPRoute, error) {
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
@@ -44,7 +44,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 		if err != nil {
 			return nil, err
 		}
-		httproute, err = c.gwapiclient.NetworkingV1alpha1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		httproute, err = c.gwapiclient.GatewayV1alpha2().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
 			return nil, fmt.Errorf("failed to create HTTPRoute: %w", err)
@@ -70,7 +70,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 			origin.Annotations = desired.Annotations
 			origin.Labels = desired.Labels
 
-			updated, err := c.gwapiclient.NetworkingV1alpha1().HTTPRoutes(origin.Namespace).Update(
+			updated, err := c.gwapiclient.GatewayV1alpha2().HTTPRoutes(origin.Namespace).Update(
 				ctx, origin, metav1.UpdateOptions{})
 			if err != nil {
 				recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)

@@ -19,23 +19,23 @@ package resources
 import (
 	"sort"
 
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-func gatewayAllowTypePtr(val gwv1alpha1.GatewayAllowType) *gwv1alpha1.GatewayAllowType {
+func namespacePtr(val gwv1alpha2.Namespace) *gwv1alpha2.Namespace {
 	return &val
 }
 
-func headerMatchTypePtr(val gwv1alpha1.HeaderMatchType) *gwv1alpha1.HeaderMatchType {
+func headerMatchTypePtr(val gwv1alpha2.HeaderMatchType) *gwv1alpha2.HeaderMatchType {
 	return &val
 }
 
-func portNumPtr(port int) *gwv1alpha1.PortNumber {
-	pn := gwv1alpha1.PortNumber(port)
+func portNumPtr(port int) *gwv1alpha2.PortNumber {
+	pn := gwv1alpha2.PortNumber(port)
 	return &pn
 }
 
-func pathMatchTypePtr(val gwv1alpha1.PathMatchType) *gwv1alpha1.PathMatchType {
+func pathMatchTypePtr(val gwv1alpha2.PathMatchType) *gwv1alpha2.PathMatchType {
 	return &val
 }
 

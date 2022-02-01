@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpa2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -35,7 +35,7 @@ import (
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context, ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gwv1alpha2.HTTPRoute, error) {
+) (*gatewayv1alpa2.HTTPRoute, error) {
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))

@@ -30,7 +30,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
-	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -40,10 +40,10 @@ const (
 )
 
 var (
-	externalHost      = gwv1alpha2.Hostname(testHosts[0])
-	localHostShortest = gwv1alpha2.Hostname(testLocalHosts[0])
-	localHostShort    = gwv1alpha2.Hostname(testLocalHosts[1])
-	localHostFull     = gwv1alpha2.Hostname(testLocalHosts[2])
+	externalHost      = gatewayv1alpha2.Hostname(testHosts[0])
+	localHostShortest = gatewayv1alpha2.Hostname(testLocalHosts[0])
+	localHostShort    = gatewayv1alpha2.Hostname(testLocalHosts[1])
+	localHostFull     = gatewayv1alpha2.Hostname(testLocalHosts[2])
 
 	testLocalHosts = []string{
 		"hello-example.default",
@@ -58,7 +58,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		ing      *v1alpha1.Ingress
-		expected []*gwv1alpha2.HTTPRoute
+		expected []*gatewayv1alpha2.HTTPRoute
 	}{
 		{
 			name: "single external domain with split and cluster local",
@@ -135,7 +135,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 					}},
 			},
-			expected: []*gwv1alpha2.HTTPRoute{
+			expected: []*gatewayv1alpha2.HTTPRoute{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      LongestHost(testHosts),
@@ -146,21 +146,21 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 						Annotations: map[string]string{},
 					},
-					Spec: gwv1alpha2.HTTPRouteSpec{
-						Hostnames: []gwv1alpha2.Hostname{externalHost},
-						Rules: []gwv1alpha2.HTTPRouteRule{{
-							BackendRefs: []gwv1alpha2.HTTPBackendRef{{
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+					Spec: gatewayv1alpha2.HTTPRouteSpec{
+						Hostnames: []gatewayv1alpha2.Hostname{externalHost},
+						Rules: []gatewayv1alpha2.HTTPRouteRule{{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(123),
-										Name: gwv1alpha2.ObjectName("goo"),
+										Name: gatewayv1alpha2.ObjectName("goo"),
 									},
 									Weight: pointer.Int32Ptr(int32(12)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
 											{
 												Name:  "Bleep",
 												Value: "bloop",
@@ -171,17 +171,17 @@ func TestMakeHTTPRoute(t *testing.T) {
 											},
 										}}}},
 							}, {
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(124),
-										Name: gwv1alpha2.ObjectName("doo"),
+										Name: gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(88)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
 											{
 												Name:  "Baz",
 												Value: "blurg",
@@ -189,30 +189,30 @@ func TestMakeHTTPRoute(t *testing.T) {
 										},
 									}}},
 							}},
-							Filters: []gwv1alpha2.HTTPRouteFilter{{
-								Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-									Set: []gwv1alpha2.HTTPHeader{
+							Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+								Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+									Set: []gatewayv1alpha2.HTTPHeader{
 										{
 											Name:  "Foo",
 											Value: "bar",
 										},
 									},
 								}}},
-							Matches: []gwv1alpha2.HTTPRouteMatch{
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
 								{
-									Path: &gwv1alpha2.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha2.PathMatchPathPrefix),
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/"),
 									},
-									Headers: []gwv1alpha2.HTTPHeaderMatch{},
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
 								},
 							},
 						}},
-						CommonRouteSpec: gwv1alpha2.CommonRouteSpec{
-							ParentRefs: []gwv1alpha2.ParentRef{{
+						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+							ParentRefs: []gatewayv1alpha2.ParentRef{{
 								Namespace: namespacePtr("test-ns"),
-								Name:      gwv1alpha2.ObjectName("foo"),
+								Name:      gatewayv1alpha2.ObjectName("foo"),
 							}},
 						},
 					},
@@ -226,21 +226,21 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 						Annotations: map[string]string{},
 					},
-					Spec: gwv1alpha2.HTTPRouteSpec{
-						Hostnames: []gwv1alpha2.Hostname{localHostShortest, localHostShort, localHostFull},
-						Rules: []gwv1alpha2.HTTPRouteRule{{
-							BackendRefs: []gwv1alpha2.HTTPBackendRef{{
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+					Spec: gatewayv1alpha2.HTTPRouteSpec{
+						Hostnames: []gatewayv1alpha2.Hostname{localHostShortest, localHostShort, localHostFull},
+						Rules: []gatewayv1alpha2.HTTPRouteRule{{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(123),
-										Name: gwv1alpha2.ObjectName("goo"),
+										Name: gatewayv1alpha2.ObjectName("goo"),
 									},
 									Weight: pointer.Int32Ptr(int32(12)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
 											{
 												Name:  "Bleep",
 												Value: "bloop",
@@ -251,17 +251,17 @@ func TestMakeHTTPRoute(t *testing.T) {
 											},
 										}}}},
 							}, {
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(124),
-										Name: gwv1alpha2.ObjectName("doo"),
+										Name: gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(88)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
 											{
 												Name:  "Baz",
 												Value: "blurg",
@@ -269,28 +269,28 @@ func TestMakeHTTPRoute(t *testing.T) {
 										},
 									}}},
 							}},
-							Filters: []gwv1alpha2.HTTPRouteFilter{{
-								Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-									Set: []gwv1alpha2.HTTPHeader{
+							Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+								Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+									Set: []gatewayv1alpha2.HTTPHeader{
 										{
 											Name:  "Foo",
 											Value: "bar",
 										},
 									},
 								}}},
-							Matches: []gwv1alpha2.HTTPRouteMatch{{
-								Path: &gwv1alpha2.HTTPPathMatch{
-									Type:  pathMatchTypePtr(gwv1alpha2.PathMatchPathPrefix),
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{{
+								Path: &gatewayv1alpha2.HTTPPathMatch{
+									Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 									Value: pointer.StringPtr("/"),
 								},
-								Headers: []gwv1alpha2.HTTPHeaderMatch{},
+								Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
 							}},
 						}},
-						CommonRouteSpec: gwv1alpha2.CommonRouteSpec{
-							ParentRefs: []gwv1alpha2.ParentRef{{
+						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+							ParentRefs: []gatewayv1alpha2.ParentRef{{
 								Namespace: namespacePtr("test-ns"),
-								Name:      gwv1alpha2.ObjectName("foo-local"),
+								Name:      gatewayv1alpha2.ObjectName("foo-local"),
 							}},
 						},
 					},
@@ -341,7 +341,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 				}}},
 			},
-			expected: []*gwv1alpha2.HTTPRoute{{
+			expected: []*gatewayv1alpha2.HTTPRoute{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      LongestHost(testHosts),
 					Namespace: testNamespace,
@@ -351,67 +351,67 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 				},
-				Spec: gwv1alpha2.HTTPRouteSpec{
-					Hostnames: []gwv1alpha2.Hostname{externalHost},
-					Rules: []gwv1alpha2.HTTPRouteRule{
+				Spec: gatewayv1alpha2.HTTPRouteSpec{
+					Hostnames: []gatewayv1alpha2.Hostname{externalHost},
+					Rules: []gatewayv1alpha2.HTTPRouteRule{
 						{
-							BackendRefs: []gwv1alpha2.HTTPBackendRef{{
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(123),
-										Name: gwv1alpha2.ObjectName("goo"),
+										Name: gatewayv1alpha2.ObjectName("goo"),
 									},
 									Weight: pointer.Int32Ptr(int32(100)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{}}}},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{}}}},
 							}},
-							Matches: []gwv1alpha2.HTTPRouteMatch{
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
 								{
-									Path: &gwv1alpha2.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha2.PathMatchPathPrefix),
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/"),
 									},
-									Headers: []gwv1alpha2.HTTPHeaderMatch{{
-										Type:  headerMatchTypePtr(gwv1alpha2.HeaderMatchExact),
-										Name:  gwv1alpha2.HTTPHeaderName("tag"),
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
+										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+										Name:  gatewayv1alpha2.HTTPHeaderName("tag"),
 										Value: "goo",
 									}},
 								}},
 						}, {
-							BackendRefs: []gwv1alpha2.HTTPBackendRef{{
-								BackendRef: gwv1alpha2.BackendRef{
-									BackendObjectReference: gwv1alpha2.BackendObjectReference{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 										Port: portNumPtr(124),
-										Name: gwv1alpha2.ObjectName("doo"),
+										Name: gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(100)),
 								},
-								Filters: []gwv1alpha2.HTTPRouteFilter{{
-									Type: gwv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha2.HTTPRequestHeaderFilter{
-										Set: []gwv1alpha2.HTTPHeader{}}}},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{}}}},
 							}},
-							Matches: []gwv1alpha2.HTTPRouteMatch{
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
 								{
-									Path: &gwv1alpha2.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha2.PathMatchPathPrefix),
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/doo"),
 									},
-									Headers: []gwv1alpha2.HTTPHeaderMatch{{
-										Type:  headerMatchTypePtr(gwv1alpha2.HeaderMatchExact),
-										Name:  gwv1alpha2.HTTPHeaderName("tag"),
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
+										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+										Name:  gatewayv1alpha2.HTTPHeaderName("tag"),
 										Value: "doo",
 									}},
 								}},
 						},
 					},
-					CommonRouteSpec: gwv1alpha2.CommonRouteSpec{
-						ParentRefs: []gwv1alpha2.ParentRef{{
+					CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+						ParentRefs: []gatewayv1alpha2.ParentRef{{
 							Namespace: namespacePtr("test-ns"),
-							Name:      gwv1alpha2.ObjectName("foo"),
+							Name:      gatewayv1alpha2.ObjectName("foo"),
 						}},
 					},
 				},

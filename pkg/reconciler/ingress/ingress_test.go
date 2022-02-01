@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
-	gwv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	netpkg "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
@@ -312,7 +312,7 @@ func httpRoute(t *testing.T, i *v1alpha1.Ingress, opts ...HTTPRouteOption) runti
 	return httpRoute
 }
 
-type HTTPRouteOption func(h *gwv1alpha2.HTTPRoute)
+type HTTPRouteOption func(h *gatewayv1alpha2.HTTPRoute)
 
 func withGatewayAPIclass(i *v1alpha1.Ingress) {
 	withAnnotation(map[string]string{

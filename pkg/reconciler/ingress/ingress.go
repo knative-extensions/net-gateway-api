@@ -32,7 +32,7 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 
 	gwapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	gwlisters "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
+	gatewayListers "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
@@ -48,7 +48,7 @@ type Reconciler struct {
 	gwapiclient gwapiclientset.Interface
 
 	// Listers index properties about resources
-	httprouteLister gwlisters.HTTPRouteLister
+	httprouteLister gatewayListers.HTTPRouteLister
 }
 
 var (

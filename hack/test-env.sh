@@ -17,5 +17,5 @@
 export GATEWAY_API_VERSION="v0.4.0"
 export ISTIO_VERSION="1.12.2"
 export ISTIO_UNSUPPORTED_TESTS="tls,retry,httpoption,host-rewrite"
-export CONTOUR_VERSION="v1.20.0-beta.1"
+export CONTOUR_VERSION="v1.20.0"
 export CONTOUR_UNSUPPORTED_TESTS="tls,retry,httpoption,basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,visibility,update,host-rewrite"

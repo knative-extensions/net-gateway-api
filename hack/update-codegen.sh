@@ -32,13 +32,13 @@ group "Gateway API Codegen"
 # Gateway API
 ${CODEGEN_PKG}/generate-groups.sh "client,informer,lister" \
   knative.dev/net-gateway-api/pkg/client/gatewayapi sigs.k8s.io/gateway-api \
-  "apis:v1alpha1" \
+  "apis:v1alpha2" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 ## Gateway API
 ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   knative.dev/net-gateway-api/pkg/client/gatewayapi sigs.k8s.io/gateway-api \
-  "apis:v1alpha1" \
+  "apis:v1alpha2" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 group "Deepcopy Gen"

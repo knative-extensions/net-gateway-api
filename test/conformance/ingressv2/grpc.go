@@ -32,7 +32,7 @@ import (
 	"k8s.io/utils/pointer"
 	"knative.dev/net-gateway-api/test"
 	ping "knative.dev/networking/test/test_images/grpc-ping/proto"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // TestGRPC verifies that GRPC may be used via a simple Ingress.
@@ -46,15 +46,21 @@ func TestGRPC(t *testing.T) {
 	domain := name + ".example.com"
 
 	// Create a simple Ingress over the Service.
-	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
-		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(domain)},
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-				Port:        portNumPtr(port),
-				ServiceName: &name,
-			}},
-		}}})
+	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testGateway,
+		}},
+		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(domain)},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+				BackendRef: gatewayv1alpha2.BackendRef{
+					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						Port: portNumPtr(port),
+						Name: gatewayv1alpha2.ObjectName(name),
+					}}},
+			},
+		}},
+	})
 
 	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/18
 	// As Ingress v2 does not have prober, it needs to make sure backend is ready.
@@ -104,22 +110,34 @@ func TestGRPCSplit(t *testing.T) {
 	// Create a simple Ingress over the Service.
 	name := test.ObjectNameForTest(t)
 	domain := name + ".example.com"
-	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gwv1alpha1.HTTPRouteSpec{
-		Gateways:  testGateway,
-		Hostnames: []gwv1alpha1.Hostname{gwv1alpha1.Hostname(name + ".example.com")},
-		Rules: []gwv1alpha1.HTTPRouteRule{{
-			ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{
+	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+			testGateway,
+		}},
+		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
+		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
 				{
-					Port:        portNumPtr(bluePort),
-					ServiceName: &blueName,
-					Weight:      pointer.Int32Ptr(1),
-				}, {
-					Port:        portNumPtr(greenPort),
-					ServiceName: &greenName,
-					Weight:      pointer.Int32Ptr(1),
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Port: portNumPtr(bluePort),
+							Name: gatewayv1alpha2.ObjectName(blueName),
+						},
+						Weight: pointer.Int32Ptr(1),
+					},
+				},
+				{
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Port: portNumPtr(greenPort),
+							Name: gatewayv1alpha2.ObjectName(greenName),
+						},
+						Weight: pointer.Int32Ptr(1),
+					},
 				},
 			},
-		}}})
+		}},
+	})
 
 	// TODO: https://github.com/knative-sandbox/net-gateway-api/issues/18
 	// As Ingress v2 does not have prober, it needs to make sure backend is ready.

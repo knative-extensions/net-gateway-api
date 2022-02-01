@@ -56,27 +56,25 @@ import (
 	pkgTest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging"
 
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-func pathMatchTypePtr(val gatewayv1alpha1.PathMatchType) *gatewayv1alpha1.PathMatchType {
+func pathMatchTypePtr(val gatewayv1alpha2.PathMatchType) *gatewayv1alpha2.PathMatchType {
 	return &val
 }
 
-func headerMatchTypePtr(val gatewayv1alpha1.HeaderMatchType) *gatewayv1alpha1.HeaderMatchType {
+func headerMatchTypePtr(val gatewayv1alpha2.HeaderMatchType) *gatewayv1alpha2.HeaderMatchType {
 	return &val
 }
 
-func gatewayAllowTypePtr(val gatewayv1alpha1.GatewayAllowType) *gatewayv1alpha1.GatewayAllowType {
-	return &val
-}
-
-func portNumPtr(port int) *gatewayv1alpha1.PortNumber {
-	pn := gatewayv1alpha1.PortNumber(port)
+func portNumPtr(port int) *gatewayv1alpha2.PortNumber {
+	pn := gatewayv1alpha2.PortNumber(port)
 	return &pn
 }
 
-var rootCAs = x509.NewCertPool()
+func namespacePtr(val gatewayv1alpha2.Namespace) *gatewayv1alpha2.Namespace {
+	return &val
+}
 
 var dialBackoff = wait.Backoff{
 	Duration: 50 * time.Millisecond,
@@ -86,19 +84,31 @@ var dialBackoff = wait.Backoff{
 	Cap:      10 * time.Second,
 }
 
-var testGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
+var testGateway = gatewayv1alpha2.ParentRef{
+	Name:      "knative-gateway",
+	Namespace: namespacePtr(gatewayNamespace()),
 }
 
-var testLocalGateway = &gatewayv1alpha1.RouteGateways{
-	Allow: gatewayAllowTypePtr(gatewayv1alpha1.GatewayAllowAll),
+var testLocalGateway = gatewayv1alpha2.ParentRef{
+	Name:      "knative-local-gateway",
+	Namespace: namespacePtr(localGatewayNamespace()),
 }
 
-// gatewayLabel is added to HTTPRoute. The external gateway selects the generated HTTPRoute by this label.
-var gatewayLabel = map[string]string{"networking.knative.dev/visibility": ""}
+func gatewayNamespace() gatewayv1alpha2.Namespace {
+	namespace := "istio-system"
+	if gatewayNsOverride := os.Getenv("GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
+		namespace = gatewayNsOverride
+	}
+	return gatewayv1alpha2.Namespace(namespace)
+}
 
-// gatewayLabel is added to HTTPRoute. The local gateway selects the generated HTTPRoute by this label.
-var gatewayLocalLabel = map[string]string{"networking.knative.dev/visibility": "cluster-local"}
+func localGatewayNamespace() gatewayv1alpha2.Namespace {
+	namespace := "istio-system"
+	if gatewayNsOverride := os.Getenv("LOCAL_GATEWAY_NAMESPACE_OVERRIDE"); gatewayNsOverride != "" {
+		namespace = gatewayNsOverride
+	}
+	return gatewayv1alpha2.Namespace(namespace)
+}
 
 // uaRoundTripper wraps the given http.RoundTripper and
 // sets a custom UserAgent.
@@ -681,23 +691,16 @@ func createPodAndService(ctx context.Context, t *testing.T, clients *test.Client
 }
 
 // Option enables further configuration of a HTTPRoute.
-type Option func(*gatewayv1alpha1.HTTPRoute)
+type Option func(*gatewayv1alpha2.HTTPRoute)
 
 // OverrideHTTPRouteAnnotation overrides the HTTPRoute annotation.
 func OverrideHTTPRouteAnnotation(annotations map[string]string) Option {
-	return func(hr *gatewayv1alpha1.HTTPRoute) {
+	return func(hr *gatewayv1alpha2.HTTPRoute) {
 		hr.Annotations = annotations
 	}
 }
 
-// OverrideHTTPRouteLabel overrides the HTTPRoute label.
-func OverrideHTTPRouteLabel(labels map[string]string) Option {
-	return func(hr *gatewayv1alpha1.HTTPRoute) {
-		hr.Labels = labels
-	}
-}
-
-func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, func(context.Context, string, string) (net.Conn, error), context.CancelFunc) {
+func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha2.HTTPRouteSpec, io ...Option) (*gatewayv1alpha2.HTTPRoute, func(context.Context, string, string) (net.Conn, error), context.CancelFunc) {
 	t.Helper()
 
 	hr, cancel := CreateHTTPRoute(ctx, t, clients, spec, io...)
@@ -721,17 +724,16 @@ func createHTTPRouteReadyDialContext(ctx context.Context, t *testing.T, clients 
 }
 
 // CreateHTTPRoute creates a HTTPRoute resource
-func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, context.CancelFunc) {
+func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha2.HTTPRouteSpec, io ...Option) (*gatewayv1alpha2.HTTPRoute, context.CancelFunc) {
 	t.Helper()
 
 	name := test.ObjectNameForTest(t)
 
 	// Create a simple HTTPRoute over the Service.
-	hr := &gatewayv1alpha1.HTTPRoute{
+	hr := &gatewayv1alpha2.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: test.ServingNamespace,
-			Labels:    gatewayLabel,
 		},
 		Spec: spec,
 	}
@@ -745,11 +747,11 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 	t.Cleanup(func() { clients.GatewayAPIClient.HTTPRoutes.Delete(ctx, hr.Name, metav1.DeleteOptions{}) })
 	if err := reconciler.RetryTestErrors(func(attempts int) (err error) {
 		if attempts > 0 {
-			t.Logf("Attempt %d creating ingress %s", attempts, hr.Name)
+			t.Logf("Attempt %d creating httproute %s", attempts, hr.Name)
 		}
 		hr, err = clients.GatewayAPIClient.HTTPRoutes.Create(ctx, hr, metav1.CreateOptions{})
 		if err != nil {
-			t.Logf("Attempt %d creating ingress failed with: %v", attempts, err)
+			t.Logf("Attempt %d creating httproute failed with: %v", attempts, err)
 		}
 		return err
 	}); err != nil {
@@ -764,20 +766,15 @@ func CreateHTTPRoute(ctx context.Context, t *testing.T, clients *test.Clients, s
 	}
 }
 
-func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha1.HTTPRouteSpec, io ...Option) (*gatewayv1alpha1.HTTPRoute, *http.Client, context.CancelFunc) {
+func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha2.HTTPRouteSpec, io ...Option) (*gatewayv1alpha2.HTTPRoute, *http.Client, context.CancelFunc) {
+	return CreateHTTPRouteReadyWithTLS(ctx, t, clients, spec, nil)
+}
 
+func CreateHTTPRouteReadyWithTLS(ctx context.Context, t *testing.T, clients *test.Clients, spec gatewayv1alpha2.HTTPRouteSpec, tlsConfig *tls.Config, io ...Option) (*gatewayv1alpha2.HTTPRoute, *http.Client, context.CancelFunc) {
 	t.Helper()
 
 	// Create a client with a dialer based on the HTTPRoute' public load balancer.
 	hr, dialer, cancel := createHTTPRouteReadyDialContext(ctx, t, clients, spec, io...)
-
-	var tlsConfig *tls.Config
-	if hr.Spec.TLS != nil {
-		// CAs are added to this as TLS secrets are created.
-		tlsConfig = &tls.Config{
-			RootCAs: rootCAs,
-		}
-	}
 
 	return hr, &http.Client{
 		Transport: &uaRoundTripper{
@@ -792,12 +789,7 @@ func CreateHTTPRouteReady(ctx context.Context, t *testing.T, clients *test.Clien
 
 // CreateTLSSecret creates a secret with TLS certs in the serving namespace.
 // This is based on https://golang.org/src/crypto/tls/generate_cert.go
-func CreateTLSSecret(ctx context.Context, t *testing.T, clients *test.Clients, hosts []string) (string, context.CancelFunc) {
-	return CreateTLSSecretWithCertPool(ctx, t, clients, hosts, test.ServingNamespace, rootCAs)
-}
-
-// CreateTLSSecretWithCertPool creates TLS certificate with given CertPool.
-func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *test.Clients, hosts []string, ns string, cas *x509.CertPool) (string, context.CancelFunc) {
+func CreateTLSSecret(ctx context.Context, t *testing.T, clients *test.Clients, hosts []string) (string, *tls.Config, context.CancelFunc) {
 	t.Helper()
 
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
@@ -838,9 +830,10 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 	if err != nil {
 		t.Fatal("ParseCertificate() =", err)
 	}
+	pool := x509.NewCertPool()
 	// Ideally we'd undo this in "cancel", but there doesn't
 	// seem to be a mechanism to remove things from a pool.
-	cas.AddCert(cert)
+	pool.AddCert(cert)
 
 	certPEM := &bytes.Buffer{}
 	if err := pem.Encode(certPEM, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
@@ -860,7 +853,7 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: ns,
+			Namespace: test.ServingNamespace,
 			Labels: map[string]string{
 				"test-secret": name,
 			},
@@ -877,7 +870,7 @@ func CreateTLSSecretWithCertPool(ctx context.Context, t *testing.T, clients *tes
 	if _, err := clients.KubeClient.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 		t.Fatal("Error creating Secret:", err)
 	}
-	return name, func() {
+	return name, &tls.Config{RootCAs: pool}, func() {
 		err := clients.KubeClient.CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
 		if err != nil {
 			t.Errorf("Error cleaning up Secret %s: %v", secret.Name, err)
@@ -1087,11 +1080,11 @@ func IsDialError(err error) bool {
 // PollInterval until inState returns `true` indicating it is done, returns an
 // error or PollTimeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, name string, inState func(r *gatewayv1alpha1.HTTPRoute) (bool, error), desc string) error {
+func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, name string, inState func(r *gatewayv1alpha2.HTTPRoute) (bool, error), desc string) error {
 	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForHTTPRouteState/%s/%s", name, desc))
 	defer span.End()
 
-	var lastState *gatewayv1alpha1.HTTPRoute
+	var lastState *gatewayv1alpha2.HTTPRoute
 	waitErr := wait.PollImmediate(test.PollInterval, test.PollTimeout, func() (bool, error) {
 		err := reconciler.RetryTestErrors(func(attempts int) (err error) {
 			lastState, err = client.HTTPRoutes.Get(ctx, name, metav1.GetOptions{})
@@ -1111,11 +1104,11 @@ func WaitForHTTPRouteState(ctx context.Context, client *test.GatewayAPIClients, 
 
 // IsHTTPRouteReady will check the status conditions of the ingress and return true if
 // all gateways have been admitted.
-func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
-	if r.Status.Gateways == nil {
+func IsHTTPRouteReady(r *gatewayv1alpha2.HTTPRoute) (bool, error) {
+	if r.Status.Parents == nil {
 		return false, nil
 	}
-	for _, gw := range r.Status.Gateways {
+	for _, gw := range r.Status.Parents {
 		if !isGatewayAdmitted(gw) {
 			// Return false if _any_ of the gateways isn't admitted yet.
 			return false, nil
@@ -1124,9 +1117,9 @@ func IsHTTPRouteReady(r *gatewayv1alpha1.HTTPRoute) (bool, error) {
 	return true, nil
 }
 
-func isGatewayAdmitted(gw gatewayv1alpha1.RouteGatewayStatus) bool {
+func isGatewayAdmitted(gw gatewayv1alpha2.RouteParentStatus) bool {
 	for _, condition := range gw.Conditions {
-		if condition.Type == string(gatewayv1alpha1.ConditionRouteAdmitted) {
+		if condition.Type == string(gatewayv1alpha2.ConditionRouteAccepted) {
 			return condition.Status == metav1.ConditionTrue
 		}
 	}

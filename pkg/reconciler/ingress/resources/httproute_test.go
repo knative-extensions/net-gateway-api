@@ -30,7 +30,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -40,10 +40,10 @@ const (
 )
 
 var (
-	externalHost      = gwv1alpha1.Hostname(testHosts[0])
-	localHostShortest = gwv1alpha1.Hostname(testLocalHosts[0])
-	localHostShort    = gwv1alpha1.Hostname(testLocalHosts[1])
-	localHostFull     = gwv1alpha1.Hostname(testLocalHosts[2])
+	externalHost      = gatewayv1alpha2.Hostname(testHosts[0])
+	localHostShortest = gatewayv1alpha2.Hostname(testLocalHosts[0])
+	localHostShort    = gatewayv1alpha2.Hostname(testLocalHosts[1])
+	localHostFull     = gatewayv1alpha2.Hostname(testLocalHosts[2])
 
 	testLocalHosts = []string{
 		"hello-example.default",
@@ -58,7 +58,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		ing      *v1alpha1.Ingress
-		expected []*gwv1alpha1.HTTPRoute
+		expected []*gatewayv1alpha2.HTTPRoute
 	}{
 		{
 			name: "single external domain with split and cluster local",
@@ -117,8 +117,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 										},
 										Percent: 12,
 										AppendHeaders: map[string]string{
-											"Baz":   "blah",
 											"Bleep": "bloop",
+											"Baz":   "blah",
 										},
 									}, {
 										IngressBackend: v1alpha1.IngressBackend{
@@ -135,7 +135,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 					}},
 			},
-			expected: []*gwv1alpha1.HTTPRoute{
+			expected: []*gatewayv1alpha2.HTTPRoute{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      LongestHost(testHosts),
@@ -146,48 +146,73 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 						Annotations: map[string]string{},
 					},
-					Spec: gwv1alpha1.HTTPRouteSpec{
-						Hostnames: []gwv1alpha1.Hostname{externalHost},
-						Rules: []gwv1alpha1.HTTPRouteRule{{
-							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-								Port:        portNumPtr(123),
-								ServiceName: pointer.StringPtr("goo"),
-								Weight:      pointer.Int32Ptr(int32(12)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{
-											"Baz":   "blah",
-											"Bleep": "bloop",
-										},
-									}}},
+					Spec: gatewayv1alpha2.HTTPRouteSpec{
+						Hostnames: []gatewayv1alpha2.Hostname{externalHost},
+						Rules: []gatewayv1alpha2.HTTPRouteRule{{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(123),
+										Name: gatewayv1alpha2.ObjectName("goo"),
+									},
+									Weight: pointer.Int32Ptr(int32(12)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
+											{
+												Name:  "Bleep",
+												Value: "bloop",
+											},
+											{
+												Name:  "Baz",
+												Value: "blah",
+											},
+										}}}},
 							}, {
-								Port:        portNumPtr(124),
-								ServiceName: pointer.StringPtr("doo"),
-								Weight:      pointer.Int32Ptr(int32(88)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{
-											"Baz": "blurg",
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(124),
+										Name: gatewayv1alpha2.ObjectName("doo"),
+									},
+									Weight: pointer.Int32Ptr(int32(88)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blurg",
+											},
 										},
 									}}},
 							}},
-							Filters: []gwv1alpha1.HTTPRouteFilter{{
-								Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-									Set: map[string]string{"Foo": "bar"},
+							Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+								Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+									Set: []gatewayv1alpha2.HTTPHeader{
+										{
+											Name:  "Foo",
+											Value: "bar",
+										},
+									},
 								}}},
-							Matches: []gwv1alpha1.HTTPRouteMatch{{Path: &gwv1alpha1.HTTPPathMatch{
-								Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
-								Value: pointer.StringPtr("/"),
-							}}},
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
+								{
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+										Value: pointer.StringPtr("/"),
+									},
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
+								},
+							},
 						}},
-						Gateways: &gwv1alpha1.RouteGateways{
-							Allow: gatewayAllowTypePtr(gwv1alpha1.GatewayAllowFromList),
-							GatewayRefs: []gwv1alpha1.GatewayReference{{
-								Namespace: "test-ns",
-								Name:      "foo",
+						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+							ParentRefs: []gatewayv1alpha2.ParentRef{{
+								Namespace: namespacePtr("test-ns"),
+								Name:      gatewayv1alpha2.ObjectName("foo"),
 							}},
 						},
 					},
@@ -201,48 +226,71 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 						Annotations: map[string]string{},
 					},
-					Spec: gwv1alpha1.HTTPRouteSpec{
-						Hostnames: []gwv1alpha1.Hostname{localHostShortest, localHostShort, localHostFull},
-						Rules: []gwv1alpha1.HTTPRouteRule{{
-							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-								Port:        portNumPtr(123),
-								ServiceName: pointer.StringPtr("goo"),
-								Weight:      pointer.Int32Ptr(int32(12)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{
-											"Baz":   "blah",
-											"Bleep": "bloop",
-										},
-									}}},
+					Spec: gatewayv1alpha2.HTTPRouteSpec{
+						Hostnames: []gatewayv1alpha2.Hostname{localHostShortest, localHostShort, localHostFull},
+						Rules: []gatewayv1alpha2.HTTPRouteRule{{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(123),
+										Name: gatewayv1alpha2.ObjectName("goo"),
+									},
+									Weight: pointer.Int32Ptr(int32(12)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
+											{
+												Name:  "Bleep",
+												Value: "bloop",
+											},
+											{
+												Name:  "Baz",
+												Value: "blah",
+											},
+										}}}},
 							}, {
-								Port:        portNumPtr(124),
-								ServiceName: pointer.StringPtr("doo"),
-								Weight:      pointer.Int32Ptr(int32(88)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{
-											"Baz": "blurg",
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(124),
+										Name: gatewayv1alpha2.ObjectName("doo"),
+									},
+									Weight: pointer.Int32Ptr(int32(88)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blurg",
+											},
 										},
 									}}},
 							}},
-							Filters: []gwv1alpha1.HTTPRouteFilter{{
-								Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-									Set: map[string]string{"Foo": "bar"},
+							Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+								Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+									Set: []gatewayv1alpha2.HTTPHeader{
+										{
+											Name:  "Foo",
+											Value: "bar",
+										},
+									},
 								}}},
-							Matches: []gwv1alpha1.HTTPRouteMatch{{Path: &gwv1alpha1.HTTPPathMatch{
-								Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
-								Value: pointer.StringPtr("/"),
-							}}},
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{{
+								Path: &gatewayv1alpha2.HTTPPathMatch{
+									Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+									Value: pointer.StringPtr("/"),
+								},
+								Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
+							}},
 						}},
-						Gateways: &gwv1alpha1.RouteGateways{
-							Allow: gatewayAllowTypePtr(gwv1alpha1.GatewayAllowFromList),
-							GatewayRefs: []gwv1alpha1.GatewayReference{{
-								Namespace: "test-ns",
-								Name:      "foo-local",
+						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+							ParentRefs: []gatewayv1alpha2.ParentRef{{
+								Namespace: namespacePtr("test-ns"),
+								Name:      gatewayv1alpha2.ObjectName("foo-local"),
 							}},
 						},
 					},
@@ -293,7 +341,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 				}}},
 			},
-			expected: []*gwv1alpha1.HTTPRoute{{
+			expected: []*gatewayv1alpha2.HTTPRoute{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      LongestHost(testHosts),
 					Namespace: testNamespace,
@@ -303,132 +351,67 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 				},
-				Spec: gwv1alpha1.HTTPRouteSpec{
-					Hostnames: []gwv1alpha1.Hostname{externalHost},
-					Rules: []gwv1alpha1.HTTPRouteRule{
+				Spec: gatewayv1alpha2.HTTPRouteSpec{
+					Hostnames: []gatewayv1alpha2.Hostname{externalHost},
+					Rules: []gatewayv1alpha2.HTTPRouteRule{
 						{
-							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-								Port:        portNumPtr(123),
-								ServiceName: pointer.StringPtr("goo"),
-								Weight:      pointer.Int32Ptr(int32(100)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{},
-									}}},
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(123),
+										Name: gatewayv1alpha2.ObjectName("goo"),
+									},
+									Weight: pointer.Int32Ptr(int32(100)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{}}}},
 							}},
-							Matches: []gwv1alpha1.HTTPRouteMatch{
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
 								{
-									Path: &gwv1alpha1.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/"),
 									},
-									Headers: &gwv1alpha1.HTTPHeaderMatch{
-										Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
-										Values: map[string]string{"tag": "goo"},
-									},
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
+										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+										Name:  gatewayv1alpha2.HTTPHeaderName("tag"),
+										Value: "goo",
+									}},
 								}},
 						}, {
-							Matches: []gwv1alpha1.HTTPRouteMatch{
+							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
+								BackendRef: gatewayv1alpha2.BackendRef{
+									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+										Port: portNumPtr(124),
+										Name: gatewayv1alpha2.ObjectName("doo"),
+									},
+									Weight: pointer.Int32Ptr(int32(100)),
+								},
+								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
+										Set: []gatewayv1alpha2.HTTPHeader{}}}},
+							}},
+							Matches: []gatewayv1alpha2.HTTPRouteMatch{
 								{
-									Path: &gwv1alpha1.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
+									Path: &gatewayv1alpha2.HTTPPathMatch{
+										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/doo"),
 									},
-									Headers: &gwv1alpha1.HTTPHeaderMatch{
-										Type:   headerMatchTypePtr(gwv1alpha1.HeaderMatchExact),
-										Values: map[string]string{"tag": "doo"},
-									},
-								}},
-							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-								Port:        portNumPtr(124),
-								ServiceName: pointer.StringPtr("doo"),
-								Weight:      pointer.Int32Ptr(int32(100)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{},
-									}}},
-							}},
-						},
-					},
-					Gateways: &gwv1alpha1.RouteGateways{
-						Allow: gatewayAllowTypePtr(gwv1alpha1.GatewayAllowFromList),
-						GatewayRefs: []gwv1alpha1.GatewayReference{{
-							Namespace: "test-ns",
-							Name:      "foo",
-						}},
-					},
-				},
-			}},
-		}, {
-			name: "single with host rewrite",
-			ing: &v1alpha1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      testIngressName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						networking.IngressLabelKey: testIngressName,
-					},
-				},
-				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
-					Hosts:      testHosts,
-					Visibility: v1alpha1.IngressVisibilityExternalIP,
-					HTTP: &v1alpha1.HTTPIngressRuleValue{
-						Paths: []v1alpha1.HTTPIngressPath{{
-							RewriteHost: "foo.com",
-							Splits: []v1alpha1.IngressBackendSplit{{
-								IngressBackend: v1alpha1.IngressBackend{
-									ServiceName: "goo",
-									ServicePort: intstr.FromInt(123),
-								},
-								Percent: 100,
-							}},
-						}},
-					},
-				}}},
-			},
-			expected: []*gwv1alpha1.HTTPRoute{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      LongestHost(testHosts),
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						networking.IngressLabelKey:          testIngressName,
-						"networking.knative.dev/visibility": "",
-					},
-					Annotations: map[string]string{},
-				},
-				Spec: gwv1alpha1.HTTPRouteSpec{
-					Hostnames: []gwv1alpha1.Hostname{externalHost},
-					Rules: []gwv1alpha1.HTTPRouteRule{
-						{
-							ForwardTo: []gwv1alpha1.HTTPRouteForwardTo{{
-								Port:        portNumPtr(123),
-								ServiceName: pointer.StringPtr("goo"),
-								Weight:      pointer.Int32Ptr(int32(100)),
-								Filters: []gwv1alpha1.HTTPRouteFilter{{
-									Type: gwv1alpha1.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gwv1alpha1.HTTPRequestHeaderFilter{
-										Set: map[string]string{
-											":Authority": "foo.com",
-											"Host":       "foo.com",
-										},
-									}}},
-							}},
-							Matches: []gwv1alpha1.HTTPRouteMatch{
-								{
-									Path: &gwv1alpha1.HTTPPathMatch{
-										Type:  pathMatchTypePtr(gwv1alpha1.PathMatchPrefix),
-										Value: pointer.StringPtr("/"),
-									},
+									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
+										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+										Name:  gatewayv1alpha2.HTTPHeaderName("tag"),
+										Value: "doo",
+									}},
 								}},
 						},
 					},
-					Gateways: &gwv1alpha1.RouteGateways{
-						Allow: gatewayAllowTypePtr(gwv1alpha1.GatewayAllowFromList),
-						GatewayRefs: []gwv1alpha1.GatewayReference{{
-							Namespace: "test-ns",
-							Name:      "foo",
+					CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+						ParentRefs: []gatewayv1alpha2.ParentRef{{
+							Namespace: namespacePtr("test-ns"),
+							Name:      gatewayv1alpha2.ObjectName("foo"),
 						}},
 					},
 				},

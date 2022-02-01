@@ -26,8 +26,8 @@ import (
 	// Allow E2E to run against a cluster using OpenID.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
-	gwversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gwv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned/typed/apis/v1alpha2"
 )
 
 // Clients holds instances of interfaces for making requests to Knative Serving.
@@ -40,7 +40,7 @@ type Clients struct {
 // GatewayAPIClients holds instances of interfaces for making requests to Knative
 // networking clients.
 type GatewayAPIClients struct {
-	HTTPRoutes gwv1alpha1.HTTPRouteInterface
+	HTTPRoutes gatewayv1alpha2.HTTPRouteInterface
 }
 
 // NewClientsFromConfig instantiates and returns several clientsets required for making request to the
@@ -77,11 +77,11 @@ func NewClientsFromConfig(cfg *rest.Config, namespace string) (*Clients, error) 
 // newGatewayAPIClients instantiates and returns the gateway-api clientset required to make requests
 // to gateway API resources on the Knative service cluster
 func newGatewayAPIClients(cfg *rest.Config, namespace string) (*GatewayAPIClients, error) {
-	cs, err := gwversioned.NewForConfig(cfg)
+	cs, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &GatewayAPIClients{
-		HTTPRoutes: cs.NetworkingV1alpha1().HTTPRoutes(namespace),
+		HTTPRoutes: cs.GatewayV1alpha2().HTTPRoutes(namespace),
 	}, nil
 }

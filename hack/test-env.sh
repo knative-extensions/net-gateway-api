@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export GATEWAY_API_VERSION="v0.4.0"
-export ISTIO_VERSION="1.12.2"
+export GATEWAY_API_VERSION="v0.4.2"
+export ISTIO_VERSION="1.13.2"
 export ISTIO_UNSUPPORTED_TESTS="tls,retry,httpoption,host-rewrite"
-export CONTOUR_VERSION="v1.20.0"
+export CONTOUR_VERSION="v1.20.1"
 export CONTOUR_UNSUPPORTED_TESTS="tls,retry,httpoption,basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,visibility,update,host-rewrite"

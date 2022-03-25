@@ -162,7 +162,7 @@ func CreateRuntimeService(ctx context.Context, t *testing.T, clients *test.Clien
 					Value: strconv.Itoa(containerPort),
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/healthz",
 							Port: intstr.FromInt(containerPort),
@@ -307,7 +307,7 @@ func CreateTimeoutService(ctx context.Context, t *testing.T, clients *test.Clien
 					Value: strconv.Itoa(containerPort),
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Port: intstr.FromInt(containerPort),
 						},
@@ -381,7 +381,7 @@ func CreateWebsocketService(ctx context.Context, t *testing.T, clients *test.Cli
 					Value: suffix,
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/",
 							Port: intstr.FromInt(containerPort),
@@ -456,7 +456,7 @@ func CreateGRPCService(ctx context.Context, t *testing.T, clients *test.Clients,
 					Value: suffix,
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						TCPSocket: &corev1.TCPSocketAction{
 							Port: intstr.FromInt(containerPort),
 						},
@@ -526,7 +526,7 @@ func CreateRetryService(ctx context.Context, t *testing.T, clients *test.Clients
 					Value: strconv.Itoa(containerPort),
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						TCPSocket: &corev1.TCPSocketAction{
 							Port: intstr.FromInt(containerPort),
 						},

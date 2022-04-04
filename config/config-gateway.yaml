@@ -18,7 +18,10 @@ metadata:
   name: config-gateway
   namespace: knative-serving
   labels:
-    serving.knative.dev/release: devel
+    networking.knative.dev/ingress-provider: net-gateway-api
+    app.kubernetes.io/component: net-gateway-api
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
 data:
   _example: |
     ################################

@@ -17,7 +17,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: knative-gateway-api-admin
   labels:
-    serving.knative.dev/release: devel
+    networking.knative.dev/ingress-provider: net-gateway-api
+    app.kubernetes.io/component: net-gateway-api
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
 aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
@@ -29,8 +32,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: knative-gateway-api-core
   labels:
-    serving.knative.dev/release: devel
     serving.knative.dev/controller: "true"
+    networking.knative.dev/ingress-provider: net-gateway-api
+    app.kubernetes.io/component: net-gateway-api
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: devel
 rules:
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes", "gateways"]

@@ -17,8 +17,6 @@ kind: ConfigMap
 metadata:
   name: config-gateway
   namespace: knative-serving
-  labels:
-    serving.knative.dev/release: devel
 data:
   _example: |
     ################################

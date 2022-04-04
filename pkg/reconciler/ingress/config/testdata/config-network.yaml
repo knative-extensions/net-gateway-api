@@ -17,8 +17,6 @@ kind: ConfigMap
 metadata:
   name: config-network
   namespace: knative-serving
-  labels:
-    serving.knative.dev/release: devel
   annotations:
     knative.dev/example-checksum: "6e2033e0"
 data:

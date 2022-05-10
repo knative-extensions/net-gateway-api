@@ -39,7 +39,7 @@ spec:
           - podAffinityTerm:
               labelSelector:
                 matchLabels:
-                  app: controller
+                  app: net-gateway-api-controller
               topologyKey: kubernetes.io/hostname
             weight: 100
 

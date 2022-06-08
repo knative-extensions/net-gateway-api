@@ -53,7 +53,7 @@ kubectl patch configmap/config-network \
   -p '{"data":{"ingress.class":"gateway-api.ingress.networking.knative.dev"}}'
 ```
 
-- Configure Knative Serving to use the proper "ingress.class":
+- Configure Knative Serving to use nip.io for DNS. For `kind` the loadbalancer IP is `127.0.0.1`:
 
 ```bash
 kubectl patch configmap/config-domain \

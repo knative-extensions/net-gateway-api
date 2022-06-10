@@ -96,7 +96,7 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 func (s *Store) Load() *Config {
 	config := &Config{
 		Gateway: s.UntypedLoad(GatewayConfigName).(*Gateway).DeepCopy(),
-		Network: s.UntypedLoad(networkcfg.ConfigMapName).(*network.Config).DeepCopy(),
+		Network: s.UntypedLoad(networkcfg.ConfigMapName).(*networkcfg.Config).DeepCopy(),
 	}
 	return config
 }

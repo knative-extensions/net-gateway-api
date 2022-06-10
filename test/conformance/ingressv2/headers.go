@@ -25,8 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"knative.dev/net-gateway-api/test"
-	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/ptr"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
@@ -65,7 +65,7 @@ func TestTagHeaders(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
 						Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
-						Name:  network.TagHeaderName,
+						Name:  header.RouteTagKey,
 						Value: tagName,
 					}},
 				}},
@@ -132,7 +132,7 @@ func TestTagHeaders(t *testing.T) {
 
 			if tt.TagHeader != nil {
 				ros = append(ros, func(r *http.Request) {
-					r.Header.Set(network.TagHeaderName, *tt.TagHeader)
+					r.Header.Set(header.RouteTagKey, *tt.TagHeader)
 				})
 			}
 

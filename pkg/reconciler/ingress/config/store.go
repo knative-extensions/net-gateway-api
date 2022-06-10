@@ -20,6 +20,7 @@ import (
 	"context"
 
 	network "knative.dev/networking/pkg"
+	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/logging"
 )
@@ -28,7 +29,7 @@ type cfgKey struct{}
 
 // Config is the configuration for the route reconciler.
 type Config struct {
-	Network *network.Config
+	Network *networkcfg.Config
 	Gateway *Gateway
 }
 
@@ -76,8 +77,8 @@ func NewStore(ctx context.Context, onAfterStore ...func(name string, value inter
 			"gateway-api",
 			logger,
 			configmap.Constructors{
-				GatewayConfigName:  NewGatewayFromConfigMap,
-				network.ConfigName: network.NewConfigFromConfigMap,
+				GatewayConfigName:        NewGatewayFromConfigMap,
+				networkcfg.ConfigMapName: network.NewConfigFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -95,7 +96,7 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 func (s *Store) Load() *Config {
 	config := &Config{
 		Gateway: s.UntypedLoad(GatewayConfigName).(*Gateway).DeepCopy(),
-		Network: s.UntypedLoad(network.ConfigName).(*network.Config).DeepCopy(),
+		Network: s.UntypedLoad(networkcfg.ConfigMapName).(*network.Config).DeepCopy(),
 	}
 	return config
 }

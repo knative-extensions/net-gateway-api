@@ -26,7 +26,7 @@ import (
 	gatewayv1alpa2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
-	"knative.dev/networking/pkg"
+	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 )
@@ -48,7 +48,7 @@ func MakeHTTPRoute(
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
 			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
-				pkg.VisibilityLabelKey: visibility,
+				networking.VisibilityLabelKey: visibility,
 			}),
 			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation

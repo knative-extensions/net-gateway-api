@@ -22,11 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 
-	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressinformer "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/networking/pkg/status"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	"knative.dev/pkg/configmap"
@@ -67,7 +67,7 @@ func NewController(
 
 	impl := ingressreconciler.NewImpl(ctx, c, gatewayAPIIngressClassName, func(impl *controller.Impl) controller.Options {
 		configsToResync := []interface{}{
-			&network.Config{},
+			&networkcfg.Config{},
 			&config.Gateway{},
 		}
 		resync := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {

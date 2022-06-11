@@ -30,11 +30,11 @@ import (
 	clientgotesting "k8s.io/client-go/testing"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	netpkg "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeingressclient "knative.dev/networking/pkg/client/injection/client/fake"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/networking/pkg/ingress"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -338,7 +338,7 @@ func (t *testConfigStore) ToContext(ctx context.Context) context.Context {
 
 var (
 	defaultConfig = &config.Config{
-		Network: &netpkg.Config{},
+		Network: &networkcfg.Config{},
 		Gateway: &config.Gateway{
 			Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
 				v1alpha1.IngressVisibilityExternalIP: {

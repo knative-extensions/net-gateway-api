@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -28,15 +29,6 @@ import (
 	"knative.dev/networking/pkg/status"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
-)
-
-const (
-	// HTTPPortExternal is the port for external availability.
-	HTTPPortExternal = "8080"
-	// HTTPPortInternal is the port for internal availability.
-	HTTPPortInternal = "8081"
-	// HTTPSPortExternal is the port for external HTTPS availability.
-	HTTPSPortExternal = "8443"
 )
 
 func NewProbeTargetLister(logger *zap.SugaredLogger, endpointsLister corev1listers.EndpointsLister) status.ProbeTargetLister {
@@ -52,69 +44,46 @@ type gatewayPodTargetLister struct {
 }
 
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
-	privateIPs, err := l.endpointIPs(ctx, v1alpha1.IngressVisibilityClusterLocal)
-	if err != nil {
-		return nil, err
+	result := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
+	for _, rule := range ing.Spec.Rules {
+		eps, err := l.getRuleProbes(ctx, &rule, ing.Spec.HTTPOption)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, eps...)
 	}
-	publicIPs, err := l.endpointIPs(ctx, v1alpha1.IngressVisibilityExternalIP)
-	if err != nil {
-		return nil, err
-	}
-
-	return l.getIngressUrls(ing, privateIPs, publicIPs)
+	return result, nil
 }
 
-func (l *gatewayPodTargetLister) endpointIPs(ctx context.Context, visibility v1alpha1.IngressVisibility) (sets.String, error) {
+func (l *gatewayPodTargetLister) getRuleProbes(ctx context.Context, rule *v1alpha1.IngressRule, sslOpt v1alpha1.HTTPOption) ([]status.ProbeTarget, error) {
 	gatewayConfig := config.FromContext(ctx).Gateway
-	service := gatewayConfig.Gateways[visibility].Service
+	service := gatewayConfig.Gateways[rule.Visibility].Service
 
 	eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get endpoints: %w", err)
 	}
 
-	readyIPs := sets.NewString()
+	targets := make([]status.ProbeTarget, 0, len(eps.Subsets))
+	foundTargets := 0
 	for _, sub := range eps.Subsets {
+		pt := status.ProbeTarget{PodIPs: sets.NewString()}
+		// TODO: determine port better
+		pt.PodPort = strconv.Itoa(int(sub.Ports[0].Port))
 		for _, address := range sub.Addresses {
-			readyIPs.Insert(address.IP)
+			pt.PodIPs.Insert(address.IP)
 		}
-	}
-	if len(readyIPs) == 0 {
-		return nil, fmt.Errorf("no gateway pods available")
-	}
-	return readyIPs, nil
-}
+		foundTargets += len(pt.PodIPs)
 
-func (l *gatewayPodTargetLister) getIngressUrls(ing *v1alpha1.Ingress, privateIPs, publicIPs sets.String) ([]status.ProbeTarget, error) {
-
-	targets := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
-	for _, rule := range ing.Spec.Rules {
-		var target status.ProbeTarget
-
-		domains := rule.Hosts
 		scheme := "http"
-
-		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
-			target = status.ProbeTarget{
-				PodIPs: publicIPs,
-			}
-			if ing.Spec.HTTPOption == v1alpha1.HTTPOptionRedirected {
-				target.PodPort = HTTPSPortExternal
-				target.URLs = domainsToURL(domains, "https")
-			} else {
-				target.PodPort = HTTPPortExternal
-				target.URLs = domainsToURL(domains, scheme)
-			}
-		} else {
-			target = status.ProbeTarget{
-				PodIPs:  privateIPs,
-				PodPort: HTTPPortInternal,
-				URLs:    domainsToURL(domains, scheme),
-			}
+		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP && sslOpt == v1alpha1.HTTPOptionRedirected {
+			scheme = "https"
 		}
-
-		targets = append(targets, target)
-
+		pt.URLs = domainsToURL(rule.Hosts, scheme)
+		targets = append(targets, pt)
+	}
+	if foundTargets == 0 {
+		return nil, fmt.Errorf("no gateway pods available")
 	}
 	return targets, nil
 }

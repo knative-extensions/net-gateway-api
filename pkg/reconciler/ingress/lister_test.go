@@ -72,7 +72,7 @@ func TestListProbeTargets(t *testing.T) {
 		objects: []runtime.Object{
 			publicEndpointsOneAddr,
 		},
-		ing:     ing(withBasicSpec, withGatewayAPIClass),
+		ing:     ing(withBasicSpec, withInternalSpec, withGatewayAPIClass),
 		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", privateName),
 	}, {
 		name: "no external endpoint to probe",
@@ -87,7 +87,7 @@ func TestListProbeTargets(t *testing.T) {
 			privateEndpointsNoAddr,
 			publicEndpointsOneAddr,
 		},
-		ing:     ing(withBasicSpec, withGatewayAPIClass),
+		ing:     ing(withBasicSpec, withInternalSpec, withGatewayAPIClass),
 		wantErr: fmt.Errorf("no gateway pods available"),
 	}, {
 		name: "external endpoint without address to probe",
@@ -101,7 +101,7 @@ func TestListProbeTargets(t *testing.T) {
 		name: "endpoint with single address to probe (https redirected)",
 		objects: []runtime.Object{
 			privateEndpointsOneAddr,
-			publicEndpointsOneAddr,
+			publicSslEndpointsOneAddr,
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
 		want: []status.ProbeTarget{{
@@ -120,9 +120,18 @@ func TestListProbeTargets(t *testing.T) {
 			publicEndpointsMultiAddrMultiSubset,
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass),
-		want: []status.ProbeTarget{{
-			PodIPs:  sets.NewString("2.3.4.5", "3.4.5.6", "4.3.2.1"),
-			PodPort: "8080",
+		want: []status.ProbeTarget{
+		{
+			PodIPs:  sets.NewString("2.3.4.5"),
+			PodPort: "1234",
+			URLs: []*url.URL{{
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "/",
+			}},
+		}, {
+			PodIPs:  sets.NewString("3.4.5.6", "4.3.2.1"),
+			PodPort: "4321",
 			URLs: []*url.URL{{
 				Scheme: "http",
 				Host:   "example.com",
@@ -182,6 +191,22 @@ var (
 			Ports: []corev1.EndpointPort{{
 				Name: "http",
 				Port: 8080,
+			}},
+			Addresses: []corev1.EndpointAddress{{
+				IP: "1.2.3.4",
+			}},
+		}},
+	}
+
+	publicSslEndpointsOneAddr = &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      publicName,
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Ports: []corev1.EndpointPort{{
+				Name: "http",
+				Port: 8443,
 			}},
 			Addresses: []corev1.EndpointAddress{{
 				IP: "1.2.3.4",
@@ -266,25 +291,42 @@ var (
 )
 
 func withBasicSpec(i *v1alpha1.Ingress) {
-	i.Spec = v1alpha1.IngressSpec{
-		HTTPOption: v1alpha1.HTTPOptionEnabled,
-		Rules: []v1alpha1.IngressRule{{
-			Hosts:      []string{"example.com"},
-			Visibility: v1alpha1.IngressVisibilityExternalIP,
-			HTTP: &v1alpha1.HTTPIngressRuleValue{
-				Paths: []v1alpha1.HTTPIngressPath{{
-					Splits: []v1alpha1.IngressBackendSplit{{
-						IngressBackend: v1alpha1.IngressBackend{
-							ServiceName:      "goo",
-							ServiceNamespace: i.Namespace,
-							ServicePort:      intstr.FromInt(123),
-						},
-						Percent: 100,
-					}},
+	i.Spec.HTTPOption = v1alpha1.HTTPOptionEnabled
+	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
+		Hosts:      []string{"example.com"},
+		Visibility: v1alpha1.IngressVisibilityExternalIP,
+		HTTP: &v1alpha1.HTTPIngressRuleValue{
+			Paths: []v1alpha1.HTTPIngressPath{{
+				Splits: []v1alpha1.IngressBackendSplit{{
+					IngressBackend: v1alpha1.IngressBackend{
+						ServiceName:      "goo",
+						ServiceNamespace: i.Namespace,
+						ServicePort:      intstr.FromInt(123),
+					},
+					Percent: 100,
 				}},
-			},
-		}},
-	}
+			}},
+		},
+	})
+}
+
+func withInternalSpec(i *v1alpha1.Ingress) {
+	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
+		Hosts:      []string{"foo.svc", "foo.svc.cluster.local"},
+		Visibility: v1alpha1.IngressVisibilityClusterLocal,
+		HTTP: &v1alpha1.HTTPIngressRuleValue{
+			Paths: []v1alpha1.HTTPIngressPath{{
+				Splits: []v1alpha1.IngressBackendSplit{{
+					IngressBackend: v1alpha1.IngressBackend{
+						ServiceName:      "goo",
+						ServiceNamespace: i.Namespace,
+						ServicePort:      intstr.FromInt(124),
+					},
+					Percent: 100,
+				}},
+			}},
+		},
+	})
 }
 
 type IngressOption func(*v1alpha1.Ingress)

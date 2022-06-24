@@ -20,6 +20,13 @@ set -euo pipefail
 
 source $(dirname $0)/../hack/test-env.sh
 
+# Expected prerequisites:
+# * A Kind cluster
+# * Knative serving installed
+# * Gateway CRDs installed
+# * net-gateway-api-controller installed (e.g. `ko apply -f config`)
+# * Test images published with `./test/upload-test-images.sh`
+
 CONTROL_NAMESPACE=knative-serving
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}

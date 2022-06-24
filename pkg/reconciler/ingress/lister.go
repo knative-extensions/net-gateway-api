@@ -67,18 +67,33 @@ func (l *gatewayPodTargetLister) getRuleProbes(ctx context.Context, rule v1alpha
 	targets := make([]status.ProbeTarget, 0, len(eps.Subsets))
 	foundTargets := 0
 	for _, sub := range eps.Subsets {
+		scheme := "http"
+		// Istio uses "http2" for the http port
+		matchSchemes := sets.NewString("http", "http2")
+		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP && sslOpt == v1alpha1.HTTPOptionRedirected {
+			scheme = "https"
+			matchSchemes = sets.NewString("https")
+		}
 		pt := status.ProbeTarget{PodIPs: sets.NewString()}
-		// TODO: determine port better
-		pt.PodPort = strconv.Itoa(int(sub.Ports[0].Port))
+
+		portNumber := sub.Ports[0].Port
+		for _, port := range sub.Ports {
+			if matchSchemes.Has(port.Name) {
+				// Prefer to match the name exactly
+				portNumber = port.Port
+				break
+			}
+			if port.AppProtocol != nil && matchSchemes.Has(*port.AppProtocol) {
+				portNumber = port.Port
+			}
+		}
+		pt.PodPort = strconv.Itoa(int(portNumber))
+
 		for _, address := range sub.Addresses {
 			pt.PodIPs.Insert(address.IP)
 		}
 		foundTargets += len(pt.PodIPs)
 
-		scheme := "http"
-		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP && sslOpt == v1alpha1.HTTPOptionRedirected {
-			scheme = "https"
-		}
 		pt.URLs = domainsToURL(rule.Hosts, scheme)
 		targets = append(targets, pt)
 	}

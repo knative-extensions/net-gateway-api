@@ -229,8 +229,11 @@ var (
 			}},
 		}, {
 			Ports: []corev1.EndpointPort{{
-				Name: "asdf",
+				Name: "http2",
 				Port: 4321,
+			}, {
+				Name: "admin",
+				Port: 1337,
 			}},
 			Addresses: []corev1.EndpointAddress{{
 				IP: "3.4.5.6",

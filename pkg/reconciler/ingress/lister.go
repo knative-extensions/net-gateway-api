@@ -46,7 +46,7 @@ type gatewayPodTargetLister struct {
 func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
 	result := make([]status.ProbeTarget, 0, len(ing.Spec.Rules))
 	for _, rule := range ing.Spec.Rules {
-		eps, err := l.getRuleProbes(ctx, &rule, ing.Spec.HTTPOption)
+		eps, err := l.getRuleProbes(ctx, rule, ing.Spec.HTTPOption)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func (l *gatewayPodTargetLister) ListProbeTargets(ctx context.Context, ing *v1al
 	return result, nil
 }
 
-func (l *gatewayPodTargetLister) getRuleProbes(ctx context.Context, rule *v1alpha1.IngressRule, sslOpt v1alpha1.HTTPOption) ([]status.ProbeTarget, error) {
+func (l *gatewayPodTargetLister) getRuleProbes(ctx context.Context, rule v1alpha1.IngressRule, sslOpt v1alpha1.HTTPOption) ([]status.ProbeTarget, error) {
 	gatewayConfig := config.FromContext(ctx).Gateway
 	service := gatewayConfig.Gateways[rule.Visibility].Service
 

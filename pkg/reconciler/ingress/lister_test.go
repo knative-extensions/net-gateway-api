@@ -121,23 +121,23 @@ func TestListProbeTargets(t *testing.T) {
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{
-		{
-			PodIPs:  sets.NewString("2.3.4.5"),
-			PodPort: "1234",
-			URLs: []*url.URL{{
-				Scheme: "http",
-				Host:   "example.com",
-				Path:   "/",
+			{
+				PodIPs:  sets.NewString("2.3.4.5"),
+				PodPort: "1234",
+				URLs: []*url.URL{{
+					Scheme: "http",
+					Host:   "example.com",
+					Path:   "/",
+				}},
+			}, {
+				PodIPs:  sets.NewString("3.4.5.6", "4.3.2.1"),
+				PodPort: "4321",
+				URLs: []*url.URL{{
+					Scheme: "http",
+					Host:   "example.com",
+					Path:   "/",
+				}},
 			}},
-		}, {
-			PodIPs:  sets.NewString("3.4.5.6", "4.3.2.1"),
-			PodPort: "4321",
-			URLs: []*url.URL{{
-				Scheme: "http",
-				Host:   "example.com",
-				Path:   "/",
-			}},
-		}},
 	}}
 
 	for _, test := range tests {

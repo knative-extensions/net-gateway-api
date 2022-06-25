@@ -94,7 +94,7 @@ source ./hack/test-env.sh
 #### Install Gateway API CRDs
 
 ```
-kubectl apply -k "github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}"
+kubectl apply -f config/100-gateway-api.yaml
 ```
 
 #### Deploy Istio
@@ -129,7 +129,7 @@ go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressC
 Some tests are still not available. Please see
 https://github.com/knative-sandbox/net-gateway-api/issues/23.
 
-### Test with Contoour
+### Test with Contour
 
 #### Prepare test resources such as namespaces
 

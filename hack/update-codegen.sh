@@ -57,12 +57,17 @@ source ${REPO_ROOT_DIR}/hack/test-env.sh
 template=$(cat ${REPO_ROOT_DIR}/docs/.test-version.template)
 eval "echo \"${template}\"" > ${REPO_ROOT_DIR}/docs/test-version.md
 
-group "Update gateway API CRDs"
+group "Update Gateway API CRDs"
 
 if command -v kubectl &> /dev/null
 then
-  echo "# Generated with \"kubectl kustomize https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}\"" > ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
-  kubectl kustomize "https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}" >> ${REPO_ROOT_DIR}/config/100-gateway-api.yaml
+ echo "# Generated with \"kubectl kustomize github.com/kubernetes-sigs/gateway-api/config/crd/experimental?ref=${GATEWAY_API_VERSION}" > "${REPO_ROOT_DIR}/config/100-gateway-api.yaml"
+	kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd/experimental?ref=${GATEWAY_API_VERSION}" >> "${REPO_ROOT_DIR}/config/100-gateway-api.yaml"
+  # TODO(carlisia): remove the below two lines in a future release.
+  # Reason: although the `gateway.networking.k8s.io_referencepolicies.yaml` is included in the `v0.5.0-rc1` version, it is not included in the kustomize file. I'm assuming this will remain the same for the actual release.
+  # The file is included in the kustomize file in the `main` branch. With that, if these lines are not removed there will be a duplicate of this resource.
+	echo "---" >> "${REPO_ROOT_DIR}/config/100-gateway-api.yaml"
+	curl -s "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VERSION}/config/crd/experimental/gateway.networking.k8s.io_referencepolicies.yaml" >> "${REPO_ROOT_DIR}/config/100-gateway-api.yaml"
 else
   echo "Skipping: kubectl command does not exist."
 fi

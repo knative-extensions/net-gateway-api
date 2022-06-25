@@ -994,3 +994,8 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# k8s.io/api v0.24.1 => k8s.io/api v0.23.8
+# k8s.io/apimachinery v0.24.1 => k8s.io/apimachinery v0.23.8
+# k8s.io/client-go v0.24.1 => k8s.io/client-go v0.23.8
+# k8s.io/code-generator v0.24.1 => k8s.io/code-generator v0.23.8
+# sigs.k8s.io/gateway-api v0.5.0-rc1 => sigs.k8s.io/gateway-api v0.4.0

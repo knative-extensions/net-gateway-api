@@ -3,11 +3,10 @@ module knative.dev/net-gateway-api
 go 1.17
 
 replace (
-	k8s.io/api v0.24.1 => k8s.io/api v0.23.8
-	k8s.io/apimachinery v0.24.1 => k8s.io/apimachinery v0.23.8
-	k8s.io/client-go v0.24.1 => k8s.io/client-go v0.23.8
-	k8s.io/code-generator v0.24.1 => k8s.io/code-generator v0.23.8
-	sigs.k8s.io/gateway-api v0.5.0-rc1 => sigs.k8s.io/gateway-api v0.4.0
+	k8s.io/api v0.23.8 => k8s.io/api v0.24.1
+	k8s.io/apimachinery v0.23.8 => k8s.io/apimachinery v0.24.1
+	k8s.io/client-go v0.23.8 => k8s.io/client-go v0.24.1
+	k8s.io/code-generator v0.23.8 => k8s.io/code-generator v0.24.1
 )
 
 require (
@@ -24,7 +23,7 @@ require (
 	knative.dev/hack v0.0.0-20220610014127-dc6c287516dc
 	knative.dev/networking v0.0.0-20220614203516-07c9d7614c61
 	knative.dev/pkg v0.0.0-20220621173822-9c5a7317fa9d
-	sigs.k8s.io/gateway-api v0.4.0
+	sigs.k8s.io/gateway-api v0.5.0-rc1
 	sigs.k8s.io/yaml v1.3.0
 )
 

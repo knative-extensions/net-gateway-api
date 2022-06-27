@@ -31,6 +31,7 @@ type GatewayV1alpha2Interface interface {
 	GatewaysGetter
 	GatewayClassesGetter
 	HTTPRoutesGetter
+	ReferenceGrantsGetter
 	ReferencePoliciesGetter
 	TCPRoutesGetter
 	TLSRoutesGetter
@@ -52,6 +53,10 @@ func (c *GatewayV1alpha2Client) GatewayClasses() GatewayClassInterface {
 
 func (c *GatewayV1alpha2Client) HTTPRoutes(namespace string) HTTPRouteInterface {
 	return newHTTPRoutes(c, namespace)
+}
+
+func (c *GatewayV1alpha2Client) ReferenceGrants(namespace string) ReferenceGrantInterface {
+	return newReferenceGrants(c, namespace)
 }
 
 func (c *GatewayV1alpha2Client) ReferencePolicies(namespace string) ReferencePolicyInterface {

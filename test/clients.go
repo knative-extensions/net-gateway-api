@@ -26,8 +26,8 @@ import (
 	// Allow E2E to run against a cluster using OpenID.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned/typed/apis/v1alpha2"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha2"
 )
 
 // Clients holds instances of interfaces for making requests to Knative Serving.

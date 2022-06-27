@@ -25,7 +25,7 @@ echo ">> Running e2e tests"
 go_test_e2e -timeout=20m -tags=e2e -parallel=12 \
   ./test/conformance \
   --enable-alpha --enable-beta \
-  --skip-tests="${ISTIO_UNSUPPORTED_TESTS}" \
+  --skip-tests="${ISTIO_UNSUPPORTED_E2E_TESTS}" \
   --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
 
 # Give the controller time to sync with the rest of the system components.

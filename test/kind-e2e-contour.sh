@@ -47,7 +47,7 @@ kubectl get pods --all-namespaces
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
    --enable-alpha --enable-beta \
-   --skip-tests="${CONTOUR_UNSUPPORTED_TESTS}" \
+   --skip-tests="${CONTOUR_UNSUPPORTED_E2E_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
    --cluster-suffix=${CLUSTER_SUFFIX}

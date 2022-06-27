@@ -48,7 +48,7 @@ func TestVisibility(t *testing.T) {
 	}
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testLocalGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
@@ -89,7 +89,7 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 	publicHostName := gatewayv1alpha2.Hostname(test.ObjectNameForTest(t) + ".publicproxy.example.com")
 
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{publicHostName},
@@ -161,7 +161,7 @@ func TestVisibilitySplit(t *testing.T) {
 	// Create a simple Ingress over the 10 Services.
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testLocalGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(privateHostName)},
@@ -179,7 +179,7 @@ func TestVisibilitySplit(t *testing.T) {
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(publicHostName)},
@@ -262,7 +262,7 @@ func TestVisibilityPath(t *testing.T) {
 	name := test.ObjectNameForTest(t)
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
 	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testLocalGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(privateHostName)},
@@ -379,7 +379,7 @@ func TestVisibilityPath(t *testing.T) {
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
 	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(publicHostName)},

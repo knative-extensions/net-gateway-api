@@ -210,7 +210,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-							ParentRefs: []gatewayv1alpha2.ParentRef{{
+							ParentRefs: []gatewayv1alpha2.ParentReference{{
 								Namespace: namespacePtr("test-ns"),
 								Name:      gatewayv1alpha2.ObjectName("foo"),
 							}},
@@ -288,7 +288,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-							ParentRefs: []gatewayv1alpha2.ParentRef{{
+							ParentRefs: []gatewayv1alpha2.ParentReference{{
 								Namespace: namespacePtr("test-ns"),
 								Name:      gatewayv1alpha2.ObjectName("foo-local"),
 							}},
@@ -409,7 +409,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 					},
 					CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-						ParentRefs: []gatewayv1alpha2.ParentRef{{
+						ParentRefs: []gatewayv1alpha2.ParentReference{{
 							Namespace: namespacePtr("test-ns"),
 							Name:      gatewayv1alpha2.ObjectName("foo"),
 						}},

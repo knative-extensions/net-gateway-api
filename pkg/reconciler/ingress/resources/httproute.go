@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	gatewayv1alpa2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
@@ -36,14 +36,14 @@ func MakeHTTPRoute(
 	ctx context.Context,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gatewayv1alpa2.HTTPRoute, error) {
+) (*gatewayv1alpha2.HTTPRoute, error) {
 
 	visibility := ""
 	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
 		visibility = "cluster-local"
 	}
 
-	return &gatewayv1alpa2.HTTPRoute{
+	return &gatewayv1alpha2.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
@@ -62,11 +62,11 @@ func MakeHTTPRoute(
 func makeHTTPRouteSpec(
 	ctx context.Context,
 	rule *netv1alpha1.IngressRule,
-) gatewayv1alpa2.HTTPRouteSpec {
+) gatewayv1alpha2.HTTPRouteSpec {
 
-	hostnames := make([]gatewayv1alpa2.Hostname, 0, len(rule.Hosts))
+	hostnames := make([]gatewayv1alpha2.Hostname, 0, len(rule.Hosts))
 	for _, hostname := range rule.Hosts {
-		hostnames = append(hostnames, gatewayv1alpa2.Hostname(hostname))
+		hostnames = append(hostnames, gatewayv1alpha2.Hostname(hostname))
 	}
 
 	rules := makeHTTPRouteRule(rule)
@@ -74,32 +74,32 @@ func makeHTTPRouteSpec(
 	gatewayConfig := config.FromContext(ctx).Gateway
 	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
 
-	gatewayRef := gatewayv1alpa2.ParentRef{
-		Namespace: namespacePtr(gatewayv1alpa2.Namespace(namespacedNameGateway.Namespace)),
-		Name:      gatewayv1alpa2.ObjectName(namespacedNameGateway.Name),
+	gatewayRef := gatewayv1alpha2.ParentReference{
+		Namespace: namespacePtr(gatewayv1alpha2.Namespace(namespacedNameGateway.Namespace)),
+		Name:      gatewayv1alpha2.ObjectName(namespacedNameGateway.Name),
 	}
 
-	return gatewayv1alpa2.HTTPRouteSpec{
+	return gatewayv1alpha2.HTTPRouteSpec{
 		Hostnames: hostnames,
 		Rules:     rules,
-		CommonRouteSpec: gatewayv1alpa2.CommonRouteSpec{ParentRefs: []gatewayv1alpa2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			gatewayRef,
 		}},
 	}
 }
 
-func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRouteRule {
-	rules := []gatewayv1alpa2.HTTPRouteRule{}
+func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpha2.HTTPRouteRule {
+	rules := []gatewayv1alpha2.HTTPRouteRule{}
 
 	for _, path := range rule.HTTP.Paths {
-		backendRefs := make([]gatewayv1alpa2.HTTPBackendRef, 0, len(path.Splits))
-		var preFilters []gatewayv1alpa2.HTTPRouteFilter
+		backendRefs := make([]gatewayv1alpha2.HTTPBackendRef, 0, len(path.Splits))
+		var preFilters []gatewayv1alpha2.HTTPRouteFilter
 
 		if path.AppendHeaders != nil {
-			headers := []gatewayv1alpa2.HTTPHeader{}
+			headers := []gatewayv1alpha2.HTTPHeader{}
 			for k, v := range path.AppendHeaders {
-				header := gatewayv1alpa2.HTTPHeader{
-					Name:  gatewayv1alpa2.HTTPHeaderName(k),
+				header := gatewayv1alpha2.HTTPHeader{
+					Name:  gatewayv1alpha2.HTTPHeaderName(k),
 					Value: v,
 				}
 				headers = append(headers, header)
@@ -108,18 +108,18 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRoute
 			// Sort HTTPHeader as the order is random.
 			sort.Sort(HTTPHeaderList(headers))
 
-			preFilters = []gatewayv1alpa2.HTTPRouteFilter{{
-				Type: gatewayv1alpa2.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayv1alpa2.HTTPRequestHeaderFilter{
+			preFilters = []gatewayv1alpha2.HTTPRouteFilter{{
+				Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
 					Set: headers,
 				}}}
 		}
 
 		for _, split := range path.Splits {
-			headers := []gatewayv1alpa2.HTTPHeader{}
+			headers := []gatewayv1alpha2.HTTPHeader{}
 			for k, v := range split.AppendHeaders {
-				header := gatewayv1alpa2.HTTPHeader{
-					Name:  gatewayv1alpa2.HTTPHeaderName(k),
+				header := gatewayv1alpha2.HTTPHeader{
+					Name:  gatewayv1alpha2.HTTPHeaderName(k),
 					Value: v,
 				}
 				headers = append(headers, header)
@@ -129,17 +129,17 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRoute
 			sort.Sort(HTTPHeaderList(headers))
 
 			name := split.IngressBackend.ServiceName
-			backendRef := gatewayv1alpa2.HTTPBackendRef{
-				BackendRef: gatewayv1alpa2.BackendRef{
-					BackendObjectReference: gatewayv1alpa2.BackendObjectReference{
+			backendRef := gatewayv1alpha2.HTTPBackendRef{
+				BackendRef: gatewayv1alpha2.BackendRef{
+					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
 						Port: portNumPtr(split.ServicePort.IntValue()),
-						Name: gatewayv1alpa2.ObjectName(name),
+						Name: gatewayv1alpha2.ObjectName(name),
 					},
 					Weight: pointer.Int32Ptr(int32(split.Percent)),
 				},
-				Filters: []gatewayv1alpa2.HTTPRouteFilter{{
-					Type: gatewayv1alpa2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpa2.HTTPRequestHeaderFilter{
+				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
+					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
 						Set: headers,
 					}},
 				}}
@@ -150,16 +150,16 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRoute
 		if path.Path != "" {
 			pathPrefix = path.Path
 		}
-		pathMatch := gatewayv1alpa2.HTTPPathMatch{
-			Type:  pathMatchTypePtr(gatewayv1alpa2.PathMatchPathPrefix),
+		pathMatch := gatewayv1alpha2.HTTPPathMatch{
+			Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 			Value: pointer.StringPtr(pathPrefix),
 		}
 
-		headerMatchList := []gatewayv1alpa2.HTTPHeaderMatch{}
+		headerMatchList := []gatewayv1alpha2.HTTPHeaderMatch{}
 		for k, v := range path.Headers {
-			headerMatch := gatewayv1alpa2.HTTPHeaderMatch{
-				Type:  headerMatchTypePtr(gatewayv1alpa2.HeaderMatchExact),
-				Name:  gatewayv1alpa2.HTTPHeaderName(k),
+			headerMatch := gatewayv1alpha2.HTTPHeaderMatch{
+				Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+				Name:  gatewayv1alpha2.HTTPHeaderName(k),
 				Value: v.Exact,
 			}
 			headerMatchList = append(headerMatchList, headerMatch)
@@ -168,9 +168,9 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRoute
 		// Sort HTTPHeaderMatch as the order is random.
 		sort.Sort(HTTPHeaderMatchList(headerMatchList))
 
-		matches := []gatewayv1alpa2.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
+		matches := []gatewayv1alpha2.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
 
-		rule := gatewayv1alpa2.HTTPRouteRule{
+		rule := gatewayv1alpha2.HTTPRouteRule{
 			BackendRefs: backendRefs,
 			Filters:     preFilters,
 			Matches:     matches,
@@ -180,7 +180,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpa2.HTTPRoute
 	return rules
 }
 
-type HTTPHeaderList []gatewayv1alpa2.HTTPHeader
+type HTTPHeaderList []gatewayv1alpha2.HTTPHeader
 
 func (h HTTPHeaderList) Len() int {
 	return len(h)
@@ -194,7 +194,7 @@ func (h HTTPHeaderList) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-type HTTPHeaderMatchList []gatewayv1alpa2.HTTPHeaderMatch
+type HTTPHeaderMatchList []gatewayv1alpha2.HTTPHeaderMatch
 
 func (h HTTPHeaderMatchList) Len() int {
 	return len(h)

@@ -46,7 +46,7 @@ func TestWebsocket(t *testing.T) {
 
 	// Create a simple Ingress over the Service.
 	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(domain)},
@@ -102,7 +102,7 @@ func TestWebsocketSplit(t *testing.T) {
 	name := test.ObjectNameForTest(t)
 	domain := name + ".example.com"
 	_, dialCtx, _ := createHTTPRouteReadyDialContext(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			testGateway,
 		}},
 		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(domain)},

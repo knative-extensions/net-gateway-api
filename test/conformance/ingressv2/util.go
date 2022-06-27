@@ -84,12 +84,12 @@ var dialBackoff = wait.Backoff{
 	Cap:      10 * time.Second,
 }
 
-var testGateway = gatewayv1alpha2.ParentRef{
+var testGateway = gatewayv1alpha2.ParentReference{
 	Name:      "knative-gateway",
 	Namespace: namespacePtr(gatewayNamespace()),
 }
 
-var testLocalGateway = gatewayv1alpha2.ParentRef{
+var testLocalGateway = gatewayv1alpha2.ParentReference{
 	Name:      "knative-local-gateway",
 	Namespace: namespacePtr(localGatewayNamespace()),
 }

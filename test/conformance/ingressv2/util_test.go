@@ -37,7 +37,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{{
 				ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 				Conditions: []metav1.Condition{{
-					Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+					Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 					Status: metav1.ConditionTrue,
 				}},
 			}},
@@ -46,7 +46,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{{
 				ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 				Conditions: []metav1.Condition{{
-					Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+					Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 					Status: metav1.ConditionFalse,
 				}},
 			}},
@@ -63,7 +63,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -71,7 +71,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 					ParentRef: gatewayv1alpha2.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -84,7 +84,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 							Status: metav1.ConditionFalse,
 						},
 					},
@@ -92,7 +92,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 					ParentRef: gatewayv1alpha2.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -105,7 +105,7 @@ func TestIsHTTPRouteReady(t *testing.T) {
 					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.ConditionRouteAccepted),
+							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
 							Status: metav1.ConditionFalse,
 						},
 					},

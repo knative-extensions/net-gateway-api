@@ -1119,7 +1119,7 @@ func IsHTTPRouteReady(r *gatewayv1alpha2.HTTPRoute) (bool, error) {
 
 func isGatewayAdmitted(gw gatewayv1alpha2.RouteParentStatus) bool {
 	for _, condition := range gw.Conditions {
-		if condition.Type == string(gatewayv1alpha2.ConditionRouteAccepted) {
+		if condition.Type == string(gatewayv1alpha2.RouteConditionAccepted) {
 			return condition.Status == metav1.ConditionTrue
 		}
 	}

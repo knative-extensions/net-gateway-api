@@ -49,6 +49,10 @@ type Reconciler struct {
 
 	// Listers index properties about resources
 	httprouteLister gatewayListers.HTTPRouteLister
+
+	referencePolicyLister gatewayListers.ReferencePolicyLister
+
+	gatewayLister gatewayListers.GatewayLister
 }
 
 var (
@@ -68,6 +72,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingres
 
 func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress) error {
 	logger := logging.FromContext(ctx)
+	gatewayConfig := config.FromContext(ctx).Gateway
 
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed defaults specified.  This won't result
@@ -100,14 +105,33 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		logger.Infof("HTTPRoute successfully synced %v", httproutes)
 	}
 
+	listeners := make([]*gatewayv1alpha2.Listener, 0, len(ing.Spec.TLS))
+	for _, tls := range ing.Spec.TLS {
+		tls := tls
+
+		l, err := c.reconcileTLS(ctx, &tls, ing)
+		if err != nil {
+			return err
+		}
+		listeners = append(listeners, l...)
+	}
+
+	if len(listeners) > 0 {
+		// For now, we only reconcile the external visibility, because there's
+		// no way to provide TLS for internal listeners.
+		err := c.reconcileGatewayListeners(
+			ctx, listeners, ing, *gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
+		if err != nil {
+			return err
+		}
+	}
+
 	ready, err := c.statusManager.IsReady(ctx, before)
 	if err != nil {
 		return fmt.Errorf("failed to probe Ingress: %w", err)
 	}
 
 	if ready {
-		gatewayConfig := config.FromContext(ctx).Gateway
-
 		namespacedNameService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Service
 		publicLbs := []v1alpha1.LoadBalancerIngressStatus{
 			{DomainInternal: network.GetServiceHostname(namespacedNameService.Name, namespacedNameService.Namespace)},

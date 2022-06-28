@@ -39,5 +39,8 @@ metadata:
     app.kubernetes.io/version: devel
 rules:
   - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["httproutes", "gateways"]
+    resources: ["httproutes", "referencepolicies"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gateways"]
+    verbs: ["get", "list", "update", "patch", "watch"]

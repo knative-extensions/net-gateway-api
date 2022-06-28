@@ -25,7 +25,7 @@ CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
 UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
 
 # gateway-api CRD must be installed before Istio.
-kubectl apply -k "github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}"
+kubectl apply  -f third_party/gateway-api/00-crds.yaml
 
 echo ">> Bringing up Istio"
 curl -sL https://istio.io/downloadIstioctl | sh -

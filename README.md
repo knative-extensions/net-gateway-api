@@ -12,6 +12,13 @@ integration with the
 This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact.
 You can also find the tested Ingress and unavailable features [here](docs/test-version.md).
 
+Note: conformance and e2e tests are a wip at the moment. Please see:
+
+- [EPIC - Contour tests · Issue #36 · knative-sandbox/net-gateway-api](https://github.com/knative-sandbox/net-gateway-api/issues/36)
+- [EPIC - Istio tests · Issue #23 · knative-sandbox/net-gateway-api](https://github.com/knative-sandbox/net-gateway-api/issues/23)
+
+---
+
 ## Getting started
 
 - Load tested environment versions
@@ -30,7 +37,7 @@ kubectl apply -f https://github.com/knative/serving/releases/latest/download/ser
 - Install net-gateway-api
 
 ```bash
-ko apply -f config/
+ko apply -f third_party/gateway-api/
 ```
 
 - Then install Istio and its gateway resources:

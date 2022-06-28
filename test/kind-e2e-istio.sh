@@ -31,6 +31,9 @@ CONTROL_NAMESPACE=knative-serving
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
 
+# gateway-api CRD must be installed before Istio.
+kubectl apply  -f third_party/gateway-api/00-crds.yaml
+
 echo ">> Bringing up Istio"
 curl -sL https://istio.io/downloadIstioctl | sh -
 $HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"

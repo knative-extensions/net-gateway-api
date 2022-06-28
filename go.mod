@@ -16,10 +16,10 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.42.0
-	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
-	k8s.io/client-go v0.28.3
-	k8s.io/code-generator v0.28.3
+	k8s.io/api v0.24.1
+	k8s.io/apimachinery v0.24.1
+	k8s.io/client-go v0.24.1
+	k8s.io/code-generator v0.24.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	knative.dev/hack v0.0.0-20220701014203-65c463ac8c98
 	knative.dev/networking v0.0.0-20220701023942-c3aef9ce275a

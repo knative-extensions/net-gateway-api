@@ -16,6 +16,6 @@
 
 export GATEWAY_API_VERSION="v0.4.3"
 export ISTIO_VERSION="1.13.2"
-export ISTIO_UNSUPPORTED_TESTS="retry,httpoption,host-rewrite"
+export ISTIO_UNSUPPORTED_E2E_TESTS="retry,httpoption,host-rewrite"
 export CONTOUR_VERSION="v1.21.0"
-export CONTOUR_UNSUPPORTED_TESTS="retry,httpoption,basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,visibility,update,host-rewrite"
+export CONTOUR_UNSUPPORTED_E2E_TESTS="retry,httpoption,basics/http2,websocket,websocket/split,grpc,grpc/split,visibility/path,visibility,update,host-rewrite"

@@ -213,7 +213,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 			continue
 		}
 		delete(lmap, string(l.Name))
-		if equality.Semantic.DeepEqual(l, desired) {
+		if equality.Semantic.DeepEqual(&l, desired) {
 			// Already present and correct
 			continue
 		}

@@ -22,7 +22,7 @@ source $(dirname $0)/../hack/test-env.sh
 
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-UNSUPPORTED_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
+UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
 
 export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
@@ -43,6 +43,6 @@ ko resolve -f ./third_party/contour/gateway/ | \
 echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
    --enable-alpha --enable-beta \
-   --skip-tests="${UNSUPPORTED_TESTS}" \
+   --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --cluster-suffix=$CLUSTER_SUFFIX

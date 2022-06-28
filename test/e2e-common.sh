@@ -41,7 +41,7 @@ function test_setup() {
 
   # Bringing up controllers.
   echo ">> Bringing up controller"
-  ko apply -f config/ || return 1
+  ko apply -f third_party/gateway-api/ || return 1
 
   kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
 

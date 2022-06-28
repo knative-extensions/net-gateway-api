@@ -121,7 +121,7 @@ GATEWAY_OVERRIDE=istio-ingressgateway
 GATEWAY_NAMESPACE_OVERRIDE=istio-system
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
-go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/basics" \
+go test -v -tags=e2e -count=1  ./test/conformance/gateway-api/  -run "TestIngressConformance/basics" \
   --ingressClass=istio \
   --ingressendpoint="${IPS[0]}"
 ```
@@ -175,7 +175,7 @@ LOCAL_GATEWAY_OVERRIDE=envoy
 LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
 IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
-go test -v -tags=e2e -count=1  ./test/conformance/ingressv2/  -run "TestIngressConformance/hosts/basics" \
+go test -v -tags=e2e -count=1  ./test/conformance/gateway-api/  -run "TestIngressConformance/hosts/basics" \
   --ingressClass=contour \
   --ingressendpoint="${IPS[0]}"
 ```

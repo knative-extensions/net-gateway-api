@@ -35,7 +35,7 @@ echo ">> Deploy Gateway API resources"
 kubectl apply -f ./third_party/istio/gateway/
 
 echo ">> Running conformance tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
+go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/gateway-api \
    --enable-alpha --enable-beta \
    --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
    --ingressendpoint="${IPS[0]}" \

@@ -41,7 +41,7 @@ ko resolve -f ./third_party/contour/gateway/ | \
   kubectl apply -f -
 
 echo ">> Running conformance tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
+go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/gateway-api \
    --enable-alpha --enable-beta \
    --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
    --ingressendpoint="${IPS[0]}" \

@@ -107,7 +107,7 @@ func (c *Reconciler) reconcileTLS(
 	secret := metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
-			APIVersion: "v1", //metav1.GroupVersion.String(),
+			APIVersion: corev1.SchemeGroupVersion.Version,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tls.SecretName,
@@ -152,6 +152,7 @@ func (c *Reconciler) reconcileTLS(
 	selector := gatewayv1alpha2.NamespacesFromSelector
 	listeners := make([]*gatewayv1alpha2.Listener, 0, len(tls.Hosts))
 	for _, h := range tls.Hosts {
+		h := h
 		listener := gatewayv1alpha2.Listener{
 			Name:     gatewayv1alpha2.SectionName(h),
 			Hostname: (*gatewayv1alpha2.Hostname)(&h),
@@ -204,6 +205,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 		lmap[string(l.Name)] = l
 	}
 	// TODO: how do we track and remove listeners if they are removed from the KIngress spec?
+	// Tracked in https://github.com/knative-sandbox/net-gateway-api/issues/319
 
 	updated := false
 	for i, l := range gw.Spec.Listeners {

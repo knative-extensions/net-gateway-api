@@ -38,10 +38,6 @@ ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   "apis:v1alpha2" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
-# Remove deprecated type
-# Note: our injection script generates the code incorrectly and was causing the build to fail. Since this is deprecated as of v0.5.0, we are removing it.
-rm -rf pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencepolicy
-
 group "Deepcopy Gen"
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen

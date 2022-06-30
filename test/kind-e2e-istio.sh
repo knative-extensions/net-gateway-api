@@ -19,30 +19,14 @@
 set -euo pipefail
 
 source $(dirname $0)/../hack/test-env.sh
+source $(dirname $0)/e2e-common.sh
+source $(dirname $0)/istio.sh
 
-# Expected prerequisites:
-# * A Kind cluster
-# * Knative serving installed
-# * Gateway CRDs installed
-# * net-gateway-api-controller installed (e.g. `ko apply -f config`)
-# * Test images published with `./test/upload-test-images.sh`
-
-CONTROL_NAMESPACE=knative-serving
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-
-echo ">> Bringing up Istio"
-curl -sL https://istio.io/downloadIstioctl | sh -
-$HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
-
-echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/istio/gateway/
-
-echo Waiting for Pods to become ready.
-kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-# For debugging.
-kubectl get pods --all-namespaces
+if [ "${1-default}" != "ci" ]; then
+   log_setup
+fi
+test_setup
+setup_and_deploy
 
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \

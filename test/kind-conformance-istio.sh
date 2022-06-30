@@ -19,20 +19,12 @@
 set -euo pipefail
 
 source $(dirname $0)/../hack/test-env.sh
+source $(dirname $0)/e2e-common.sh
+source $(dirname $0)/istio.sh
 
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
 UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
 
-# gateway-api CRD must be installed before Istio.
-kubectl apply -k "github.com/kubernetes-sigs/gateway-api/config/crd?ref=${GATEWAY_API_VERSION}"
-
-echo ">> Bringing up Istio"
-curl -sL https://istio.io/downloadIstioctl | sh -
-$HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
-
-echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/istio/gateway/
+setup_and_deploy
 
 echo ">> Running conformance tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \

@@ -18,15 +18,14 @@
 
 set -euo pipefail
 
-source $(dirname $0)/../hack/test-env.sh
 source $(dirname $0)/e2e-common.sh
-source $(dirname $0)/istio.sh
+source $(dirname $0)/setup-and-deploy.sh
 
 if [ "${1-default}" != "ci" ]; then
    log_setup
 fi
 test_setup
-setup_and_deploy
+setup_and_deploy istio
 
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \

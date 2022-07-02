@@ -20,6 +20,7 @@
 # * Knative serving installed
 
 source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
+source $(dirname $0)/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
 export KO_DOCKER_REPO=kind.local
@@ -41,8 +42,7 @@ function log_setup() {
 
 # Setup resources.
 function test_setup() {
-  # Setting up test resources.
-  echo ">> Publishing test images"
+  # Publishing test images and setting up test resources.
   $(dirname $0)/upload-test-images.sh || fail_test "Error uploading test images"
   echo ">> Creating test resources (test/config/)"
   ko apply ${KO_FLAGS} -f test/config/ || return 1
@@ -58,14 +58,6 @@ function test_setup() {
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
 
   wait_until_service_has_external_http_address istio-system istio-ingressgateway
-}
-
-# Deploy artifacts specific for a suported vendor implementation.
-# Parameters: $1 - name of vendor implementation.
-function deploy() {
-  local vendor=$1
-  echo ">> Deploy Gateway API resources"
-  kubectl apply -f ./third_party/"$vendor"/gateway/
 }
 
 # Add function call to trap

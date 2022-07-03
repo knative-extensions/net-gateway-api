@@ -16,7 +16,7 @@
 
 # This script runs conformance tests on a local kind environment.
 
-set -euo pipefail
+set -eo pipefail
 
 source "$(dirname $0)"/setup-and-deploy.sh
 

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eo pipefail
+
 # This script includes common functions for testing setup and teardown.
 source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
 source "$(dirname $0)"/../hack/test-env.sh

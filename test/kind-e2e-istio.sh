@@ -16,6 +16,8 @@
 
 # This script runs e2e tests on a local kind environment.
 
+set -eo pipefail
+
 source "$(dirname $0)"/setup-and-deploy.sh
 
 deploy_istio

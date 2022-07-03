@@ -14,10 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script runs e2e tests on a local kind environment.
-
-set -euo pipefail
-
+# This script includes common functions for setting up different Gateway API implementations.
 source "$(dirname $0)"/e2e-common.sh
 
 test_setup

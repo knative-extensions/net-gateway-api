@@ -18,31 +18,9 @@
 
 set -euo pipefail
 
-source $(dirname $0)/../hack/test-env.sh
+source "$(dirname $0)"/setup-and-deploy.sh
 
-CONTROL_NAMESPACE=knative-serving
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-
-export GATEWAY_OVERRIDE=envoy
-export GATEWAY_NAMESPACE_OVERRIDE=contour-external
-
-echo ">> Bringing up Contour"
-kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
-
-# wait for operator deployment to be Available
-kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
-
-echo ">> Deploy Gateway API resources"
-ko resolve -f ./third_party/contour/gateway/ | \
-  sed 's/LoadBalancerService/NodePortService/g' | \
-  kubectl apply -f -
-
-echo Waiting for Pods to become ready.
-kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-# For debugging.
-kubectl get pods --all-namespaces
+deploy_contour
 
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
@@ -50,7 +28,7 @@ go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
    --skip-tests="${CONTOUR_UNSUPPORTED_E2E_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
+   --cluster-suffix="${CLUSTER_SUFFIX}"
 
 # Give the controller time to sync with the rest of the system components.
 sleep 30
@@ -62,7 +40,7 @@ go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofin
    --enable-alpha --enable-beta \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
+   --cluster-suffix="${CLUSTER_SUFFIX}"
 
 echo ">> Scale down after HA tests"
 kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1

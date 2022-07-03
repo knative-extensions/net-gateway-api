@@ -18,34 +18,9 @@
 
 set -euo pipefail
 
-source $(dirname $0)/../hack/test-env.sh
+source "$(dirname $0)"/setup-and-deploy.sh
 
-# Expected prerequisites:
-# * A Kind cluster
-# * Knative serving installed
-# * Gateway CRDs installed
-# * net-gateway-api-controller installed (e.g. `ko apply -f config`)
-# * Test images published with `./test/upload-test-images.sh`
-
-CONTROL_NAMESPACE=knative-serving
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-
-# gateway-api CRD must be installed before Istio.
-kubectl apply  -f third_party/gateway-api/00-crds.yaml
-
-echo ">> Bringing up Istio"
-curl -sL https://istio.io/downloadIstioctl | sh -
-$HOME/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
-
-echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/istio/gateway/
-
-echo Waiting for Pods to become ready.
-kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-# For debugging.
-kubectl get pods --all-namespaces
+deploy_istio
 
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
@@ -53,7 +28,7 @@ go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
    --skip-tests="${ISTIO_UNSUPPORTED_E2E_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
+   --cluster-suffix="${CLUSTER_SUFFIX}"
 
 # Give the controller time to sync with the rest of the system components.
 sleep 30
@@ -65,7 +40,7 @@ go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofin
    --enable-alpha --enable-beta \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
+   --cluster-suffix="${CLUSTER_SUFFIX}"
 
 echo ">> Scale down after HA tests"
 kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1

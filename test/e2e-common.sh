@@ -15,10 +15,12 @@
 # limitations under the License.
 
 # This script includes common functions for testing setup and teardown.
-source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
-source $(dirname $0)/../hack/test-env.sh
+source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
+source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
+export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
 # Setup resources.
 function test_setup() {
@@ -27,6 +29,7 @@ function test_setup() {
   if ! which kail >/dev/null; then
     bash <(curl -sfL https://raw.githubusercontent.com/boz/kail/master/godownloader.sh) -b "$GOPATH/bin"
   fi
+
   # Capture all logs.
   kail >${ARTIFACTS}/k8s.log.txt &
   local kail_pid=$!
@@ -41,22 +44,13 @@ function test_setup() {
 
   # Bringing up controllers.
   echo ">> Bringing up controller"
-  ko apply -f third_party/gateway-api/ || return 1
+  ko apply -f config/ || return 1
 
   kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
 
   # Wait for pods to be running.
   echo ">> Waiting for controller components to be running..."
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
-
-  echo ">> Bringing up Istio"
-  curl -sL https://istio.io/downloadIstioctl | sh -
-  $HOME/.istioctl/bin/istioctl install -y
-
-  echo ">> Deploy Gateway API resources"
-  kubectl apply -f ./third_party/istio/gateway/
-
-  wait_until_service_has_external_http_address istio-system istio-ingressgateway
 }
 
 # Add function call to trap

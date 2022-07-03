@@ -122,7 +122,7 @@ jobs:
         set -o pipefail
 
         # Build and Publish our containers to the docker daemon (including test assets)
-        ko resolve -f test/config/ -f third_party/gateway-api/ | kubectl apply -f -
+        ko resolve -f test/config/ -f config/ | kubectl apply -f -
 
     - name: Upload Test Images
       run: |

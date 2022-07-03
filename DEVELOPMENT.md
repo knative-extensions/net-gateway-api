@@ -1,184 +1,80 @@
 # Development
-
 This doc explains how to setup a development environment so you can get started
-[contributing](https://www.knative.dev/contributing/) to Knative
-`net-gateway-api`. Also take a look at:
+contributing to Knative `net-gateway-api`.
 
+Before submitting a PR, see also:
+- [CONTRIBUTING.md](./CONTRIBUTING.md).
 - [The pull request workflow](https://knative.dev/community/contributing/reviewing/)
 
-## Getting started
+## Notes
+If you use the konk script to setup your cluster, your cluster will be named `knative`. However, most of the scripts expect it to be the default `kind` name. Set the kind cluster name env `export KIND_CLUSTER_NAME=knative` to point to `knative` cluster. KO requires a registry which if you are developing locally you could use `export KO_DOCKER_REPO=kind.local` to use the local one on kind. Please see official [KO documentation](https://github.com/google/ko#local-publishing-options) for more information.
 
-1. Create [a GitHub account](https://github.com/join)
-1. Setup
-   [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
-1. Install [requirements](#requirements)
-1. Set up your [shell environment](#environment-setup)
-1. [Create and checkout a repo fork](#checkout-your-fork)
+Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 
-Before submitting a PR, see also [CONTRIBUTING.md](./CONTRIBUTING.md).
+Tests are currently wip. Please see [README#tests](README.md#tests)
 
-### Requirements
+## Requirements
+1. A running cluster
+2. [Knative serving installed](README.md#install-knative-serving)
+3. [`ko`](https://github.com/google/ko) (for development and testing)
+4. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (for managing development environments)
+5. [`bash`](https://www.gnu.org/software/bash/) v4 or later. On macOS the default bash is too old, you can use [Homebrew](https://brew.sh) to install a later version.
 
-You must install these tools:
-
-1. [`go`](https://golang.org/doc/install): The language Knative `net-gateway-api`
-   is built in
-1. [`git`](https://help.github.com/articles/set-up-git/): For source control
-1. [`dep`](https://github.com/golang/dep): For managing external dependencies.
-
-### Environment setup
-
-To get started you'll need to set these environment variables (we recommend
-adding them to your `.bashrc`):
-
-1. `GOPATH`: If you don't have one, simply pick a directory and add
-   `export GOPATH=...`
-
-1. `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
-   work properly.
-
-`.bashrc` example:
+## Environment
+To start your environment you'll need to set `KO_DOCKER_REPO`: The repository to which developer/test images should be pushed. Ex:
 
 ```shell
-export GOPATH="$HOME/go"
-export PATH="${PATH}:${GOPATH}/bin"
+export KO_DOCKER_REPO='gcr.io/my-gcloud-project-id'
 ```
 
-### Checkout your fork
+### Notes
+- If you are using Docker Hub to store your images your `KO_DOCKER_REPO` variable should be `docker.io/<username>`.
+- Currently Docker Hub doesn't let you create subdirs under your username.
+- You'll need to be authenticated with your `KO_DOCKER_REPO` before pushing images.
+  - Google Container Registry: `gcloud auth configure-docker`
+  - Docker Hub: `docker login`
 
-The Go tools require that you clone the repository to the
-`src/knative.dev/net-gateway-api` directory in your
-[`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
+## Building the test images
+NOTE: this is only required when you run conformance/e2e tests locally with `go test` commands, and may be required periodically.
 
-To check out this repository:
+The [`upload-test-images.sh`](test/upload-test-images.sh) script can be used to build and push the test images used by the conformance and e2e tests.
 
-1. Create your own
-   [fork of this repo](https://help.github.com/articles/fork-a-repo/)
+To run the script for all end to end test images:
 
-1. Clone it to your machine:
+```bash
+./test/upload-test-images.sh
+```
+
+## Tests
+### Conformance
+#### Istio
+`./test/kind-conformance-istio.sh`
+
+#### Contour
+`./test/kind-conformance-contour.sh`
+
+### e2e
+Calling a script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
+
+Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
+
+#### Istio
+`./test/kind-e2e-istio.sh`
+
+#### Contour
+`./test/kind-e2e-contour.sh`
+
+## Adding new tests
+1) To add a new test for a new vendor/implementation, add the corresponding bash script file(s) with the following header:
 
 ```shell
-mkdir -p ${GOPATH}/src/knative.dev
-cd ${GOPATH}/src/knative.dev
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/net-gateway-api.git
-cd net-gateway-api
-git remote add upstream https://github.com/knative-sandbox/net-gateway-api.git
-git remote set-url --push upstream no_push
+set -euo pipefail
+
+source "$(dirname $0)"/setup-and-deploy.sh
+
+deploy_new_vendor
 ```
 
-_Adding the `upstream` remote sets you up nicely for regularly
-[syncing your fork](https://help.github.com/articles/syncing-a-fork/)._
+2) Add a new function to the file  [`setup-and-deploy.sh`](test/setup-and-deploy.sh) and name it `function deploy_new_vendor()`.
 
-Once you reach this point you are ready to do a full build and deploy as
-described below.
-
-### Execute conformance tests
-
-Currently this repo tests with Istio and Contour. Please follow
-[Test with Istio](#test-with-istio) or [Test with Contour](#test-with-contour).
-
-### Test with Istio
-
-#### Prepare test resources such as namespaces
-
-```
-kubectl apply -f test/config/
-```
-
-#### Load tested environment versions
-
-```
-source ./hack/test-env.sh
-```
-
-#### Install Gateway API CRDs
-
-```
-kubectl apply -f third_party/gateway-api/00-crds.yaml
-```
-
-#### Deploy Istio
-
-Run the following command to install Istio:
-
-__NOTE__ You can find the Istio version to be installed in `./hack/test-env.sh`.
-
-```shell
-curl -sL https://istio.io/downloadIstioctl | sh -
-$HOME/.istioctl/bin/istioctl install -y
-```
-
-#### Deploy GatewayClass and Gateway
-
-```
-kubectl apply -f ./third_party/istio/gateway/
-```
-
-#### Execute tests
-
-```shell
-GATEWAY_OVERRIDE=istio-ingressgateway
-GATEWAY_NAMESPACE_OVERRIDE=istio-system
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-
-go test -v -tags=e2e -count=1  ./test/conformance/gateway-api/  -run "TestIngressConformance/basics" \
-  --ingressClass=istio \
-  --ingressendpoint="${IPS[0]}"
-```
-
-### Test with Contour
-
-#### Prepare test resources such as namespaces
-
-```
-kubectl apply -f test/config/
-```
-
-#### Load tested environment versions
-
-```
-source ./hack/test-env.sh
-```
-
-#### Install Gateway API CRDs
-
-This step is not necessary for Contour as contour operator installs Gateway API
-CRDs.
-
-#### Deploy Contour
-
-Run the following command to install Contour and its operator.
-
-__NOTE__ You can find the Contour version to be installed in `./hack/test-env.sh`.
-
-```shell
-kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
-```
-
-#### Deploy GatewayClass and Gateway
-
-```
-ko resolve -f ./third_party/contour/gateway/gateway-external.yaml | \
-  sed 's/LoadBalancerService/NodePortService/g' | \
-  kubectl apply -f -
-
-ko resolve -f ./third_party/contour/gateway/gateway-internal.yaml | \
-  kubectl apply -f -
-```
-
-#### Execute test
-
-```shell
-GATEWAY_OVERRIDE=envoy
-GATEWAY_NAMESPACE_OVERRIDE=contour-external
-LOCAL_GATEWAY_OVERRIDE=envoy
-LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-
-go test -v -tags=e2e -count=1  ./test/conformance/gateway-api/  -run "TestIngressConformance/hosts/basics" \
-  --ingressClass=contour \
-  --ingressendpoint="${IPS[0]}"
-```
-
-Some tests are still not available. Please see
-https://github.com/knative-sandbox/net-gateway-api/issues/36.
+3) Add the configuration specific to this vendor inside the `deploy_new_vendor()` function.

@@ -1,4 +1,4 @@
-# Generated with "kubectl kustomize github.com/kubernetes-sigs/gateway-api/config/crd/experimental?ref=v0.5.0-rc1
+# Generated with "kubectl kustomize https://github.com/kubernetes-sigs/gateway-api/config/crd/experimental?ref=v0.5.0-rc1
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:

@@ -27,15 +27,9 @@ export DISABLE_MD_LINTING=1
 export GO111MODULE=on
 
 source $(dirname $0)/../vendor/knative.dev/hack/presubmit-tests.sh
-source "$(dirname $0)"/setup-and-deploy.sh
 
 # TODO(mattmoor): integration tests
 
 # We use the default build, unit and integration test runners.
 
 main "$@"
-
-function pre_integration_tests() {
-    deploy_contour
-    deploy_istio
-}

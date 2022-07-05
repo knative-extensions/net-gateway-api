@@ -78,3 +78,5 @@ deploy_new_vendor
 2) Add a new function to the file  [`setup-and-deploy.sh`](test/setup-and-deploy.sh) and name it `function deploy_new_vendor()`.
 
 3) Add the configuration specific to this vendor inside the `deploy_new_vendor()` function.
+
+4) Add a call to the new vendor configuration to the `test_setup()` function in the [`e2e-tests.sh`](test/e2e-tests.sh) file.

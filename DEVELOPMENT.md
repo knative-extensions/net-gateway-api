@@ -46,6 +46,9 @@ To run the script for all end to end test images:
 ```
 
 ## Tests
+To run all e2e  tests, run: `./test/e2e-tests.sh`.
+
+To run each individual tests, e2e or conformance, run this before each: `source ./test/e2e-common.sh`
 ### Conformance
 #### Istio
 `./test/kind-conformance-istio.sh`

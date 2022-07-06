@@ -17,9 +17,14 @@
 set -eo pipefail
 
 # This script includes common functions for setting up different Gateway API implementations.
-source "$(dirname $0)"/e2e-common.sh
+# source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/../hack/test-env.sh
 
-test_setup
+function setup() {
+    export CONTROL_NAMEsSPACE=knative-serving
+    export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+    export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+}
 
 function wait() {
     echo ">>Waiting for Pods to become ready"
@@ -30,13 +35,14 @@ function wait() {
 }
 
 function deploy_istio() {
+    setup
     # gateway-api CRD must be installed before Istio.
     echo ">> Installing Gateway API CRDs"
     kubectl apply -f config/100-gateway-api.yaml
 
     echo ">> Bringing up Istio"
     curl -sL https://istio.io/downloadIstioctl | sh -
-    "$HOME"/.istioctl/bin/istioctl install -y #--set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
+    "$HOME"/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
 
     echo ">> Deploy Gateway API resources"
     kubectl apply -f ./third_party/istio/gateway/
@@ -45,6 +51,7 @@ function deploy_istio() {
 }
 
 function deploy_contour() {
+    setup
     export GATEWAY_OVERRIDE=envoy
     export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 

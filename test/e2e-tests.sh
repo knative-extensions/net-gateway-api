@@ -25,9 +25,7 @@
 # project $PROJECT_ID, start knative in it, run the tests and delete the
 # cluster.
 
-# source "$(dirname $0)"/e2e-common.sh
-source $(dirname $0)/setup-and-deploy.sh
-
+source $(dirname $0)/e2e-common.sh
 
 # Script entry point.
 initialize "$@" --skip-istio-addon
@@ -37,10 +35,7 @@ header "Running tests"
 
 failed=0
 
-function test_setup() {
-    deploy_contour
-    deploy_istio
-}
+deploy_istio
 
 echo ">> Running e2e tests"
 go_test_e2e -timeout=20m -tags=e2e -parallel=12 \

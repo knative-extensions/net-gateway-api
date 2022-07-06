@@ -27,7 +27,6 @@ import (
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	"knative.dev/networking/pkg/ingress"
 	"knative.dev/networking/pkg/status"
-	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
@@ -62,6 +61,7 @@ var (
 // ReconcileKind implements Interface.ReconcileKind.
 func (c *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingress) pkgreconciler.Event {
 	reconcileErr := c.reconcileIngress(ctx, ingress)
+
 	if reconcileErr != nil {
 		ingress.Status.MarkIngressNotReady(notReconciledReason, notReconciledMessage)
 		return reconcileErr
@@ -70,8 +70,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingres
 	return nil
 }
 
+// FinalizeKind implements Interface.FinalizeKind
+func (c *Reconciler) FinalizeKind(ctx context.Context, ingress *v1alpha1.Ingress) pkgreconciler.Event {
+	gatewayConfig := config.FromContext(ctx).Gateway
+
+	// We currently only support TLS on the external IP
+	return c.clearGatewayListeners(ctx, ingress, gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
+}
+
 func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress) error {
-	logger := logging.FromContext(ctx)
 	gatewayConfig := config.FromContext(ctx).Gateway
 
 	// We may be reading a version of the object that was stored at an older version
@@ -87,8 +94,6 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		return fmt.Errorf("failed to add knative probe header: %w", err)
 	}
 
-	logger.Infof("Reconciling ingress: %#v", ing)
-
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
@@ -102,7 +107,6 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		} else {
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
 		}
-		logger.Infof("HTTPRoute successfully synced %v", httproutes)
 	}
 
 	listeners := make([]*gatewayv1alpha2.Listener, 0, len(ing.Spec.TLS))
@@ -125,6 +129,8 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 			return err
 		}
 	}
+
+	// TODO: check Gateway readiness before reporting Ingress ready
 
 	ready, err := c.statusManager.IsReady(ctx, before)
 	if err != nil {

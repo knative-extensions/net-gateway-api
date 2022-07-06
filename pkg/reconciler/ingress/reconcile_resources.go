@@ -34,6 +34,8 @@ import (
 	"knative.dev/pkg/controller"
 )
 
+const listenerPrefix = "kni-"
+
 // reconcileHTTPRoute reconciles HTTPRoute.
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context, ing *netv1alpha1.Ingress,
@@ -154,7 +156,7 @@ func (c *Reconciler) reconcileTLS(
 	for _, h := range tls.Hosts {
 		h := h
 		listener := gatewayv1alpha2.Listener{
-			Name:     gatewayv1alpha2.SectionName(h),
+			Name:     gatewayv1alpha2.SectionName(listenerPrefix + ing.GetUID()),
 			Hostname: (*gatewayv1alpha2.Hostname)(&h),
 			Port:     443,
 			Protocol: gatewayv1alpha2.HTTPSProtocolType,
@@ -235,6 +237,42 @@ func (c *Reconciler) reconcileGatewayListeners(
 			ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to update Gateway %s: %v", gwName, err)
+			return fmt.Errorf("failed to update Gateway %s/%s: %w", update.Namespace, update.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1.Ingress, gwName *types.NamespacedName) error {
+	recorder := controller.GetEventRecorder(ctx)
+
+	gw, err := c.gatewayLister.Gateways(gwName.Namespace).Get(gwName.Name)
+	if apierrs.IsNotFound(err) {
+		// Nothing to clean up, all done!
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	listenerName := listenerPrefix + string(ing.GetUID())
+	update := gw.DeepCopy()
+
+	numListeners := len(update.Spec.Listeners)
+	for i := numListeners - 1; i >= 0; i-- {
+		// March backwards down the list removing items by swapping in the last item and trimming the list
+		// A generic list.remove(func) would be nice here.
+		l := update.Spec.Listeners[i]
+		if string(l.Name) == string(listenerName) {
+			update.Spec.Listeners[i] = update.Spec.Listeners[len(update.Spec.Listeners)-1]
+			update.Spec.Listeners = update.Spec.Listeners[:len(update.Spec.Listeners)-1]
+		}
+	}
+
+	if len(update.Spec.Listeners) != numListeners {
+		_, err := c.gwapiclient.GatewayV1alpha2().Gateways(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		if err != nil {
+			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to remove Listener from Gateway %s: %v", gwName, err)
 			return fmt.Errorf("failed to update Gateway %s/%s: %w", update.Namespace, update.Name, err)
 		}
 	}

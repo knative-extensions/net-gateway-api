@@ -152,8 +152,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(123),
-										Name: gatewayv1alpha2.ObjectName("goo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Name:  gatewayv1alpha2.ObjectName("goo"),
+										Port:  portNumPtr(123),
 									},
 									Weight: pointer.Int32Ptr(int32(12)),
 								},
@@ -173,8 +175,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}, {
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(124),
-										Name: gatewayv1alpha2.ObjectName("doo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Port:  portNumPtr(124),
+										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(88)),
 								},
@@ -205,12 +209,13 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 										Value: pointer.StringPtr("/"),
 									},
-									Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
 								},
 							},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
 							ParentRefs: []gatewayv1alpha2.ParentRef{{
+								Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
+								Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 								Namespace: namespacePtr("test-ns"),
 								Name:      gatewayv1alpha2.ObjectName("foo"),
 							}},
@@ -232,8 +237,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(123),
-										Name: gatewayv1alpha2.ObjectName("goo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Port:  portNumPtr(123),
+										Name:  gatewayv1alpha2.ObjectName("goo"),
 									},
 									Weight: pointer.Int32Ptr(int32(12)),
 								},
@@ -253,8 +260,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}, {
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(124),
-										Name: gatewayv1alpha2.ObjectName("doo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Port:  portNumPtr(124),
+										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(88)),
 								},
@@ -284,11 +293,12 @@ func TestMakeHTTPRoute(t *testing.T) {
 									Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
 									Value: pointer.StringPtr("/"),
 								},
-								Headers: []gatewayv1alpha2.HTTPHeaderMatch{},
 							}},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
 							ParentRefs: []gatewayv1alpha2.ParentRef{{
+								Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
+								Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 								Namespace: namespacePtr("test-ns"),
 								Name:      gatewayv1alpha2.ObjectName("foo-local"),
 							}},
@@ -358,8 +368,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(123),
-										Name: gatewayv1alpha2.ObjectName("goo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Port:  portNumPtr(123),
+										Name:  gatewayv1alpha2.ObjectName("goo"),
 									},
 									Weight: pointer.Int32Ptr(int32(100)),
 								},
@@ -384,8 +396,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
 								BackendRef: gatewayv1alpha2.BackendRef{
 									BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-										Port: portNumPtr(124),
-										Name: gatewayv1alpha2.ObjectName("doo"),
+										Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+										Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+										Port:  portNumPtr(124),
+										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
 									Weight: pointer.Int32Ptr(int32(100)),
 								},
@@ -410,6 +424,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 					CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
 						ParentRefs: []gatewayv1alpha2.ParentRef{{
+							Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
+							Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 							Namespace: namespacePtr("test-ns"),
 							Name:      gatewayv1alpha2.ObjectName("foo"),
 						}},

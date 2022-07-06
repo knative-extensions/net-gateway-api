@@ -26,7 +26,8 @@
 # cluster.
 
 # source "$(dirname $0)"/e2e-common.sh
-source "$(dirname $0)"/setup-and-deploy.sh
+source $(dirname $0)/setup-and-deploy.sh
+
 
 # Script entry point.
 initialize "$@" --skip-istio-addon

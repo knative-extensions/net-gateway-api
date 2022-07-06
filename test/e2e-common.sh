@@ -21,8 +21,11 @@ source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
 source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
-export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+# export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+# IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+
+
 
 # Setup resources.
 function test_setup() {

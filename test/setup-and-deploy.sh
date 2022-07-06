@@ -36,7 +36,7 @@ function deploy_istio() {
 
     echo ">> Bringing up Istio"
     curl -sL https://istio.io/downloadIstioctl | sh -
-    "$HOME"/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
+    "$HOME"/.istioctl/bin/istioctl install -y #--set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
 
     echo ">> Deploy Gateway API resources"
     kubectl apply -f ./third_party/istio/gateway/

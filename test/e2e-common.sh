@@ -20,6 +20,8 @@ set -eo pipefail
 source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
 source $(dirname $0)/setup-and-deploy.sh
 
+export CONTROL_NAMESPACE=knative-serving
+
 # Setup resources.
 function test_setup() {
   echo ">> Setting up logging..."

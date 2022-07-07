@@ -21,7 +21,6 @@ set -eo pipefail
 source "$(dirname $0)"/../hack/test-env.sh
 
 function setup() {
-    export CONTROL_NAMEsSPACE=knative-serving
     export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
     export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 }

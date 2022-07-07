@@ -106,8 +106,6 @@ function deploy_contour() {
   ko resolve -f ./third_party/contour/gateway/ | \
       sed 's/LoadBalancerService/NodePortService/g' | \
       kubectl apply -f -
-
-  wait
 }
 
 function deploy_istio() {
@@ -121,6 +119,4 @@ function deploy_istio() {
 
   echo ">> Deploy Gateway API resources"
   kubectl apply -f ./third_party/istio/gateway/
-
-  wait
 }

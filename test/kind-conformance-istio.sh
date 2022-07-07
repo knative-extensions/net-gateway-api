@@ -16,12 +16,13 @@
 
 # This script runs conformance tests on a local kind environment.
 
-set -eo pipefail
+source "$(dirname $0)"/e2e-common.sh
 
-source "$(dirname $0)"/setup-and-deploy.sh
+set -euo pipefail
 
 UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
 
+conformance_setup
 deploy_istio
 
 echo ">> Running conformance tests"

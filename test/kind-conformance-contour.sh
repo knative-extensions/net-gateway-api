@@ -16,17 +16,17 @@
 
 # This script runs conformance tests on a local kind environment.
 
-set -eo pipefail
+source "$(dirname $0)"/e2e-common.sh
 
-source "$(dirname $0)"/setup-and-deploy.sh
-
-UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
+set -euo pipefail
 
 export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 export LOCAL_GATEWAY_OVERRIDE=envoy
 export LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
 
+UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
+conformance_setup
 deploy_contour
 
 echo ">> Running conformance tests"

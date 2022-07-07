@@ -46,9 +46,6 @@ To run the script for all end to end test images:
 ```
 
 ## Tests
-To run all e2e  tests, run: `./test/e2e-tests.sh`.
-
-To run each individual tests, e2e or conformance, run this before each: `source ./test/e2e-common.sh`
 ### Conformance
 #### Istio
 `./test/kind-conformance-istio.sh`
@@ -57,6 +54,8 @@ To run each individual tests, e2e or conformance, run this before each: `source 
 `./test/kind-conformance-contour.sh`
 
 ### e2e
+To run all e2e tests, run: `./test/e2e-tests.sh`.
+
 Calling a script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
 
 Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.

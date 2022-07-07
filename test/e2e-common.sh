@@ -18,9 +18,42 @@ set -eo pipefail
 
 # This script includes common functions for testing setup and teardown.
 source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
-source $(dirname $0)/setup-and-deploy.sh
+source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
+
+function cluster_setup() {
+  export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+  export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+}
+
+function conformance_setup() {
+  echo ">> Setting up conformance"
+  cluster_setup
+  # Prepare test namespaces
+  kubectl apply -f test/config/
+  # Build and Publish the test images to the docker daemon.
+  "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
+}
+
+function e2e_setup() {
+  echo ">> Setting up e2e"
+  cluster_setup
+  # Setting up test resources.
+  echo ">> Publishing test images"
+  "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
+  echo ">> Creating test resources (test/config/)"
+  ko apply ${KO_FLAGS} -f test/config/ || return 1
+
+  # Bringing up controllers.
+  echo ">> Bringing up controller"
+  ko apply -f config/ || return 1
+  kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
+
+  # Wait for pods to be running.
+  echo ">> Waiting for controller components to be running..."
+  kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
+}
 
 # Setup resources.
 function test_setup() {
@@ -36,21 +69,7 @@ function test_setup() {
   # Clean up kail so it doesn't interfere with job shutting down
   add_trap "kill $kail_pid || true" EXIT
 
-  # Setting up test resources.
-  echo ">> Publishing test images"
-  $(dirname $0)/upload-test-images.sh || fail_test "Error uploading test images"
-  echo ">> Creating test resources (test/config/)"
-  ko apply ${KO_FLAGS} -f test/config/ || return 1
-
-  # Bringing up controllers.
-  echo ">> Bringing up controller"
-  ko apply -f config/ || return 1
-
-  kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
-
-  # Wait for pods to be running.
-  echo ">> Waiting for controller components to be running..."
-  kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
+  e2e_setup
 }
 
 # Add function call to trap
@@ -65,4 +84,43 @@ function add_trap() {
     [[ -n "${current_trap}" ]] && new_cmd="${current_trap};${new_cmd}"
     trap -- "${new_cmd}" $trap_signal
   done
+}
+
+function wait() {
+  echo ">>Waiting for Pods to become ready"
+  kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
+  # For debugging.
+  kubectl get pods --all-namespaces
+}
+
+function deploy_contour() {
+  echo ">> Bringing up Contour"
+  # export GATEWAY_OVERRIDE=envoy
+  # export GATEWAY_NAMESPACE_OVERRIDE=contour-external
+  kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
+
+  # # wait for operator deployment to be Available
+  kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
+
+  echo ">> Deploy Gateway API resources"
+  ko resolve -f ./third_party/contour/gateway/ | \
+      sed 's/LoadBalancerService/NodePortService/g' | \
+      kubectl apply -f -
+
+  wait
+}
+
+function deploy_istio() {
+  # gateway-api CRD must be installed before Istio.
+  echo ">> Installing Gateway API CRDs"
+  kubectl apply -f config/100-gateway-api.yaml
+
+  echo ">> Bringing up Istio"
+  curl -sL https://istio.io/downloadIstioctl | sh -
+  "$HOME"/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
+
+  echo ">> Deploy Gateway API resources"
+  kubectl apply -f ./third_party/istio/gateway/
+
+  wait
 }

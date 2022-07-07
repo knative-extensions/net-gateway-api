@@ -263,7 +263,7 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 		// March backwards down the list removing items by swapping in the last item and trimming the list
 		// A generic list.remove(func) would be nice here.
 		l := update.Spec.Listeners[i]
-		if string(l.Name) == string(listenerName) {
+		if string(l.Name) == listenerName {
 			update.Spec.Listeners[i] = update.Spec.Listeners[len(update.Spec.Listeners)-1]
 			update.Spec.Listeners = update.Spec.Listeners[:len(update.Spec.Listeners)-1]
 		}

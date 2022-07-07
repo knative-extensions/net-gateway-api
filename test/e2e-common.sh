@@ -22,12 +22,18 @@ source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
 
+function export_cluster_info() {
+  export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+  export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+}
+
 function conformance_setup() {
   echo ">> Setting up conformance"
   # Prepare test namespaces
   kubectl apply -f test/config/
   # Build and Publish the test images to the docker daemon.
   "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
+  export_cluster_info
 }
 
 function e2e_setup() {
@@ -46,6 +52,7 @@ function e2e_setup() {
   # Wait for pods to be running.
   echo ">> Waiting for controller components to be running..."
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
+  export_cluster_info
 }
 
 # Setup resources.

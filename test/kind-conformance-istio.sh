@@ -20,8 +20,6 @@ source "$(dirname $0)"/e2e-common.sh
 
 set -euo pipefail
 
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
 
 conformance_setup

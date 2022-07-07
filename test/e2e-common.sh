@@ -22,14 +22,8 @@ source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
 
-function cluster_setup() {
-  export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-  export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-}
-
 function conformance_setup() {
   echo ">> Setting up conformance"
-  cluster_setup
   # Prepare test namespaces
   kubectl apply -f test/config/
   # Build and Publish the test images to the docker daemon.
@@ -38,7 +32,6 @@ function conformance_setup() {
 
 function e2e_setup() {
   echo ">> Setting up e2e"
-  cluster_setup
   # Setting up test resources.
   echo ">> Publishing test images"
   "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"

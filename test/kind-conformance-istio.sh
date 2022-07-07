@@ -20,8 +20,10 @@ source "$(dirname $0)"/e2e-common.sh
 
 set -euo pipefail
 
-UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
+export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
+UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
 conformance_setup
 deploy_istio
 

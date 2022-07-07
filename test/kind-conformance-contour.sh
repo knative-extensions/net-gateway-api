@@ -20,6 +20,8 @@ source "$(dirname $0)"/e2e-common.sh
 
 set -euo pipefail
 
+export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 export LOCAL_GATEWAY_OVERRIDE=envoy

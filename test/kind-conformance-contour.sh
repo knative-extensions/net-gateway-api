@@ -20,14 +20,15 @@ source "$(dirname $0)"/e2e-common.sh
 
 set -euo pipefail
 
-export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
+
 export GATEWAY_OVERRIDE=envoy
 export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 export LOCAL_GATEWAY_OVERRIDE=envoy
 export LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
 
-UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
 conformance_setup
 deploy_contour
 

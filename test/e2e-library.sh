@@ -23,6 +23,7 @@ source "$(dirname $0)"/../hack/test-env.sh
 function e2e_istio() {
     export GATEWAY_OVERRIDE=""
     export GATEWAY_NAMESPACE_OVERRIDE=""
+    export CONTROL_NAMESPACE=knative-serving
 
     failed=0
     go_test_e2e -timeout=20m -tags=e2e -parallel=12 \

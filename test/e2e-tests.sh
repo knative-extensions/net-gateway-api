@@ -16,6 +16,7 @@
 
 set -eo pipefail
 
+source $(dirname $0)/e2e-common.sh
 source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
 source "$(dirname $0)"/e2e-library-deployments.sh
 source "$(dirname $0)"/e2e-library.sh

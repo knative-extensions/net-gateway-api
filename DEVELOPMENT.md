@@ -58,8 +58,20 @@ Calling a script without arguments will create a new cluster in your current GCP
 
 Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
 
-#### Istio
+#### All tests
+To run conformance tests for all vendors, run: `./test/e2e-tests.sh`
+
+#### Individual tests
+To run an individual
+```bash
+cd test
+source e2e-common.sh
+test_setup
+cd ..
+```
+
+Then run one of the available tests:
+
 `./test/kind-e2e-istio.sh`
 
-#### Contour
 `./test/kind-e2e-contour.sh`

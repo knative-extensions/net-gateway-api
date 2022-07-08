@@ -39,7 +39,6 @@ function conformance_setup() {
 function e2e_setup() {
   echo ">> Setting up e2e"
   # Setting up test resources.
-  echo ">> Publishing test images"
   "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
   echo ">> Creating test resources (test/config/)"
   ko apply ${KO_FLAGS} -f test/config/ || return 1

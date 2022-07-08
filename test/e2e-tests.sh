@@ -16,7 +16,7 @@
 
 set -eo pipefail
 
-source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
 
 # Script entry point.
 initialize "$@" --skip-istio-addon

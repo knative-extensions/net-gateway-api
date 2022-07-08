@@ -17,7 +17,6 @@
 set -eo pipefail
 
 # This script includes common functions for testing setup and teardown.
-source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
 source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving

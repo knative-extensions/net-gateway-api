@@ -14,12 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script runs e2e tests on a local kind environment.
+# This script runs the end-to-end tests against net-gateway-api built from source.
+# It is started by prow for each PR. For convenience, it can also be executed manually:
+  # If you already have a Knative cluster setup and kubectl pointing
+  # to it, call this script with the --run-tests arguments and it will use
+  # the cluster and run the tests.
 
-set -eo pipefail
-source $(dirname $0)/setup-and-deploy.sh
+  # Calling this script without arguments will create a new cluster in
+  # project $PROJECT_ID, start knative in it, run the tests and delete the
+  # cluster.
+
+source "$(dirname $0)"/e2e-common.sh
+
+set -euo pipefail
+
+# Script entry point.
+initialize "$@" --skip-istio-addon
+
+# Run the tests
+header "Running Contour e2e tests"
+
+failed=0
+
+export GATEWAY_OVERRIDE=envoy
+export GATEWAY_NAMESPACE_OVERRIDE=contour-external
 
 deploy_contour
+wait
 
 echo ">> Running e2e tests"
 go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
@@ -43,3 +64,8 @@ go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofin
 
 echo ">> Scale down after HA tests"
 kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1
+
+(( failed )) && dump_cluster_state
+(( failed )) && fail_test
+
+success

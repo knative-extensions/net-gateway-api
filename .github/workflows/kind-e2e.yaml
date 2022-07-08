@@ -117,21 +117,9 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
-    - name: Install Knative net-gateway-api
-      run: |
-        set -o pipefail
-
-        # Build and Publish our containers to the docker daemon (including test assets)
-        ko resolve -f test/config/ -f config/ | kubectl apply -f -
-
-    - name: Upload Test Images
-      run: |
-        # Build and Publish our test images to the docker daemon.
-        ./test/upload-test-images.sh
-
     - name: Run e2e Tests
       run: |
-        ./test/kind-e2e-${{ matrix.ingress }}.sh
+        ./test/e2e-${{ matrix.ingress }}.sh
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

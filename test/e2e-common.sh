@@ -43,6 +43,7 @@ function e2e_setup() {
   "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
   echo ">> Creating test resources (test/config/)"
   ko apply ${KO_FLAGS} -f test/config/ || return 1
+  export_cluster_info
 
   # Bringing up controllers.
   echo ">> Bringing up controller"
@@ -52,7 +53,6 @@ function e2e_setup() {
   # Wait for pods to be running.
   echo ">> Waiting for controller components to be running..."
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
-  export_cluster_info
 }
 
 # Setup resources.
@@ -95,8 +95,6 @@ function wait() {
 
 function deploy_contour() {
   echo ">> Bringing up Contour"
-  # export GATEWAY_OVERRIDE=envoy
-  # export GATEWAY_NAMESPACE_OVERRIDE=contour-external
   kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
 
   # # wait for operator deployment to be Available

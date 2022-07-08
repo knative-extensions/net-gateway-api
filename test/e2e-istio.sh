@@ -45,7 +45,7 @@ go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
    --skip-tests="${ISTIO_UNSUPPORTED_E2E_TESTS}" \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix="${CLUSTER_SUFFIX}"
+   --cluster-suffix="$CLUSTER_SUFFIX"
 
 # Give the controller time to sync with the rest of the system components.
 sleep 30
@@ -57,7 +57,7 @@ go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofin
    --enable-alpha --enable-beta \
    --ingressendpoint="${IPS[0]}" \
    --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix="${CLUSTER_SUFFIX}"
+   --cluster-suffix="$CLUSTER_SUFFIX"
 
 echo ">> Scale down after HA tests"
 kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1

@@ -54,8 +54,6 @@ To run the script for all end to end test images:
 `./test/kind-conformance-contour.sh`
 
 ### e2e
-To run all e2e tests, run: `./test/e2e-tests.sh`.
-
 Calling a script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
 
 Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
@@ -65,20 +63,3 @@ Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will i
 
 #### Contour
 `./test/kind-e2e-contour.sh`
-
-## Adding new tests
-1) To add a new test for a new vendor/implementation, add the corresponding bash script file(s) with the following header:
-
-```shell
-set -euo pipefail
-
-source "$(dirname $0)"/setup-and-deploy.sh
-
-deploy_new_vendor
-```
-
-2) Add a new function to the file  [`setup-and-deploy.sh`](test/setup-and-deploy.sh) and name it `function deploy_new_vendor()`.
-
-3) Add the configuration specific to this vendor inside the `deploy_new_vendor()` function.
-
-4) Add a call to the new vendor configuration to the `test_setup()` function in the [`e2e-tests.sh`](test/xxxxx.sh) file.

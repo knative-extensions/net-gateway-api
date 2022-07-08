@@ -22,6 +22,6 @@ source "$(dirname $0)"/e2e-common.sh
 source "$(dirname $0)"/e2e-library-deployments.sh
 source "$(dirname $0)"/e2e-library.sh
 
-test_setup
+conformance_setup
 deploy_gateway_for istio
 kind_conformance_istio

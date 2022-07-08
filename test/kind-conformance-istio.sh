@@ -16,18 +16,12 @@
 
 # This script runs conformance tests on a local kind environment.
 
+set -eo pipefail
+
 source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
-set -euo pipefail
-
-UNSUPPORTED_CONFORMANCE_TESTS="visibility/split"
-
-conformance_setup
-deploy_istio
-
-echo ">> Running conformance tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/gateway-api \
-   --enable-alpha --enable-beta \
-   --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
-   --ingressendpoint="${IPS[0]}" \
-   --cluster-suffix="$CLUSTER_SUFFIX"
+test_setup
+deploy_gateway_for istio
+kind_conformance_istio

@@ -27,31 +27,10 @@
 set -eo pipefail
 
 source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
-deploy_istio
-wait
-
-echo ">> Running e2e tests"
-failed=0
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
-   --enable-alpha --enable-beta \
-   --skip-tests="${ISTIO_UNSUPPORTED_E2E_TESTS}" \
-   --ingressendpoint="${IPS[0]}" \
-   --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix="$CLUSTER_SUFFIX" || failed=1
-
-# Give the controller time to sync with the rest of the system components.
-sleep 30
-
-echo ">> Scale up controller for HA tests"
-kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
-
-failed=0
-go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofinterval="10ms" \
-   --enable-alpha --enable-beta \
-   --ingressendpoint="${IPS[0]}" \
-   --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix="$CLUSTER_SUFFIX" || failed=1
-
-echo ">> Scale down after HA tests"
-kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1
+test_setup
+deploy_gateway_for istio kind
+wait_for_pods
+kind_e2e_istio

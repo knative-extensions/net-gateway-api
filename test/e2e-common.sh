@@ -53,7 +53,7 @@ function e2e_setup() {
   kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
 }
 
-# Setup resources.
+# Setup resources for 2e2 testing.
 function test_setup() {
   echo ">> Setting up logging..."
   # Install kail if needed.
@@ -84,35 +84,9 @@ function add_trap() {
   done
 }
 
-function wait() {
+function wait_for_pods() {
   echo ">>Waiting for Pods to become ready"
-  kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
+  kubectl wait pod --for=condition=Ready -n "${CONTROL_NAMESPACE}" -l '!job-name'
   # For debugging.
   kubectl get pods --all-namespaces
-}
-
-function deploy_contour() {
-  echo ">> Bringing up Contour"
-  kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
-
-  # # wait for operator deployment to be Available
-  kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
-
-  echo ">> Deploy Gateway API resources"
-  ko resolve -f ./third_party/contour/gateway/ | \
-      sed 's/LoadBalancerService/NodePortService/g' | \
-      kubectl apply -f -
-}
-
-function deploy_istio() {
-  # gateway-api CRD must be installed before Istio.
-  echo ">> Installing Gateway API CRDs"
-  kubectl apply -f config/100-gateway-api.yaml
-
-  echo ">> Bringing up Istio"
-  curl -sL https://istio.io/downloadIstioctl | sh -
-  "$HOME"/.istioctl/bin/istioctl install -y --set values.gateways.istio-ingressgateway.type=NodePort --set values.global.proxy.clusterDomain="${CLUSTER_SUFFIX}"
-
-  echo ">> Deploy Gateway API resources"
-  kubectl apply -f ./third_party/istio/gateway/
 }

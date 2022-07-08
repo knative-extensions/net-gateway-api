@@ -16,23 +16,12 @@
 
 # This script runs conformance tests on a local kind environment.
 
+set -eo pipefail
+
 source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
-set -euo pipefail
-
-UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
-
-export GATEWAY_OVERRIDE=envoy
-export GATEWAY_NAMESPACE_OVERRIDE=contour-external
-export LOCAL_GATEWAY_OVERRIDE=envoy
-export LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
-
-conformance_setup
-deploy_contour
-
-echo ">> Running conformance tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/gateway-api \
-   --enable-alpha --enable-beta \
-   --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
-   --ingressendpoint="${IPS[0]}" \
-   --cluster-suffix="$CLUSTER_SUFFIX"
+test_setup
+deploy_gateway_for contour
+kind_conformance_contour

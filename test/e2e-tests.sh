@@ -16,18 +16,17 @@
 
 set -eo pipefail
 
-source "$(dirname $0)"/../vendor/knative.dev/hack/e2e-tests.sh
+source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
 # Script entry point.
 initialize "$@" --skip-istio-addon
 
+deploy_gateway_for istio
+
 # Run the tests
-header "Running Istio e2e tests"
-source "$(dirname $0)"/kind-e2e-istio.sh
+header "Running e2e tests with all available Gateway API vendors installed"
+e2e_istio
 
-(( failed )) && dump_cluster_state
-(( failed )) && fail_test
-
-success
-
-# TODO(carlisia): add a call to run the Contour conformance tests
+# TODO(@carlisia): add a call to deploy and run e2e tests for contour

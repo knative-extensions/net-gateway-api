@@ -26,15 +26,14 @@ import (
 )
 
 // Grant the resource "to" access to the resource "from"
-// N.B. ReferencePolicy will be renamed ReferenceGrant in v1beta1
-func MakeReferenceGrant(ctx context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1alpha2.ReferencePolicy {
+func MakeReferenceGrant(ctx context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1alpha2.ReferenceGrant {
 	name := to.Name
 	if len(name)+len(from.Namespace) > 62 {
 		name = name[:62-len(from.Namespace)]
 	}
 	name += "-" + from.Namespace
 
-	retval := &gatewayv1alpha2.ReferencePolicy{
+	retval := &gatewayv1alpha2.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       to.Namespace,
@@ -42,13 +41,13 @@ func MakeReferenceGrant(ctx context.Context, ing *netv1alpha1.Ingress, to, from 
 			Annotations:     to.Annotations,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
-		Spec: gatewayv1alpha2.ReferencePolicySpec{
-			From: []gatewayv1alpha2.ReferencePolicyFrom{{
+		Spec: gatewayv1alpha2.ReferenceGrantSpec{
+			From: []gatewayv1alpha2.ReferenceGrantFrom{{
 				Group:     gatewayv1alpha2.Group(from.GroupVersionKind().Group),
 				Kind:      gatewayv1alpha2.Kind(from.Kind),
 				Namespace: gatewayv1alpha2.Namespace(from.Namespace),
 			}},
-			To: []gatewayv1alpha2.ReferencePolicyTo{{
+			To: []gatewayv1alpha2.ReferenceGrantTo{{
 				Group: gatewayv1alpha2.Group(to.GroupVersionKind().Group),
 				Kind:  gatewayv1alpha2.Kind(to.Kind),
 				Name:  (*gatewayv1alpha2.ObjectName)(&to.Name),

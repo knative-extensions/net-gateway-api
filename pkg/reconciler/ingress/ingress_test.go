@@ -392,10 +392,10 @@ func TestReconcileTLS(t *testing.T) {
 
 	table.Test(t, GatewayFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher, tr *TableRow) controller.Reconciler {
 		r := &Reconciler{
-			gwapiclient:           fakegwapiclientset.Get(ctx),
-			httprouteLister:       listers.GetHTTPRouteLister(),
-			referencePolicyLister: listers.GetReferencePolicyLister(),
-			gatewayLister:         listers.GetGatewayLister(),
+			gwapiclient:          fakegwapiclientset.Get(ctx),
+			httprouteLister:      listers.GetHTTPRouteLister(),
+			referenceGrantLister: listers.GetReferenceGrantLister(),
+			gatewayLister:        listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 				return true, nil
 			}},
@@ -571,7 +571,7 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			Protocol: "HTTPS",
 			TLS: &gatewayv1alpha2.GatewayTLSConfig{
 				Mode: (*gatewayv1alpha2.TLSModeType)(pointer.String("Terminate")),
-				CertificateRefs: []*gatewayv1alpha2.SecretObjectReference{{
+				CertificateRefs: []gatewayv1alpha2.SecretObjectReference{{
 					Group:     (*gatewayv1alpha2.Group)(pointer.String("")),
 					Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Secret")),
 					Name:      gatewayv1alpha2.ObjectName(secretName),
@@ -622,9 +622,9 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
+func rp(to *corev1.Secret) *gatewayv1alpha2.ReferenceGrant {
 	t := true
-	return &gatewayv1alpha2.ReferencePolicy{
+	return &gatewayv1alpha2.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,
@@ -636,13 +636,13 @@ func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
 				BlockOwnerDeletion: &t,
 			}},
 		},
-		Spec: gatewayv1alpha2.ReferencePolicySpec{
-			From: []gatewayv1alpha2.ReferencePolicyFrom{{
+		Spec: gatewayv1alpha2.ReferenceGrantSpec{
+			From: []gatewayv1alpha2.ReferenceGrantFrom{{
 				Group:     "gateway.networking.k8s.io",
 				Kind:      "Gateway",
 				Namespace: gatewayv1alpha2.Namespace(testNamespace),
 			}},
-			To: []gatewayv1alpha2.ReferencePolicyTo{{
+			To: []gatewayv1alpha2.ReferenceGrantTo{{
 				Group: gatewayv1alpha2.Group(""),
 				Kind:  gatewayv1alpha2.Kind("Secret"),
 				Name:  (*gatewayv1alpha2.ObjectName)(&to.Name),

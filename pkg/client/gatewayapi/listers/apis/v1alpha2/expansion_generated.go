@@ -38,6 +38,14 @@ type HTTPRouteListerExpansion interface{}
 // HTTPRouteNamespaceLister.
 type HTTPRouteNamespaceListerExpansion interface{}
 
+// ReferenceGrantListerExpansion allows custom methods to be added to
+// ReferenceGrantLister.
+type ReferenceGrantListerExpansion interface{}
+
+// ReferenceGrantNamespaceListerExpansion allows custom methods to be added to
+// ReferenceGrantNamespaceLister.
+type ReferenceGrantNamespaceListerExpansion interface{}
+
 // ReferencePolicyListerExpansion allows custom methods to be added to
 // ReferencePolicyLister.
 type ReferencePolicyListerExpansion interface{}

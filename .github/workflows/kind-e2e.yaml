@@ -42,7 +42,7 @@ jobs:
           kind-version: v0.14.0
           kind-image-sha: sha256:0866296e693efe1fed79d5e6c7af8df71fc73ae45e3679af05342239cdc5bc8e
           ingress: istio
- 
+
     env:
       GOPATH: ${{ github.workspace }}
       KO_DOCKER_REPO: kind.local
@@ -116,18 +116,6 @@ jobs:
 
         # Create a cluster!
         kind create cluster --config kind.yaml
-
-    - name: Install Knative net-gateway-api
-      run: |
-        set -o pipefail
-
-        # Build and Publish our containers to the docker daemon (including test assets)
-        ko resolve -f test/config/ -f config/ | kubectl apply -f -
-
-    - name: Upload Test Images
-      run: |
-        # Build and Publish our test images to the docker daemon.
-        ./test/upload-test-images.sh
 
     - name: Run e2e Tests
       run: |

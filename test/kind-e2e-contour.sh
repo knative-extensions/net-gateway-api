@@ -14,55 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script runs e2e tests on a local kind environment.
+# This script runs the end-to-end tests against net-gateway-api built from source.
+# It is started by prow for each PR. For convenience, it can also be executed manually:
+  # If you already have a Knative cluster setup and kubectl pointing
+  # to it, call this script with the --run-tests arguments and it will use
+  # the cluster and run the tests.
 
-set -euo pipefail
+  # Calling this script without arguments will create a new cluster in
+  # project $PROJECT_ID, start knative in it, run the tests and delete the
+  # cluster.
 
-source $(dirname $0)/../hack/test-env.sh
+set -eo pipefail
 
-CONTROL_NAMESPACE=knative-serving
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
-export GATEWAY_OVERRIDE=envoy
-export GATEWAY_NAMESPACE_OVERRIDE=contour-external
-
-echo ">> Bringing up Contour"
-kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
-
-# wait for operator deployment to be Available
-kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
-
-echo ">> Deploy Gateway API resources"
-ko resolve -f ./third_party/contour/gateway/ | \
-  sed 's/LoadBalancerService/NodePortService/g' | \
-  kubectl apply -f -
-
-echo Waiting for Pods to become ready.
-kubectl wait pod --for=condition=Ready -n knative-serving -l '!job-name'
-
-# For debugging.
-kubectl get pods --all-namespaces
-
-echo ">> Running e2e tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance \
-   --enable-alpha --enable-beta \
-   --skip-tests="${CONTOUR_UNSUPPORTED_E2E_TESTS}" \
-   --ingressendpoint="${IPS[0]}" \
-   --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
-
-# Give the controller time to sync with the rest of the system components.
-sleep 30
-
-echo ">> Scale up controller for HA tests"
-kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
-
-go test -count=1 -timeout=15m -failfast -parallel=1 -tags=e2e ./test/ha -spoofinterval="10ms" \
-   --enable-alpha --enable-beta \
-   --ingressendpoint="${IPS[0]}" \
-   --ingressClass=gateway-api.ingress.networking.knative.dev \
-   --cluster-suffix=${CLUSTER_SUFFIX}
-
-echo ">> Scale down after HA tests"
-kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=1
+test_setup
+deploy_gateway_for contour
+wait_for_pods
+kind_e2e_contour

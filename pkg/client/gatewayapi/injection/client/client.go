@@ -500,6 +500,137 @@ func (w *wrapGatewayV1alpha2HTTPRouteImpl) Watch(ctx context.Context, opts v1.Li
 	return nil, errors.New("NYI: Watch")
 }
 
+func (w *wrapGatewayV1alpha2) ReferenceGrants(namespace string) typedgatewayv1alpha2.ReferenceGrantInterface {
+	return &wrapGatewayV1alpha2ReferenceGrantImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1alpha2",
+			Resource: "referencegrants",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapGatewayV1alpha2ReferenceGrantImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedgatewayv1alpha2.ReferenceGrantInterface = (*wrapGatewayV1alpha2ReferenceGrantImpl)(nil)
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Create(ctx context.Context, in *v1alpha2.ReferenceGrant, opts v1.CreateOptions) (*v1alpha2.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.ReferenceGrant, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.ReferenceGrantList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrantList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ReferenceGrant, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Update(ctx context.Context, in *v1alpha2.ReferenceGrant, opts v1.UpdateOptions) (*v1alpha2.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) UpdateStatus(ctx context.Context, in *v1alpha2.ReferenceGrant, opts v1.UpdateOptions) (*v1alpha2.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapGatewayV1alpha2) ReferencePolicies(namespace string) typedgatewayv1alpha2.ReferencePolicyInterface {
 	return &wrapGatewayV1alpha2ReferencePolicyImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{

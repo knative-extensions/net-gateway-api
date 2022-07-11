@@ -14,27 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eo pipefail
+
 source $(dirname $0)/e2e-common.sh
+source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
 # Script entry point.
 initialize "$@" --skip-istio-addon
 
-failed=0
+deploy_gateway_for istio
 
-echo ">> Running e2e tests"
-go_test_e2e -timeout=20m -tags=e2e -parallel=12 \
-  ./test/conformance \
-  --enable-alpha --enable-beta \
-  --skip-tests="${ISTIO_UNSUPPORTED_E2E_TESTS}" \
-  --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
+# Run the tests
+header "Running e2e tests with all available Gateway API vendors installed"
+e2e_istio
 
-# Give the controller time to sync with the rest of the system components.
-sleep 30
-
-go_test_e2e -timeout=15m -failfast -parallel=1 ./test/ha -spoofinterval="10ms" \
-  --ingressClass=gateway-api.ingress.networking.knative.dev || failed=1
-
-(( failed )) && dump_cluster_state
-(( failed )) && fail_test
-
-success
+# TODO(@carlisia): add a call to deploy and run e2e tests for contour

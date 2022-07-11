@@ -117,16 +117,7 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
-    - name: Prepare test namespaces
-      run: |
-        kubectl apply -f test/config/
-
-    - name: Upload Test Images
-      run: |
-        # Build and Publish our test images to the docker daemon.
-        ./test/upload-test-images.sh
-
-    - name: Run e2e Tests
+    - name: Run Conformance Tests
       run: |
         ./test/kind-conformance-${{ matrix.ingress }}.sh
 

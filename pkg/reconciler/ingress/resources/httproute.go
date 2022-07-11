@@ -74,7 +74,7 @@ func makeHTTPRouteSpec(
 	gatewayConfig := config.FromContext(ctx).Gateway
 	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
 
-	gatewayRef := gatewayv1alpha2.ParentRef{
+	gatewayRef := gatewayv1alpha2.ParentReference{
 		Group:     (*gatewayv1alpha2.Group)(&gatewayv1alpha2.GroupVersion.Group),
 		Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 		Namespace: namespacePtr(gatewayv1alpha2.Namespace(namespacedNameGateway.Namespace)),
@@ -84,7 +84,7 @@ func makeHTTPRouteSpec(
 	return gatewayv1alpha2.HTTPRouteSpec{
 		Hostnames: hostnames,
 		Rules:     rules,
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
 			gatewayRef,
 		}},
 	}

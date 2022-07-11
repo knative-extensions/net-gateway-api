@@ -49,5 +49,5 @@ data:
         service: istio-system/istio-ingressgateway
       ClusterLocal:
         class: istio
-        gateway: istio-system/knative-locla-gateway
+        gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway

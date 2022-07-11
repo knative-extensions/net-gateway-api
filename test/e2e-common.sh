@@ -14,49 +14,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eo pipefail
+
 # This script includes common functions for testing setup and teardown.
-source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
-source $(dirname $0)/../hack/test-env.sh
+source "$(dirname $0)"/../hack/test-env.sh
 
 export CONTROL_NAMESPACE=knative-serving
 
-# Setup resources.
+function export_cluster_info() {
+  export IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+  export CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
+}
+
+function conformance_setup() {
+  echo ">> Setting up conformance"
+  # Prepare test namespaces
+  kubectl apply -f test/config/
+  # Build and Publish the test images to the docker daemon.
+  "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
+  export_cluster_info
+}
+
+function e2e_setup() {
+  echo ">> Setting up e2e"
+  # Setting up test resources.
+  "$(dirname $0)"/upload-test-images.sh || fail_test "Error uploading test images"
+  echo ">> Creating test resources (test/config/)"
+  ko apply ${KO_FLAGS} -f test/config/ || return 1
+  export_cluster_info
+
+  # Bringing up controllers.
+  echo ">> Bringing up controller"
+  ko apply -f config/ || return 1
+  kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
+
+  # Wait for pods to be running.
+  echo ">> Waiting for controller components to be running..."
+  kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
+}
+
+# Setup resources for 2e2 testing.
 function test_setup() {
   echo ">> Setting up logging..."
   # Install kail if needed.
   if ! which kail >/dev/null; then
     bash <(curl -sfL https://raw.githubusercontent.com/boz/kail/master/godownloader.sh) -b "$GOPATH/bin"
   fi
+
   # Capture all logs.
   kail >${ARTIFACTS}/k8s.log.txt &
   local kail_pid=$!
   # Clean up kail so it doesn't interfere with job shutting down
   add_trap "kill $kail_pid || true" EXIT
 
-  # Setting up test resources.
-  echo ">> Publishing test images"
-  $(dirname $0)/upload-test-images.sh || fail_test "Error uploading test images"
-  echo ">> Creating test resources (test/config/)"
-  ko apply ${KO_FLAGS} -f test/config/ || return 1
-
-  # Bringing up controllers.
-  echo ">> Bringing up controller"
-  ko apply -f config/ || return 1
-
-  kubectl -n "${CONTROL_NAMESPACE}" scale deployment net-gateway-api-controller --replicas=2
-
-  # Wait for pods to be running.
-  echo ">> Waiting for controller components to be running..."
-  kubectl -n "${CONTROL_NAMESPACE}" rollout status deployment net-gateway-api-controller || return 1
-
-  echo ">> Bringing up Istio"
-  curl -sL https://istio.io/downloadIstioctl | sh -
-  $HOME/.istioctl/bin/istioctl install -y
-
-  echo ">> Deploy Gateway API resources"
-  kubectl apply -f ./third_party/istio/gateway/
-
-  wait_until_service_has_external_http_address istio-system istio-ingressgateway
+  e2e_setup
 }
 
 # Add function call to trap
@@ -71,4 +82,11 @@ function add_trap() {
     [[ -n "${current_trap}" ]] && new_cmd="${current_trap};${new_cmd}"
     trap -- "${new_cmd}" $trap_signal
   done
+}
+
+function wait_for_pods() {
+  echo ">>Waiting for Pods to become ready"
+  kubectl wait pod --for=condition=Ready -n "${CONTROL_NAMESPACE}" -l '!job-name'
+  # For debugging.
+  kubectl get pods --all-namespaces
 }

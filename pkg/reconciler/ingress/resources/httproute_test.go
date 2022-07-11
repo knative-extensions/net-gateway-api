@@ -213,7 +213,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-							ParentRefs: []gatewayv1alpha2.ParentRef{{
+							ParentRefs: []gatewayv1alpha2.ParentReference{{
 								Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
 								Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 								Namespace: namespacePtr("test-ns"),
@@ -296,7 +296,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}},
 						}},
 						CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-							ParentRefs: []gatewayv1alpha2.ParentRef{{
+							ParentRefs: []gatewayv1alpha2.ParentReference{{
 								Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
 								Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 								Namespace: namespacePtr("test-ns"),
@@ -423,7 +423,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						},
 					},
 					CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-						ParentRefs: []gatewayv1alpha2.ParentRef{{
+						ParentRefs: []gatewayv1alpha2.ParentReference{{
 							Group:     (*gatewayv1alpha2.Group)(pointer.String("gateway.networking.k8s.io")),
 							Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 							Namespace: namespacePtr("test-ns"),

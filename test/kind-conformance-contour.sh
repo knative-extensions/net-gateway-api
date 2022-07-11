@@ -16,33 +16,12 @@
 
 # This script runs conformance tests on a local kind environment.
 
-set -euo pipefail
+set -eo pipefail
 
-source $(dirname $0)/../hack/test-env.sh
+source "$(dirname $0)"/e2e-common.sh
+source "$(dirname $0)"/e2e-library-deployments.sh
+source "$(dirname $0)"/e2e-library.sh
 
-IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
-UNSUPPORTED_CONFORMANCE_TESTS="basics/http2,websocket,websocket/split,grpc,grpc/split,host-rewrite,visibility/path,visibility"
-
-export GATEWAY_OVERRIDE=envoy
-export GATEWAY_NAMESPACE_OVERRIDE=contour-external
-export LOCAL_GATEWAY_OVERRIDE=envoy
-export LOCAL_GATEWAY_NAMESPACE_OVERRIDE=contour-internal
-
-echo ">> Bringing up Contour"
-kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
-
-# wait for operator deployment to be Available
-kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
-
-echo ">> Deploy Gateway API resources"
-ko resolve -f ./third_party/contour/gateway/ | \
-  sed 's/LoadBalancerService/NodePortService/g' | \
-  kubectl apply -f -
-
-echo ">> Running conformance tests"
-go test -race -count=1 -short -timeout=20m -tags=e2e ./test/conformance/ingressv2 \
-   --enable-alpha --enable-beta \
-   --skip-tests="${UNSUPPORTED_CONFORMANCE_TESTS}" \
-   --ingressendpoint="${IPS[0]}" \
-   --cluster-suffix=$CLUSTER_SUFFIX
+conformance_setup
+deploy_gateway_for contour
+kind_conformance_contour

@@ -219,6 +219,7 @@ aliases:
   - carlisia
   - tcnghia
   net-istio-approvers:
+  - AngeloDanducci
   - JRBANCEL
   - ZhiminXiang
   - carlisia
@@ -241,13 +242,11 @@ aliases:
   - houshengbo
   - upodroid
   productivity-wg-leads:
-  - chizhg
   - kvmware
   - upodroid
   productivity-writers:
   - cardil
   - chaodaiG
-  - chizhg
   - coryrc
   - kvmware
   - psschwei

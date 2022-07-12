@@ -16,7 +16,6 @@
 
 set -eo pipefail
 
-source $(dirname $0)/../vendor/knative.dev/hack/library.sh
 source "$(dirname $0)"/../hack/test-env.sh
 
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}
@@ -38,10 +37,6 @@ function deploy_istio() {
 
   echo ">> Deploy Gateway API resources"
   kubectl apply -f ./third_party/istio/gateway/
-
-  if [[ "$KIND" != "kind" ]]; then
-    wait_until_service_has_external_http_address istio-system istio-ingressgateway
-  fi
 }
 
 function deploy_contour() {

@@ -21,6 +21,8 @@ source $(dirname $0)/../vendor/knative.dev/hack/e2e-tests.sh
 source "$(dirname $0)"/e2e-library-deployments.sh
 source "$(dirname $0)"/e2e-library.sh
 
+set +x
+
 # Script entry point.
 initialize "$@" --skip-istio-addon
 

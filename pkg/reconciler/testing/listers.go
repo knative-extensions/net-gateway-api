@@ -99,3 +99,11 @@ func (l *Listers) GetHTTPRouteLister() gatewayListers.HTTPRouteLister {
 func (l *Listers) GetEndpointsLister() corev1listers.EndpointsLister {
 	return corev1listers.NewEndpointsLister(l.IndexerFor(&corev1.Endpoints{}))
 }
+
+func (l *Listers) GetGatewayLister() gatewayListers.GatewayLister {
+	return gatewayListers.NewGatewayLister(l.IndexerFor(&gatewayv1alpa2.Gateway{}))
+}
+
+func (l *Listers) GetReferencePolicyLister() gatewayListers.ReferencePolicyLister {
+	return gatewayListers.NewReferencePolicyLister(l.IndexerFor(&gatewayv1alpa2.ReferencePolicy{}))
+}

@@ -75,6 +75,8 @@ func makeHTTPRouteSpec(
 	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
 
 	gatewayRef := gatewayv1alpha2.ParentReference{
+		Group:     (*gatewayv1alpha2.Group)(&gatewayv1alpha2.GroupVersion.Group),
+		Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Gateway")),
 		Namespace: namespacePtr(gatewayv1alpha2.Namespace(namespacedNameGateway.Namespace)),
 		Name:      gatewayv1alpha2.ObjectName(namespacedNameGateway.Name),
 	}
@@ -132,8 +134,10 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpha2.HTTPRout
 			backendRef := gatewayv1alpha2.HTTPBackendRef{
 				BackendRef: gatewayv1alpha2.BackendRef{
 					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-						Port: portNumPtr(split.ServicePort.IntValue()),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Group: (*gatewayv1alpha2.Group)(pointer.String("")),
+						Kind:  (*gatewayv1alpha2.Kind)(pointer.String("Service")),
+						Port:  portNumPtr(split.ServicePort.IntValue()),
+						Name:  gatewayv1alpha2.ObjectName(name),
 					},
 					Weight: pointer.Int32Ptr(int32(split.Percent)),
 				},
@@ -155,7 +159,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpha2.HTTPRout
 			Value: pointer.StringPtr(pathPrefix),
 		}
 
-		headerMatchList := []gatewayv1alpha2.HTTPHeaderMatch{}
+		var headerMatchList []gatewayv1alpha2.HTTPHeaderMatch
 		for k, v := range path.Headers {
 			headerMatch := gatewayv1alpha2.HTTPHeaderMatch{
 				Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),

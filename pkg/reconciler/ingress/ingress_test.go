@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
+	"k8s.io/utils/pointer"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"knative.dev/networking/pkg/apis/networking"
@@ -171,14 +172,22 @@ func TestReconcile(t *testing.T) {
 					}})
 			}),
 		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
 		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 		},
 	}, {
 		Name: "reconcile ready ingress",
 		Key:  "ns/name",
 		Objects: append([]runtime.Object{
-			ing(withBasicSpec, withGatewayAPIclass, makeItReady),
+			ing(withBasicSpec, withGatewayAPIclass, makeItReady, withFinalizer),
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass)),
 		}, servicesAndEndpoints...),
 		// no extra update
@@ -189,6 +198,7 @@ func TestReconcile(t *testing.T) {
 			gwapiclient: fakegwapiclientset.Get(ctx),
 			// Listers index properties about resources
 			httprouteLister: listers.GetHTTPRouteLister(),
+			gatewayLister:   listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{
 				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 					return true, nil
@@ -221,7 +231,15 @@ func TestReconcileProberNotReady(t *testing.T) {
 				i.Status.MarkLoadBalancerNotReady()
 			}),
 		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
 		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 		},
 	}}
@@ -231,6 +249,7 @@ func TestReconcileProberNotReady(t *testing.T) {
 			gwapiclient: fakegwapiclientset.Get(ctx),
 			// Listers index properties about resources
 			httprouteLister: listers.GetHTTPRouteLister(),
+			gatewayLister:   listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{
 				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 					return false, nil
@@ -243,6 +262,165 @@ func TestReconcileProberNotReady(t *testing.T) {
 				ConfigStore: &testConfigStore{
 					config: defaultConfig,
 				}})
+	}))
+}
+
+func TestReconcileTLS(t *testing.T) {
+	// The gateway API annoyingly has a number of
+	secretName := "name-WE-STICK-A-LONG-UID-HERE"
+	nsName := "ns"
+	deleteTime := time.Now().Add(-10 * time.Second)
+	table := TableTest{{
+		Name: "Happy TLS",
+		Key:  "ns/name",
+		Objects: []runtime.Object{
+			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName)),
+			secret(secretName, nsName),
+			gw(defaultListener),
+		},
+		WantCreates: []runtime.Object{
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			rp(secret(secretName, nsName)),
+		},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
+		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkLoadBalancerReady(
+					[]v1alpha1.LoadBalancerIngressStatus{{
+						DomainInternal: publicSvc,
+					}},
+					[]v1alpha1.LoadBalancerIngressStatus{{
+						DomainInternal: privateSvc,
+					}})
+			}),
+		}},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			Eventf(corev1.EventTypeNormal, "Created", `Created HTTPRoute "example.com"`),
+		},
+	}, {
+		Name: "Already Configured",
+		Key:  "ns/name",
+		Objects: []runtime.Object{
+			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(secretName)),
+			secret(secretName, nsName),
+			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			rp(secret(secretName, nsName)),
+		},
+		WantUpdates: []clientgotesting.UpdateActionImpl{
+			// None
+		},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkLoadBalancerReady(
+					[]v1alpha1.LoadBalancerIngressStatus{{
+						DomainInternal: publicSvc,
+					}},
+					[]v1alpha1.LoadBalancerIngressStatus{{
+						DomainInternal: privateSvc,
+					}})
+			}),
+		}},
+		WantEvents: []string{
+			// None
+		},
+	}, {
+		Name:                    "Cleanup Listener",
+		Key:                     "ns/name",
+		SkipNamespaceValidation: true,
+		Objects: []runtime.Object{
+			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+				i.DeletionTimestamp = &metav1.Time{
+					Time: deleteTime,
+				}
+			}),
+			secret(secretName, nsName),
+			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			rp(secret(secretName, nsName)),
+		},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: gw(defaultListener),
+		}},
+	}, {
+		Name:    "No Gateway",
+		Key:     "ns/name",
+		WantErr: true,
+		Objects: []runtime.Object{
+			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName)),
+			secret(secretName, nsName),
+		},
+		WantCreates: []runtime.Object{
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			rp(secret(secretName, nsName)),
+		},
+		WantUpdates: []clientgotesting.UpdateActionImpl{
+			// None
+		},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+			}),
+		}},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			Eventf(corev1.EventTypeNormal, "Created", `Created HTTPRoute "example.com"`),
+			Eventf(corev1.EventTypeWarning, "GatewayMissing", `Unable to update Gateway istio-system/istio-gateway`),
+			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway istio-system/istio-gateway does not exist: gateway.gateway.networking.k8s.io "istio-gateway" not found`),
+		},
+	}}
+
+	table.Test(t, GatewayFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher, tr *TableRow) controller.Reconciler {
+		r := &Reconciler{
+			gwapiclient:           fakegwapiclientset.Get(ctx),
+			httprouteLister:       listers.GetHTTPRouteLister(),
+			referencePolicyLister: listers.GetReferencePolicyLister(),
+			gatewayLister:         listers.GetGatewayLister(),
+			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
+				return true, nil
+			}},
+		}
+		// The fake tracker's `Add` method incorrectly pluralizes "gatewaies" using UnsafeGuessKindToResource,
+		// so create this via explicit call (per note in client-go/testing/fixture.go in tracker.Add)
+		fakeCreates := []runtime.Object{}
+		for _, x := range tr.Objects {
+			myGw, ok := x.(*gatewayv1alpha2.Gateway)
+			if ok {
+				fakegwapiclientset.Get(ctx).GatewayV1alpha2().Gateways(myGw.Namespace).Create(ctx, myGw, metav1.CreateOptions{})
+				tr.SkipNamespaceValidation = true
+				fakeCreates = append(fakeCreates, myGw)
+			}
+		}
+		tr.WantCreates = append(fakeCreates, tr.WantCreates...)
+
+		ingr := ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
+			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
+			controller.Options{
+				ConfigStore: &testConfigStore{
+					config: defaultConfig,
+				}})
+
+		return ingr
 	}))
 }
 
@@ -263,7 +441,15 @@ func TestReconcileProbeError(t *testing.T) {
 				i.Status.MarkIngressNotReady(notReconciledReason, notReconciledMessage)
 			}),
 		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
 		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 			Eventf(corev1.EventTypeWarning, "InternalError", fmt.Sprintf("failed to probe Ingress: %v", theError)),
 		},
@@ -274,6 +460,8 @@ func TestReconcileProbeError(t *testing.T) {
 			gwapiclient: fakegwapiclientset.Get(ctx),
 			// Listers index properties about resources
 			httprouteLister: listers.GetHTTPRouteLister(),
+			gatewayLister:   listers.GetGatewayLister(),
+
 			statusManager: &fakeStatusManager{
 				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 					return false, theError
@@ -334,6 +522,133 @@ type testConfigStore struct {
 
 func (t *testConfigStore) ToContext(ctx context.Context) context.Context {
 	return config.ToContext(ctx, t.config)
+}
+
+// We need to inject the row's `Objects` to work-around improper pluralization in UnsafeGuessKindToResource
+func GatewayFactory(ctor func(context.Context, *Listers, configmap.Watcher, *TableRow) controller.Reconciler) Factory {
+	return func(t *testing.T, r *TableRow) (
+		controller.Reconciler, ActionRecorderList, EventList,
+	) {
+		shim := func(c context.Context, l *Listers, cw configmap.Watcher) controller.Reconciler {
+			return ctor(c, l, cw, r)
+		}
+		return MakeFactory(shim)(t, r)
+	}
+}
+
+type GatewayOption func(*gatewayv1alpha2.Gateway)
+
+func gw(opts ...GatewayOption) *gatewayv1alpha2.Gateway {
+	g := &gatewayv1alpha2.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      publicName,
+			Namespace: testNamespace,
+		},
+		Spec: gatewayv1alpha2.GatewaySpec{
+			GatewayClassName: gatewayAPIIngressClassName,
+		},
+	}
+	for _, opt := range opts {
+		opt(g)
+	}
+	return g
+}
+
+func defaultListener(g *gatewayv1alpha2.Gateway) {
+	g.Spec.Listeners = append(g.Spec.Listeners, gatewayv1alpha2.Listener{
+		Name:     "http",
+		Port:     80,
+		Protocol: "HTTP",
+	})
+}
+
+func tlsListener(hostname, nsName, secretName string) GatewayOption {
+	return func(g *gatewayv1alpha2.Gateway) {
+		g.Spec.Listeners = append(g.Spec.Listeners, gatewayv1alpha2.Listener{
+			Name:     gatewayv1alpha2.SectionName("kni-"),
+			Hostname: (*gatewayv1alpha2.Hostname)(&hostname),
+			Port:     443,
+			Protocol: "HTTPS",
+			TLS: &gatewayv1alpha2.GatewayTLSConfig{
+				Mode: (*gatewayv1alpha2.TLSModeType)(pointer.String("Terminate")),
+				CertificateRefs: []gatewayv1alpha2.SecretObjectReference{{
+					Group:     (*gatewayv1alpha2.Group)(pointer.String("")),
+					Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Secret")),
+					Name:      gatewayv1alpha2.ObjectName(secretName),
+					Namespace: (*gatewayv1alpha2.Namespace)(&nsName),
+				}},
+				Options: map[gatewayv1alpha2.AnnotationKey]gatewayv1alpha2.AnnotationValue{},
+			},
+			AllowedRoutes: &gatewayv1alpha2.AllowedRoutes{
+				Namespaces: &gatewayv1alpha2.RouteNamespaces{
+					From: (*gatewayv1alpha2.FromNamespaces)(pointer.String("Selector")),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"kubernetes.io/metadata.name": nsName,
+						},
+					},
+				},
+				Kinds: []gatewayv1alpha2.RouteGroupKind{},
+			},
+		})
+	}
+}
+
+var withFinalizer = func(i *v1alpha1.Ingress) {
+	i.Finalizers = append(i.Finalizers, "ingresses.networking.internal.knative.dev")
+}
+
+func withTLS(secret string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Spec.TLS = append(i.Spec.TLS, v1alpha1.IngressTLS{
+			Hosts:           []string{"secure.example.com"},
+			SecretName:      "name-WE-STICK-A-LONG-UID-HERE",
+			SecretNamespace: "ns",
+		})
+	}
+}
+
+func secret(name, ns string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		StringData: map[string]string{
+			"ca.crt": "signed thing",
+			"ca.key": "private thing",
+		},
+		Type: "kubernetes.io/tls",
+	}
+}
+
+func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
+	t := true
+	return &gatewayv1alpha2.ReferencePolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      to.Name + "-" + testNamespace,
+			Namespace: to.Namespace,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "networking.internal.knative.dev/v1alpha1",
+				Kind:               "Ingress",
+				Name:               "name",
+				Controller:         &t,
+				BlockOwnerDeletion: &t,
+			}},
+		},
+		Spec: gatewayv1alpha2.ReferenceGrantSpec{
+			From: []gatewayv1alpha2.ReferenceGrantFrom{{
+				Group:     "gateway.networking.k8s.io",
+				Kind:      "Gateway",
+				Namespace: gatewayv1alpha2.Namespace(testNamespace),
+			}},
+			To: []gatewayv1alpha2.ReferenceGrantTo{{
+				Group: gatewayv1alpha2.Group(""),
+				Kind:  gatewayv1alpha2.Kind("Secret"),
+				Name:  (*gatewayv1alpha2.ObjectName)(&to.Name),
+			}},
+		},
+	}
 }
 
 var (

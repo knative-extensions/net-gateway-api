@@ -119,32 +119,32 @@ func (c *Reconciler) reconcileTLS(
 
 	desired := resources.MakeReferenceGrant(ctx, ing, secret, gateway)
 
-	rp, err := c.referenceGrantLister.ReferenceGrants(desired.Namespace).Get(desired.Name)
+	rp, err := c.referencePolicyLister.ReferencePolicies(desired.Namespace).Get(desired.Name)
 
 	if apierrs.IsNotFound(err) {
-		rp, err = c.gwapiclient.GatewayV1alpha2().ReferenceGrants(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		rp, err = c.gwapiclient.GatewayV1alpha2().ReferencePolicies(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 
 		if err != nil {
-			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferenceGrant: %v", err)
-			return nil, fmt.Errorf("failed to create ReferenceGrant: %w", err)
+			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferencePolicy: %v", err)
+			return nil, fmt.Errorf("failed to create ReferencePolicy: %w", err)
 		}
 	} else if err != nil {
 		return nil, err
 	}
 
 	if !metav1.IsControlledBy(rp, ing) {
-		recorder.Eventf(ing, corev1.EventTypeWarning, "NotOwned", "ReferenceGrant %s not owned by this object", desired.Name)
-		return nil, fmt.Errorf("ReferenceGrant %s not owned by %s", rp.Name, ing.Name)
+		recorder.Eventf(ing, corev1.EventTypeWarning, "NotOwned", "ReferencePolicy %s not owned by this object", desired.Name)
+		return nil, fmt.Errorf("ReferencePolicy %s not owned by %s", rp.Name, ing.Name)
 	}
 
 	if !equality.Semantic.DeepEqual(rp.Spec, desired.Spec) {
 		update := rp.DeepCopy()
 		update.Spec = desired.Spec
 
-		_, err := c.gwapiclient.GatewayV1alpha2().ReferenceGrants(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		_, err := c.gwapiclient.GatewayV1alpha2().ReferencePolicies(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
 		if err != nil {
-			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update ReferenceGrant: %v", err)
-			return nil, fmt.Errorf("failed to update ReferenceGrant: %w", err)
+			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update ReferencePolicy: %v", err)
+			return nil, fmt.Errorf("failed to update ReferencePolicy: %w", err)
 		}
 	}
 

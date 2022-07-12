@@ -32,7 +32,7 @@ import (
 
 	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/gateway/fake"
 	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/httproute/fake"
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencegrant/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencepolicy/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 

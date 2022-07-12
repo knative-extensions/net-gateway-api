@@ -392,10 +392,10 @@ func TestReconcileTLS(t *testing.T) {
 
 	table.Test(t, GatewayFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher, tr *TableRow) controller.Reconciler {
 		r := &Reconciler{
-			gwapiclient:          fakegwapiclientset.Get(ctx),
-			httprouteLister:      listers.GetHTTPRouteLister(),
-			referenceGrantLister: listers.GetReferenceGrantLister(),
-			gatewayLister:        listers.GetGatewayLister(),
+			gwapiclient:           fakegwapiclientset.Get(ctx),
+			httprouteLister:       listers.GetHTTPRouteLister(),
+			referencePolicyLister: listers.GetReferencePolicyLister(),
+			gatewayLister:         listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 				return true, nil
 			}},
@@ -622,9 +622,9 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayv1alpha2.ReferenceGrant {
+func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
 	t := true
-	return &gatewayv1alpha2.ReferenceGrant{
+	return &gatewayv1alpha2.ReferencePolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,

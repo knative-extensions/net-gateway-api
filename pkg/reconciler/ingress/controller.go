@@ -37,7 +37,7 @@ import (
 	gwapiclient "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client"
 	gatewayinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/gateway"
 	httprouteinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/httproute"
-	referencegrantinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencegrant"
+	referencepolicyinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencepolicy"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 
@@ -56,15 +56,15 @@ func NewController(
 
 	ingressInformer := ingressinformer.Get(ctx)
 	httprouteInformer := httprouteinformer.Get(ctx)
-	referenceGrantInformer := referencegrantinformer.Get(ctx)
+	referencePolicyInformer := referencepolicyinformer.Get(ctx)
 	gatewayInformer := gatewayinformer.Get(ctx)
 	endpointsInformer := endpointsinformer.Get(ctx)
 
 	c := &Reconciler{
-		gwapiclient:          gwapiclient.Get(ctx),
-		httprouteLister:      httprouteInformer.Lister(),
-		referenceGrantLister: referenceGrantInformer.Lister(),
-		gatewayLister:        gatewayInformer.Lister(),
+		gwapiclient:           gwapiclient.Get(ctx),
+		httprouteLister:       httprouteInformer.Lister(),
+		referencePolicyLister: referencePolicyInformer.Lister(),
+		gatewayLister:         gatewayInformer.Lister(),
 	}
 
 	filterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, gatewayAPIIngressClassName, false)

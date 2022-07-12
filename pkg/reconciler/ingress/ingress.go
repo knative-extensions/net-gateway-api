@@ -49,7 +49,7 @@ type Reconciler struct {
 	// Listers index properties about resources
 	httprouteLister gatewayListers.HTTPRouteLister
 
-	referenceGrantLister gatewayListers.ReferenceGrantLister
+	referencePolicyLister gatewayListers.ReferencePolicyLister
 
 	gatewayLister gatewayListers.GatewayLister
 }

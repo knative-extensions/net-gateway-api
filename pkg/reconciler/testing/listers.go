@@ -104,6 +104,6 @@ func (l *Listers) GetGatewayLister() gatewayListers.GatewayLister {
 	return gatewayListers.NewGatewayLister(l.IndexerFor(&gatewayv1alpa2.Gateway{}))
 }
 
-func (l *Listers) GetReferenceGrantLister() gatewayListers.ReferenceGrantLister {
-	return gatewayListers.NewReferenceGrantLister(l.IndexerFor(&gatewayv1alpa2.ReferenceGrant{}))
+func (l *Listers) GetReferencePolicyLister() gatewayListers.ReferencePolicyLister {
+	return gatewayListers.NewReferencePolicyLister(l.IndexerFor(&gatewayv1alpa2.ReferencePolicy{}))
 }

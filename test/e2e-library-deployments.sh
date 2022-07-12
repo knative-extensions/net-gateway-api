@@ -16,6 +16,7 @@
 
 set -eo pipefail
 
+source $(dirname $0)/../vendor/knative.dev/hack/library.sh
 source "$(dirname $0)"/../hack/test-env.sh
 
 CLUSTER_SUFFIX=${CLUSTER_SUFFIX:-cluster.local}

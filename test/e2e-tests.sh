@@ -28,6 +28,11 @@ initialize "$@" --skip-istio-addon
 
 deploy_gateway_for istio
 
+# When running in a "real" cluster, we need to wait for the loadbalancer IP to
+# be assigned before running e2e tests. Due to import dependencies, we can't
+# run this in deploy_gateway_for.
+wait_until_service_has_external_http_address istio-system istio-ingressgateway
+
 # Run the tests
 header "Running e2e tests with all available Gateway API vendors installed"
 e2e_istio

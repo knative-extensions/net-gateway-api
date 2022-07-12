@@ -45,6 +45,8 @@ function deploy_contour() {
   echo ">> Waiting for Contour operator deployment to be available"
   kubectl wait deploy --for=condition=Available --timeout=120s -n "contour-operator" -l '!job-name'
 
+  # TODO: kind-ify this to support both LB and NodePort like Istio
+
   ko resolve -f ./third_party/contour/gateway/ | \
       sed 's/LoadBalancerService/NodePortService/g' | \
       kubectl apply -f -

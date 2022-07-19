@@ -39,6 +39,7 @@ type ParentReference struct {
 	// Kind is kind of the referent.
 	//
 	// Support: Core (Gateway)
+	//
 	// Support: Custom (Other Resources)
 	//
 	// +kubebuilder:default=Gateway
@@ -216,6 +217,10 @@ const (
 	// compatible Listeners whose Hostname matches the route
 	RouteReasonNoMatchingListenerHostname RouteConditionReason = "NoMatchingListenerHostname"
 
+	// This reason is used with the "Accepted" condition when a value for an Enum
+	// is not recognized.
+	RouteReasonUnsupportedValue RouteConditionReason = "UnsupportedValue"
+
 	// This condition indicates whether the controller was able to resolve all
 	// the object references for the Route.
 	//
@@ -241,6 +246,15 @@ const (
 	// another namespace, where the object in the other namespace does
 	// not have a ReferenceGrant explicitly allowing the reference.
 	RouteReasonRefNotPermitted RouteConditionReason = "RefNotPermitted"
+
+	// This reason is used with the "ResolvedRefs" condition when
+	// one of the Route's rules has a reference to an unknown or unsupported
+	// Group and/or Kind.
+	RouteReasonInvalidKind RouteConditionReason = "InvalidKind"
+
+	// This reason is used with the "ResolvedRefs" condition when one of the
+	// Route's rules has a reference to a resource that does not exist.
+	RouteReasonBackendNotFound RouteConditionReason = "BackendNotFound"
 )
 
 // RouteParentStatus describes the status of a route with respect to an
@@ -283,7 +297,7 @@ type RouteParentStatus struct {
 	//
 	// * The Route refers to a non-existent parent.
 	// * The Route is of a type that the controller does not support.
-	// * The Route is in a namespace the the controller does not have access to.
+	// * The Route is in a namespace the controller does not have access to.
 	//
 	// +listType=map
 	// +listMapKey=type
@@ -487,13 +501,16 @@ type AnnotationValue string
 //
 // Values `IPAddress` and `Hostname` have Extended support.
 //
+// The `NamedAddress` value has been deprecated in favor of implementation
+// specific domain-prefixed strings.
+//
 // All other values, including domain-prefixed values have Custom support, which
 // are used in implementation-specific behaviors. Support for additional
 // predefined CamelCase identifiers may be added in future releases.
 //
 // +kubebuilder:validation:MinLength=1
 // +kubebuilder:validation:MaxLength=253
-// +kubebuilder:validation:Pattern=`^Hostname|IPAddress|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$`
+// +kubebuilder:validation:Pattern=`^Hostname|IPAddress|NamedAddress|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$`
 type AddressType string
 
 const (
@@ -516,4 +533,14 @@ const (
 	//
 	// Support: Extended
 	HostnameAddressType AddressType = "Hostname"
+
+	// A NamedAddress provides a way to reference a specific IP address by name.
+	// For example, this may be a name or other unique identifier that refers
+	// to a resource on a cloud provider such as a static IP.
+	//
+	// The `NamedAddress` type has been deprecated in favor of implementation
+	// specific domain-prefixed strings.
+	//
+	// Support: Implementation-Specific
+	NamedAddressType AddressType = "NamedAddress"
 )

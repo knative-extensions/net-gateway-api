@@ -6,8 +6,8 @@ body:
   - id: conformance-tests
     type: checkboxes
     attributes:
-      label: Please change the title to include the name of the specific implementation.
-      description: This checklist tracks that all Knative conformance tests for a Gateway API implementation are passing.
+      description: Please change the title to include the name of the specific implementation.
+      label: This checklist tracks that all Knative conformance tests for this Gateway API implementation are passing.
       options:
         - label: basics/TestBasics
         - label: basics/TestBasicsHTTP2

@@ -1,0 +1,33 @@
+---
+name: KIngress conformance tests checklist
+description: To track that all Knative conformance tests for a Gateway API implementation are passing.
+title: "KIngress conformance test checklist for [implementation]"
+body:
+  - id: kingress-conformance-tests
+    type: checkboxes
+    attributes:
+      description: Please change the title to include the name of the specific implementation.
+      label: This checklist tracks that all Knative KIngress conformance tests for this Gateway API implementation are passing.
+      options:
+        - label: basics/TestBasics
+        - label: basics/TestBasicsHTTP2
+        - label: grpc/TestGRPC
+        - label: grpc/TestGRPCSplit
+        - label: headers/TestProbeHeaders
+        - label: headers/TestPreSplitSetHeaders
+        - label: headers/TestPostSplitSetHeaders
+        - label: hosts/TestMultipleHosts
+        - label: dispatch/TestPath
+        - label: dispatch/TestPercentage
+        - label: dispatch/TestPathAndPercentageSplit
+        - label: dispatch/TestRule
+        - label: retry/TestRetry
+        - label: timeout/TestTimeout
+        - label: tls/TestIngressTLS
+        - label: update/TestUpdate
+        - label: visibility/TestVisibility
+        - label: visibility/TestVisibilitySplit
+        - label: visibility/TestVisibilityPath
+        - label: ingressclass/TestIngressClass
+        - label: websocket/TestWebsocket
+        - label: websocket/TestWebsocketSplit

@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"knative.dev/net-gateway-api/test"
@@ -69,7 +70,7 @@ func TestGRPC(t *testing.T) {
 
 	conn, err := grpc.Dial(
 		domain+":80",
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			return dialCtx(ctx, "unused", addr)
 		}),
@@ -146,7 +147,7 @@ func TestGRPCSplit(t *testing.T) {
 
 	conn, err := grpc.Dial(
 		domain+":80",
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			return dialCtx(ctx, "unused", addr)
 		}),

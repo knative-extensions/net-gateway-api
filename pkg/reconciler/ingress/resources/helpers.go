@@ -47,11 +47,10 @@ func pathMatchTypePtr(val gatewayv1alpa2.PathMatchType) *gatewayv1alpa2.PathMatc
 // For example, "hello-example.default.svc.cluster.local" will be
 // returned from the following hosts in KIngress.
 //
-//  - hosts:
-//    - hello.default
-//    - hello.default.svc
-//    - hello.default.svc.cluster.local
-//
+// - hosts:
+//   - hello.default
+//   - hello.default.svc
+//   - hello.default.svc.cluster.local
 func LongestHost(hosts []string) string {
 	sort.Strings(hosts)
 	return hosts[len(hosts)-1]

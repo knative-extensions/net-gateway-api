@@ -28,7 +28,3 @@ test_conformance || failed=1
 test_ha || failed=1
 
 (( failed )) && fail_test
-
-# Remove the kail log file if the test flow passes.
-# This is for preventing too many large log files to be uploaded to GCS in CI.
-rm "${ARTIFACTS}/k8s.log-$(basename "${E2E_SCRIPT}").txt"

@@ -22,7 +22,7 @@ export SYSTEM_NAMESPACE=${SYSTEM_NAMESPACE:-knative-serving}
 export CLUSTER_DOMAIN=${CLUSTER_DOMAIN:-cluster.local}
 export INGRESS=${INGRESS:-istio}
 export GATEWAY_OVERRIDE=${GATEWAY_OVERRIDE:-istio-ingressgateway}
-export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:istio-system}
+export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:-istio-system}
 export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-ISTIO_UNSUPPORTED_E2E_TESTS}
 export KIND=${KIND:-0}
 
@@ -55,30 +55,14 @@ function test_setup() {
 
   # Build and Publish the test images
   "${REPO_ROOT_DIR}/test/upload-test-images.sh" || return 1
-
-  echo ">> Setting up logging..."
-  # Install kail if needed.
-  if ! which kail >/dev/null; then
-    bash <(curl -sfL https://raw.githubusercontent.com/boz/kail/master/godownloader.sh) -b "$GOPATH/bin" || return 1
-  fi
-
-  # Capture all logs.
-  kail > "${ARTIFACTS}/k8s.log-$(basename "${E2E_SCRIPT}").txt" &
-  local kail_pid=$!
-  # Clean up kail so it doesn't interfere with job shutting down
-  add_trap "kill $kail_pid || true" EXIT
 }
 
 
 function knative_setup() {
+  header "Installing networking layer and net-gateway-api controller"
+
   # Setup test env
   ko apply -f "${REPO_ROOT_DIR}/test/config/" || failed_test "Fail to setup test env"
-
-  header "Installing networking layer and net-gateway-api controller"
-  setup_networking || fail_test "failed to setup networking layer"
-
-  wait_until_service_has_external_ip \
-    $GATEWAY_NAMESPACE_OVERRIDE $GATEWAY_OVERRIDE || fail_test "Service did not get an IP address"
 
   (
     ko apply -f "${REPO_ROOT_DIR}/config/" && \
@@ -86,8 +70,13 @@ function knative_setup() {
     kubectl -n $SYSTEM_NAMESPACE rollout status deployment net-gateway-api-controller
   ) || failed_test "failed to install net-gateway-api controller "
 
-    # Wait for pods to be running.
-  echo ">> Waiting for controller components to be running..."
+
+  # We deploy this last since we have ingress specific config-gateway configs that
+  # we don't want to override with the default empty config
+  setup_networking || fail_test "failed to setup networking layer"
+
+  wait_until_service_has_external_ip \
+    $GATEWAY_NAMESPACE_OVERRIDE $GATEWAY_OVERRIDE || fail_test "Service did not get an IP address"
 }
 
 function knative_teardown() {
@@ -142,7 +131,7 @@ function setup_istio() {
 
   local ret=$?
   if [ $ret -ne 0 ]; then
-    echo "failed to setup contour" >&2
+    echo "failed to setup istio" >&2
     return $ret
   fi
 }

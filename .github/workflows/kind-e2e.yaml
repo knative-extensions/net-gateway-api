@@ -35,9 +35,12 @@ jobs:
     - uses: imjasonh/setup-ko@v0.6
 
     - name: Setup KinD
-      uses: chainguard-dev/actions/setup-kind@main
+      # uses: chainguard-dev/actions/setup-kind@main
+      uses: dprotaso/actions-1/setup-kind@main
       with:
         k8s-version: ${{ matrix.k8s-version }}
+        kind-worker-count: 3
+
 
     - uses: actions/checkout@v3
     - name: e2e

@@ -27,4 +27,6 @@ failed=0
 test_conformance || failed=1
 test_ha || failed=1
 
+set -x
+
 (( failed )) && fail_test

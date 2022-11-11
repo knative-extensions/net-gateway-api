@@ -18,33 +18,32 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../hack/test-env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../vendor/knative.dev/hack/e2e-tests.sh"
 
-export SYSTEM_NAMESPACE=knative-serving
+export SYSTEM_NAMESPACE=${SYSTEM_NAMESPACE:-knative-serving}
 export CLUSTER_DOMAIN=${CLUSTER_DOMAIN:-cluster.local}
-export INGRESS="istio"
-export GATEWAY_OVERRIDE=istio-ingressgateway
-export GATEWAY_NAMESPACE_OVERRIDE=istio-system
-export UNSUPPORTED_E2E_TESTS="${ISTIO_UNSUPPORTED_E2E_TESTS}"
-export KIND=0
-export SKIP_SETUP=0
+export INGRESS=${INGRESS:-istio}
+export GATEWAY_OVERRIDE=${GATEWAY_OVERRIDE:-istio-ingressgateway}
+export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:istio-system}
+export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-ISTIO_UNSUPPORTED_E2E_TESTS}
+export KIND=${KIND:-0}
 
 function parse_flags() {
   case "$1" in
     --istio)
-      INGRESS=istio
-      GATEWAY_OVERRIDE=istio-ingressgateway
-      GATEWAY_NAMESPACE_OVERRIDE=istio-system
-      UNSUPPORTED_E2E_TESTS="${ISTIO_UNSUPPORTED_E2E_TESTS}"
+      readonly INGRESS=istio
+      readonly GATEWAY_OVERRIDE=istio-ingressgateway
+      readonly GATEWAY_NAMESPACE_OVERRIDE=istio-system
+      readonly UNSUPPORTED_E2E_TESTS="${ISTIO_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
     --contour)
-      INGRESS=contour
-      GATEWAY_OVERRIDE=envoy
-      GATEWAY_NAMESPACE_OVERRIDE=contour-external
-      UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
+      readonly INGRESS=contour
+      readonly GATEWAY_OVERRIDE=envoy
+      readonly GATEWAY_NAMESPACE_OVERRIDE=contour-external
+      readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
     --kind)
-      KIND=1
+      readonly KIND=1
       return 1
       ;;
   esac

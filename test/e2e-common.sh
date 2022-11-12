@@ -23,7 +23,7 @@ export CLUSTER_DOMAIN=${CLUSTER_DOMAIN:-cluster.local}
 export INGRESS=${INGRESS:-istio}
 export GATEWAY_OVERRIDE=${GATEWAY_OVERRIDE:-istio-ingressgateway}
 export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:-istio-system}
-export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-ISTIO_UNSUPPORTED_E2E_TESTS}
+export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-$ISTIO_UNSUPPORTED_E2E_TESTS}
 export KIND=${KIND:-0}
 
 function parse_flags() {
@@ -61,7 +61,6 @@ function test_setup() {
 function knative_setup() {
   header "Installing networking layer and net-gateway-api controller"
 
-  # Setup test env
   ko apply -f "${REPO_ROOT_DIR}/test/config/" || failed_test "Fail to setup test env"
 
   (
@@ -82,6 +81,7 @@ function knative_setup() {
 function knative_teardown() {
   teardown_networking
   ko delete \
+    --ignore-not-found=true \
     -f "${REPO_ROOT_DIR}/test/config" \
     -f "${REPO_ROOT_DIR}/config"
 }
@@ -94,8 +94,6 @@ function setup_networking() {
   else
     setup_istio
   fi
-
-  return $?
 }
 
 function teardown_networking() {

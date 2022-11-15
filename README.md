@@ -22,7 +22,7 @@ Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 ## Requirements
 1. A Kind cluster
 1. Knative serving installed
-2. [`ko`](https://github.com/google/ko) (for installing the net-gateway-api)
+2. [`ko`](https://github.com/ko-build/ko) (for installing the net-gateway-api)
 3. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 4. `export KO_DOCKER_REPO=kind.local`
 
@@ -42,16 +42,6 @@ kubectl patch configmap/config-network \
   -n knative-serving \
   --type merge \
   -p '{"data":{"ingress.class":"gateway-api.ingress.networking.knative.dev"}}'
-```
-
-##### Load balancer
-Configuration so Knative serving uses nip.io for DNS. For `kind` the loadbalancer IP is `127.0.0.1`:
-
-```bash
-kubectl patch configmap/config-domain \
-  -n knative-serving \
-  --type merge \
-  -p '{"data":{"127.0.0.1.nip.io":""}}'
 ```
 
 ##### (OPTIONAL) Deploy a sample hello world app:
@@ -110,12 +100,16 @@ kubectl apply -f ./third_party/contour
 ```
 
 ### (OPTIONAL) For testing purpose (Istio)
-You can use port-forwarding to make requests to ingress from your machine:
+
+Use Kind with MetalLB - https://kind.sigs.k8s.io/docs/user/loadbalancer
+
+For Mac setup a SOCK5 Proxy in the Docker KinD network and use the `ALL_PROXY`
+environment variable
 
 ```bash
-kubectl port-forward  -n istio-system $(kubectl get pod -n istio-system -l "app=istio-ingressgateway" --output=jsonpath="{.items[0].metadata.name}") 8080:8080
-
-curl -v -H "Host: helloworld-go.default.127.0.0.1.nip.io" http://localhost:8080
+docker run --name kind-proxy -d --network kind -p 1080:1080 serjs/go-socks5-proxy
+export ALL_PROXY=socks5://localhost:1080
+curl 172.18.255.200 -v -H 'Host: helloworld-test-image.default.example.com'
 ```
 
 ---

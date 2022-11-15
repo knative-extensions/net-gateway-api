@@ -22,7 +22,9 @@ jobs:
       KO_DOCKER_REPO: kind.local
       # Use a semi-random cluster suffix, but somewhat predictable
       # so reruns don't just give us a completely new value.
-      CLUSTER_SUFFIX: c${{ github.run_id }}.local
+      #
+      # Re-enable when https://github.com/chainguard-dev/actions/pull/175 is fixed
+      # CLUSTER_SUFFIX: c${{ github.run_id }}.local
 
     steps:
 
@@ -39,11 +41,22 @@ jobs:
         k8s-version: ${{ matrix.k8s-version }}
         kind-worker-count: 3
 
-
     - uses: actions/checkout@v3
     - name: e2e
       run: |
-        ./test/e2e-tests.sh --run-tests --kind --${{ matrix.ingress }} --skip-teardowns
+        ./test/e2e-tests.sh \
+          --${{ matrix.ingress }} \
+          --run-tests \
+          --kind \
+          --skip-teardowns \
+          --skip-dump-on-failure
+
+    - uses: chainguard-dev/actions/kind-diag@main
+      if: ${{ failure() }}
+      with:
+        cluster-resources: nodes,namespaces,crds,gatewayclass
+        namespace-resources: pods,svc,king,gateway,httproute,referencegrant,referencepolicy,tcproute,tlsroute,udproute
+        artifact-name: logs-${{ matrix.k8s-version}}-${{ matrix.ingress }}
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

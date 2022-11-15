@@ -70,7 +70,7 @@ func TestRule(t *testing.T) {
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/"),
+						Value: pointer.String("/"),
 					},
 				}},
 			},
@@ -101,7 +101,7 @@ func TestRule(t *testing.T) {
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/"),
+						Value: pointer.String("/"),
 					},
 				}},
 			},

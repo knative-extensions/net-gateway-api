@@ -290,7 +290,7 @@ func TestVisibilityPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/foo"),
+						Value: pointer.String("/foo"),
 					},
 				}},
 			},
@@ -316,7 +316,7 @@ func TestVisibilityPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/bar"),
+						Value: pointer.String("/bar"),
 					},
 				}},
 			},
@@ -342,7 +342,7 @@ func TestVisibilityPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/baz"),
+						Value: pointer.String("/baz"),
 					},
 				}},
 			},

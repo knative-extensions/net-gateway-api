@@ -238,7 +238,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 						Port: portNumPtr(port),
 						Name: gatewayv1alpha2.ObjectName(name),
 					},
-					Weight: pointer.Int32Ptr(100 / splits),
+					Weight: pointer.Int32(100 / splits),
 				},
 				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,

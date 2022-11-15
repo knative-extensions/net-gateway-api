@@ -887,10 +887,10 @@ k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 h1:MQ8BAZPZlWk3S9K4a9NCkI
 k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1/go.mod h1:C/N6wCaBHeBHkHUesQOQy2/MZqGgMAFPqGsGQLdbZBU=
 k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed h1:jAne/RjBTyawwAy0utX5eqigAwz/lQhTmy+Hr/Cpue4=
 k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
-knative.dev/hack v0.0.0-20221104013908-8f3c7050408b h1:EqqlOqjCy/hVexdmPpUjcplO2eZc12+jTdTpodfLaI4=
-knative.dev/hack v0.0.0-20221104013908-8f3c7050408b/go.mod h1:yk2OjGDsbEnQjfxdm0/HJKS2WqTLEFg/N6nUs6Rqx3Q=
-knative.dev/networking v0.0.0-20221104155004-0d4e93709170 h1:/DP0jHUGFJcF20BH4waFLz/W/RBMH4f7wQpf12t0eDI=
-knative.dev/networking v0.0.0-20221104155004-0d4e93709170/go.mod h1:qwWlbknoGTz/NV+MKB7Hb2nMjwI5zfum3KLLSl2QUMc=
+knative.dev/hack v0.0.0-20221115135137-d470f5200e34 h1:aUgkDWYoMceCJs3spuJyHqgJ8nui4BLS9alAMrrKZgc=
+knative.dev/hack v0.0.0-20221115135137-d470f5200e34/go.mod h1:yk2OjGDsbEnQjfxdm0/HJKS2WqTLEFg/N6nUs6Rqx3Q=
+knative.dev/networking v0.0.0-20221115023037-6d96d6934458 h1:IkzkudWL559ikDMkpVIQATgzIopE9DsX4+1+RNMzK1w=
+knative.dev/networking v0.0.0-20221115023037-6d96d6934458/go.mod h1:/jBp3S2UtXFB4CdTGHlvqkVifAlB119aq/MWLG4EohU=
 knative.dev/pkg v0.0.0-20221107171117-0243d641354d h1:ACj/4O74QvoB8zE/mlg1ji680gFW7RaUIjAL1x5IN58=
 knative.dev/pkg v0.0.0-20221107171117-0243d641354d/go.mod h1:JwNkOLWAeuMYlH9WQA83k+afGCanWcvWvdXZsI3xKo4=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

@@ -77,7 +77,7 @@ func TestPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/foo"),
+						Value: pointer.String("/foo"),
 					},
 				}},
 			},
@@ -103,7 +103,7 @@ func TestPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/bar"),
+						Value: pointer.String("/bar"),
 					},
 				}},
 			},
@@ -129,7 +129,7 @@ func TestPath(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/baz"),
+						Value: pointer.String("/baz"),
 					},
 				}},
 			},
@@ -209,7 +209,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 								Port: portNumPtr(fooPort),
 								Name: gatewayv1alpha2.ObjectName(fooName),
 							},
-							Weight: pointer.Int32Ptr(1),
+							Weight: pointer.Int32(1),
 						},
 						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -227,7 +227,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 								Port: portNumPtr(barPort),
 								Name: gatewayv1alpha2.ObjectName(barName),
 							},
-							Weight: pointer.Int32Ptr(1),
+							Weight: pointer.Int32(1),
 						},
 						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -243,7 +243,7 @@ func TestPathAndPercentageSplit(t *testing.T) {
 				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-						Value: pointer.StringPtr("/foo"),
+						Value: pointer.String("/foo"),
 					},
 				}},
 			},

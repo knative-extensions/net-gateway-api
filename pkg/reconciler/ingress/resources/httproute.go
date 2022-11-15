@@ -139,7 +139,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpha2.HTTPRout
 						Port:  portNumPtr(split.ServicePort.IntValue()),
 						Name:  gatewayv1alpha2.ObjectName(name),
 					},
-					Weight: pointer.Int32Ptr(int32(split.Percent)),
+					Weight: pointer.Int32(int32(split.Percent)),
 				},
 				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -156,7 +156,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayv1alpha2.HTTPRout
 		}
 		pathMatch := gatewayv1alpha2.HTTPPathMatch{
 			Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-			Value: pointer.StringPtr(pathPrefix),
+			Value: pointer.String(pathPrefix),
 		}
 
 		var headerMatchList []gatewayv1alpha2.HTTPHeaderMatch

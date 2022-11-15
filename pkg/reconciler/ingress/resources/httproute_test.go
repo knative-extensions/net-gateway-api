@@ -157,7 +157,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Name:  gatewayv1alpha2.ObjectName("goo"),
 										Port:  portNumPtr(123),
 									},
-									Weight: pointer.Int32Ptr(int32(12)),
+									Weight: pointer.Int32(int32(12)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -180,7 +180,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Port:  portNumPtr(124),
 										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
-									Weight: pointer.Int32Ptr(int32(88)),
+									Weight: pointer.Int32(int32(88)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -207,7 +207,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								{
 									Path: &gatewayv1alpha2.HTTPPathMatch{
 										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-										Value: pointer.StringPtr("/"),
+										Value: pointer.String("/"),
 									},
 								},
 							},
@@ -242,7 +242,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Port:  portNumPtr(123),
 										Name:  gatewayv1alpha2.ObjectName("goo"),
 									},
-									Weight: pointer.Int32Ptr(int32(12)),
+									Weight: pointer.Int32(int32(12)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -265,7 +265,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Port:  portNumPtr(124),
 										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
-									Weight: pointer.Int32Ptr(int32(88)),
+									Weight: pointer.Int32(int32(88)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -291,7 +291,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							Matches: []gatewayv1alpha2.HTTPRouteMatch{{
 								Path: &gatewayv1alpha2.HTTPPathMatch{
 									Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-									Value: pointer.StringPtr("/"),
+									Value: pointer.String("/"),
 								},
 							}},
 						}},
@@ -373,7 +373,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Port:  portNumPtr(123),
 										Name:  gatewayv1alpha2.ObjectName("goo"),
 									},
-									Weight: pointer.Int32Ptr(int32(100)),
+									Weight: pointer.Int32(int32(100)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -384,7 +384,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								{
 									Path: &gatewayv1alpha2.HTTPPathMatch{
 										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-										Value: pointer.StringPtr("/"),
+										Value: pointer.String("/"),
 									},
 									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
 										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
@@ -401,7 +401,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Port:  portNumPtr(124),
 										Name:  gatewayv1alpha2.ObjectName("doo"),
 									},
-									Weight: pointer.Int32Ptr(int32(100)),
+									Weight: pointer.Int32(int32(100)),
 								},
 								Filters: []gatewayv1alpha2.HTTPRouteFilter{{
 									Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
@@ -412,7 +412,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								{
 									Path: &gatewayv1alpha2.HTTPPathMatch{
 										Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
-										Value: pointer.StringPtr("/doo"),
+										Value: pointer.String("/doo"),
 									},
 									Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
 										Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),

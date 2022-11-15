@@ -114,7 +114,7 @@ func TestWebsocketSplit(t *testing.T) {
 							Port: portNumPtr(bluePort),
 							Name: gatewayv1alpha2.ObjectName(blueName),
 						},
-						Weight: pointer.Int32Ptr(1),
+						Weight: pointer.Int32(1),
 					},
 				},
 				{
@@ -123,7 +123,7 @@ func TestWebsocketSplit(t *testing.T) {
 							Port: portNumPtr(greenPort),
 							Name: gatewayv1alpha2.ObjectName(greenName),
 						},
-						Weight: pointer.Int32Ptr(1),
+						Weight: pointer.Int32(1),
 					},
 				},
 			},

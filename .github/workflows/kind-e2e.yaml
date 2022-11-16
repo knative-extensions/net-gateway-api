@@ -1,12 +1,11 @@
-name: KinD e2e tests
+name: e2e
 
 on:
   pull_request:
     branches: [ 'main' ]
 
 jobs:
-  e2e-tests:
-    name: e2e tests
+  kind:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # Keep running if one leg fails.
@@ -42,7 +41,7 @@ jobs:
         kind-worker-count: 3
 
     - uses: actions/checkout@v3
-    - name: e2e
+    - name: test
       run: |
         ./test/e2e-tests.sh \
           --${{ matrix.ingress }} \

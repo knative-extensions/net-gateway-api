@@ -25,8 +25,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 
-	fakenetworkingclient "knative.dev/networking/pkg/client/injection/client/fake"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -34,7 +32,9 @@ import (
 	"knative.dev/pkg/reconciler"
 	rtesting "knative.dev/pkg/reconciler/testing"
 
-	fakegatewayapiclient "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
+	fakegatewayapiclient "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
+	fakenetworkingclient "knative.dev/networking/pkg/client/injection/client/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 )
 
 // Ctor functions create a k8s controller with given params.

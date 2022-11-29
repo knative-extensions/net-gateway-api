@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	"knative.dev/networking/pkg/ingress"
@@ -30,9 +30,9 @@ import (
 	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
-	gwapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned"
-	gatewayListers "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 )
 
 const (
@@ -44,14 +44,14 @@ const (
 type Reconciler struct {
 	statusManager status.Manager
 
-	gwapiclient gwapiclientset.Interface
+	gwapiclient gatewayclientset.Interface
 
 	// Listers index properties about resources
-	httprouteLister gatewayListers.HTTPRouteLister
+	httprouteLister gatewaylisters.HTTPRouteLister
 
-	referencePolicyLister gatewayListers.ReferencePolicyLister
+	referencePolicyLister gatewaylisters.ReferencePolicyLister
 
-	gatewayLister gatewayListers.GatewayLister
+	gatewayLister gatewaylisters.GatewayLister
 }
 
 var (

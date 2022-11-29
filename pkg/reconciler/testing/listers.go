@@ -22,15 +22,15 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	gatewayv1alpa2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	networking "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeservingclientset "knative.dev/networking/pkg/client/clientset/versioned/fake"
 	networkinglisters "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/pkg/reconciler/testing"
 
-	fakegatewayapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/clientset/versioned/fake"
-	gatewayListers "knative.dev/net-gateway-api/pkg/client/gatewayapi/listers/apis/v1alpha2"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	fakegatewayapiclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/fake"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 )
 
 var clientSetSchemes = []func(*runtime.Scheme) error{
@@ -91,8 +91,8 @@ func (l *Listers) GetIngressLister() networkinglisters.IngressLister {
 }
 
 // GetHTTPRouteLister get lister for HTTPProxy resource.
-func (l *Listers) GetHTTPRouteLister() gatewayListers.HTTPRouteLister {
-	return gatewayListers.NewHTTPRouteLister(l.IndexerFor(&gatewayv1alpa2.HTTPRoute{}))
+func (l *Listers) GetHTTPRouteLister() gatewaylisters.HTTPRouteLister {
+	return gatewaylisters.NewHTTPRouteLister(l.IndexerFor(&gatewayv1alpha2.HTTPRoute{}))
 }
 
 // GetEndpointsLister get lister for K8s Endpoints resource.
@@ -100,10 +100,10 @@ func (l *Listers) GetEndpointsLister() corev1listers.EndpointsLister {
 	return corev1listers.NewEndpointsLister(l.IndexerFor(&corev1.Endpoints{}))
 }
 
-func (l *Listers) GetGatewayLister() gatewayListers.GatewayLister {
-	return gatewayListers.NewGatewayLister(l.IndexerFor(&gatewayv1alpa2.Gateway{}))
+func (l *Listers) GetGatewayLister() gatewaylisters.GatewayLister {
+	return gatewaylisters.NewGatewayLister(l.IndexerFor(&gatewayv1alpha2.Gateway{}))
 }
 
-func (l *Listers) GetReferencePolicyLister() gatewayListers.ReferencePolicyLister {
-	return gatewayListers.NewReferencePolicyLister(l.IndexerFor(&gatewayv1alpa2.ReferencePolicy{}))
+func (l *Listers) GetReferencePolicyLister() gatewaylisters.ReferencePolicyLister {
+	return gatewaylisters.NewReferencePolicyLister(l.IndexerFor(&gatewayv1alpha2.ReferencePolicy{}))
 }

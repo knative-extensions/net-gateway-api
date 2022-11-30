@@ -45,7 +45,7 @@ import (
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 	. "knative.dev/pkg/reconciler/testing"
 
-	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client/fake"
+	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 )

@@ -34,10 +34,10 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 
-	gwapiclient "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/client"
-	gatewayinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/gateway"
-	httprouteinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/httproute"
-	referencepolicyinformer "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencepolicy"
+	gwapiclient "knative.dev/net-gateway-api/pkg/client/injection/client"
+	gatewayinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/gateway"
+	httprouteinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/httproute"
+	referencepolicyinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/referencepolicy"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 

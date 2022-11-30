@@ -19,5 +19,9 @@ set -o nounset
 set -o pipefail
 
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
+source ${REPO_ROOT_DIR}/hack/test-env.sh
 
 go_update_deps "$@"
+
+group "Update Gateway API CRDs to version ${GATEWAY_API_VERSION}"
+curl -L https://github.com/kubernetes-sigs/gateway-api/releases/download/${GATEWAY_API_VERSION}/experimental-install.yaml > "${REPO_ROOT_DIR}/config/100-gateway-api.yaml"

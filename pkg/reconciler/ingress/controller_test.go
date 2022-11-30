@@ -19,21 +19,20 @@ package ingress
 import (
 	"testing"
 
-	_ "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress/fake"
-	_ "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints/fake"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/system"
 
-	. "knative.dev/pkg/reconciler/testing"
+	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/gateway/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/httproute/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/referencepolicy/fake"
+	_ "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress/fake"
+	_ "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints/fake"
 
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/gateway/fake"
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/httproute/fake"
-	_ "knative.dev/net-gateway-api/pkg/client/gatewayapi/injection/informers/apis/v1alpha2/referencepolicy/fake"
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	. "knative.dev/pkg/reconciler/testing"
 )
 
 func TestNew(t *testing.T) {

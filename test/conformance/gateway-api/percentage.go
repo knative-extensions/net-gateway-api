@@ -25,7 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestPercentage verifies that an Ingress splitting over multiple backends respects
@@ -37,7 +37,7 @@ func TestPercentage(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Foo-Bar-Baz"
 
-	backends := make([]gatewayv1alpha2.HTTPBackendRef, 0, 10)
+	backends := make([]gatewayapi.HTTPBackendRef, 0, 10)
 	weights := make(map[string]float64, len(backends))
 
 	// Double the percentage of the split each iteration until it would overflow, and then
@@ -47,20 +47,20 @@ func TestPercentage(t *testing.T) {
 		weight := percent
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 		backends = append(backends,
-			gatewayv1alpha2.HTTPBackendRef{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+			gatewayapi.HTTPBackendRef{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					},
 					Weight: &weight,
 				},
 				// Append different headers to each split, which lets us identify
 				// which backend we hit.
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  headerName,
 							Value: name,
 						}},
@@ -80,12 +80,12 @@ func TestPercentage(t *testing.T) {
 
 	// Create a simple HTTPRoute over the 10 Services.
 	name := test.ObjectNameForTest(t)
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{{
 			BackendRefs: backends,
 		}},
 	})

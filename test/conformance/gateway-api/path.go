@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/pointer"
 	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestPath verifies that an Ingress properly dispatches to backends based on the path of the URL.
@@ -49,103 +49,103 @@ func TestPath(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(fooPort),
-							Name: gatewayv1alpha2.ObjectName(fooName),
+							Name: gatewayapi.ObjectName(fooName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: fooName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/foo"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(barPort),
-							Name: gatewayv1alpha2.ObjectName(barName),
+							Name: gatewayapi.ObjectName(barName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: barName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/bar"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(bazPort),
-							Name: gatewayv1alpha2.ObjectName(bazName),
+							Name: gatewayapi.ObjectName(bazName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: bazName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/baz"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(port),
-							Name: gatewayv1alpha2.ObjectName(name),
+							Name: gatewayapi.ObjectName(name),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: name,
 							}},
@@ -195,26 +195,26 @@ func TestPathAndPercentageSplit(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Which-Backend"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
+				BackendRefs: []gatewayapi.HTTPBackendRef{
 					{
-						BackendRef: gatewayv1alpha2.BackendRef{
-							BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						BackendRef: gatewayapi.BackendRef{
+							BackendObjectReference: gatewayapi.BackendObjectReference{
 								Port: portNumPtr(fooPort),
-								Name: gatewayv1alpha2.ObjectName(fooName),
+								Name: gatewayapi.ObjectName(fooName),
 							},
 							Weight: pointer.Int32(1),
 						},
-						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-								Set: []gatewayv1alpha2.HTTPHeader{{
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
 									Name:  headerName,
 									Value: fooName,
 								}},
@@ -222,17 +222,17 @@ func TestPathAndPercentageSplit(t *testing.T) {
 						},
 					},
 					{
-						BackendRef: gatewayv1alpha2.BackendRef{
-							BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+						BackendRef: gatewayapi.BackendRef{
+							BackendObjectReference: gatewayapi.BackendObjectReference{
 								Port: portNumPtr(barPort),
-								Name: gatewayv1alpha2.ObjectName(barName),
+								Name: gatewayapi.ObjectName(barName),
 							},
 							Weight: pointer.Int32(1),
 						},
-						Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-							Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-							RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-								Set: []gatewayv1alpha2.HTTPHeader{{
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
 									Name:  headerName,
 									Value: barName,
 								}},
@@ -240,26 +240,26 @@ func TestPathAndPercentageSplit(t *testing.T) {
 						},
 					},
 				},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/foo"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(port),
-							Name: gatewayv1alpha2.ObjectName(name),
+							Name: gatewayapi.ObjectName(name),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: name,
 							}},

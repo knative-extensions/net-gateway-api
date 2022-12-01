@@ -20,58 +20,58 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func TestIsHTTPRouteReady(t *testing.T) {
 	tests := []struct {
 		name          string
 		expect        bool
-		gatewayStatus []gatewayv1alpha2.RouteParentStatus
+		gatewayStatus []gatewayapi.RouteParentStatus
 	}{
 		{
 			name: "Zero gateway - it does not have status condition",
 		}, {
 			name:   "One gateway - it has Admitted condition true",
 			expect: true,
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{{
-				ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+			gatewayStatus: []gatewayapi.RouteParentStatus{{
+				ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 				Conditions: []metav1.Condition{{
-					Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+					Type:   string(gatewayapi.RouteConditionAccepted),
 					Status: metav1.ConditionTrue,
 				}},
 			}},
 		}, {
 			name: "One gateway - it has Admitted condition false",
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{{
-				ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+			gatewayStatus: []gatewayapi.RouteParentStatus{{
+				ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 				Conditions: []metav1.Condition{{
-					Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+					Type:   string(gatewayapi.RouteConditionAccepted),
 					Status: metav1.ConditionFalse,
 				}},
 			}},
 		}, {
 			name: "One gateway - it does not have Admitted condition",
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{{
-				ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+			gatewayStatus: []gatewayapi.RouteParentStatus{{
+				ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 			}},
 		}, {
 			name:   "Two gateways - both have Admitted condition true",
 			expect: true,
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{
+			gatewayStatus: []gatewayapi.RouteParentStatus{
 				{
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+					ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+							Type:   string(gatewayapi.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
 				}, {
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
+					ParentRef: gatewayapi.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+							Type:   string(gatewayapi.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -79,20 +79,20 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			},
 		}, {
 			name: "Two gateways - one has Admitted condition false",
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{
+			gatewayStatus: []gatewayapi.RouteParentStatus{
 				{
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+					ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+							Type:   string(gatewayapi.RouteConditionAccepted),
 							Status: metav1.ConditionFalse,
 						},
 					},
 				}, {
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
+					ParentRef: gatewayapi.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+							Type:   string(gatewayapi.RouteConditionAccepted),
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -100,17 +100,17 @@ func TestIsHTTPRouteReady(t *testing.T) {
 			},
 		}, {
 			name: "Two gateways - one does not have Admitted condition",
-			gatewayStatus: []gatewayv1alpha2.RouteParentStatus{
+			gatewayStatus: []gatewayapi.RouteParentStatus{
 				{
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
+					ParentRef: gatewayapi.ParentReference{Name: "foo", Namespace: namespacePtr("foo")},
 					Conditions: []metav1.Condition{
 						{
-							Type:   string(gatewayv1alpha2.RouteConditionAccepted),
+							Type:   string(gatewayapi.RouteConditionAccepted),
 							Status: metav1.ConditionFalse,
 						},
 					},
 				}, {
-					ParentRef: gatewayv1alpha2.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
+					ParentRef: gatewayapi.ParentReference{Name: "bar", Namespace: namespacePtr("bar")},
 				},
 			},
 		},
@@ -118,9 +118,9 @@ func TestIsHTTPRouteReady(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			httpRoute := &gatewayv1alpha2.HTTPRoute{
-				Status: gatewayv1alpha2.HTTPRouteStatus{
-					RouteStatus: gatewayv1alpha2.RouteStatus{Parents: test.gatewayStatus},
+			httpRoute := &gatewayapi.HTTPRoute{
+				Status: gatewayapi.HTTPRouteStatus{
+					RouteStatus: gatewayapi.RouteStatus{Parents: test.gatewayStatus},
 				},
 			}
 			got, _ := IsHTTPRouteReady(httpRoute)

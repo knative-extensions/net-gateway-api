@@ -30,9 +30,10 @@ import (
 	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
+	gatewayalphalisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
 const (
@@ -49,7 +50,7 @@ type Reconciler struct {
 	// Listers index properties about resources
 	httprouteLister gatewaylisters.HTTPRouteLister
 
-	referencePolicyLister gatewaylisters.ReferencePolicyLister
+	referenceGrantLister gatewayalphalisters.ReferenceGrantLister
 
 	gatewayLister gatewaylisters.GatewayLister
 }
@@ -109,7 +110,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		}
 	}
 
-	listeners := make([]*gatewayv1alpha2.Listener, 0, len(ing.Spec.TLS))
+	listeners := make([]*gatewayapi.Listener, 0, len(ing.Spec.TLS))
 	for _, tls := range ing.Spec.TLS {
 		tls := tls
 
@@ -158,7 +159,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if
 // all gateways have been admitted.
-func isHTTPRouteReady(r *gatewayv1alpha2.HTTPRoute) bool {
+func isHTTPRouteReady(r *gatewayapi.HTTPRoute) bool {
 	if r.Status.Parents == nil {
 		return false
 	}
@@ -171,9 +172,9 @@ func isHTTPRouteReady(r *gatewayv1alpha2.HTTPRoute) bool {
 	return true
 }
 
-func isGatewayAdmitted(gw gatewayv1alpha2.RouteParentStatus) bool {
+func isGatewayAdmitted(gw gatewayapi.RouteParentStatus) bool {
 	for _, condition := range gw.Conditions {
-		if condition.Type == string(gatewayv1alpha2.RouteConditionAccepted) {
+		if condition.Type == string(gatewayapi.RouteConditionAccepted) {
 			return condition.Status == metav1.ConditionTrue
 		}
 	}

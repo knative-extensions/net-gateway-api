@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
@@ -40,7 +40,7 @@ const listenerPrefix = "kni-"
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context, ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gatewayv1alpha2.HTTPRoute, error) {
+) (*gatewayapi.HTTPRoute, error) {
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
@@ -49,7 +49,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 		if err != nil {
 			return nil, err
 		}
-		httproute, err = c.gwapiclient.GatewayV1alpha2().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		httproute, err = c.gwapiclient.GatewayV1beta1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
 			return nil, fmt.Errorf("failed to create HTTPRoute: %w", err)
@@ -75,7 +75,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 			origin.Annotations = desired.Annotations
 			origin.Labels = desired.Labels
 
-			updated, err := c.gwapiclient.GatewayV1alpha2().HTTPRoutes(origin.Namespace).Update(
+			updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(origin.Namespace).Update(
 				ctx, origin, metav1.UpdateOptions{})
 			if err != nil {
 				recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
@@ -91,7 +91,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 func (c *Reconciler) reconcileTLS(
 	ctx context.Context, tls *netv1alpha1.IngressTLS, ing *netv1alpha1.Ingress,
 ) (
-	[]*gatewayv1alpha2.Listener, error) {
+	[]*gatewayapi.Listener, error) {
 	recorder := controller.GetEventRecorder(ctx)
 	gatewayConfig := config.FromContext(ctx).Gateway.Gateways
 	externalGw := gatewayConfig[netv1alpha1.IngressVisibilityExternalIP]
@@ -99,7 +99,7 @@ func (c *Reconciler) reconcileTLS(
 	gateway := metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Gateway",
-			APIVersion: gatewayv1alpha2.GroupVersion.String(),
+			APIVersion: gatewayapi.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      externalGw.Gateway.Name,
@@ -119,58 +119,58 @@ func (c *Reconciler) reconcileTLS(
 
 	desired := resources.MakeReferenceGrant(ctx, ing, secret, gateway)
 
-	rp, err := c.referencePolicyLister.ReferencePolicies(desired.Namespace).Get(desired.Name)
+	rp, err := c.referenceGrantLister.ReferenceGrants(desired.Namespace).Get(desired.Name)
 
 	if apierrs.IsNotFound(err) {
-		rp, err = c.gwapiclient.GatewayV1alpha2().ReferencePolicies(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		rp, err = c.gwapiclient.GatewayV1alpha2().ReferenceGrants(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 
 		if err != nil {
-			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferencePolicy: %v", err)
-			return nil, fmt.Errorf("failed to create ReferencePolicy: %w", err)
+			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferenceGrant: %v", err)
+			return nil, fmt.Errorf("failed to create ReferenceGrant: %w", err)
 		}
 	} else if err != nil {
 		return nil, err
 	}
 
 	if !metav1.IsControlledBy(rp, ing) {
-		recorder.Eventf(ing, corev1.EventTypeWarning, "NotOwned", "ReferencePolicy %s not owned by this object", desired.Name)
-		return nil, fmt.Errorf("ReferencePolicy %s not owned by %s", rp.Name, ing.Name)
+		recorder.Eventf(ing, corev1.EventTypeWarning, "NotOwned", "ReferenceGrant %s not owned by this object", desired.Name)
+		return nil, fmt.Errorf("ReferenceGrant %s not owned by %s", rp.Name, ing.Name)
 	}
 
 	if !equality.Semantic.DeepEqual(rp.Spec, desired.Spec) {
 		update := rp.DeepCopy()
 		update.Spec = desired.Spec
 
-		_, err := c.gwapiclient.GatewayV1alpha2().ReferencePolicies(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		_, err := c.gwapiclient.GatewayV1alpha2().ReferenceGrants(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
 		if err != nil {
-			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update ReferencePolicy: %v", err)
-			return nil, fmt.Errorf("failed to update ReferencePolicy: %w", err)
+			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update ReferenceGrant: %v", err)
+			return nil, fmt.Errorf("failed to update ReferenceGrant: %w", err)
 		}
 	}
 
 	// Gateway API loves typed pointers and constants, so we need to copy the constants
 	// to something we can reference
-	mode := gatewayv1alpha2.TLSModeTerminate
-	selector := gatewayv1alpha2.NamespacesFromSelector
-	listeners := make([]*gatewayv1alpha2.Listener, 0, len(tls.Hosts))
+	mode := gatewayapi.TLSModeTerminate
+	selector := gatewayapi.NamespacesFromSelector
+	listeners := make([]*gatewayapi.Listener, 0, len(tls.Hosts))
 	for _, h := range tls.Hosts {
 		h := h
-		listener := gatewayv1alpha2.Listener{
-			Name:     gatewayv1alpha2.SectionName(listenerPrefix + ing.GetUID()),
-			Hostname: (*gatewayv1alpha2.Hostname)(&h),
+		listener := gatewayapi.Listener{
+			Name:     gatewayapi.SectionName(listenerPrefix + ing.GetUID()),
+			Hostname: (*gatewayapi.Hostname)(&h),
 			Port:     443,
-			Protocol: gatewayv1alpha2.HTTPSProtocolType,
-			TLS: &gatewayv1alpha2.GatewayTLSConfig{
+			Protocol: gatewayapi.HTTPSProtocolType,
+			TLS: &gatewayapi.GatewayTLSConfig{
 				Mode: &mode,
-				CertificateRefs: []gatewayv1alpha2.SecretObjectReference{{
-					Group:     (*gatewayv1alpha2.Group)(pointer.String("")),
-					Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Secret")),
-					Name:      gatewayv1alpha2.ObjectName(tls.SecretName),
-					Namespace: (*gatewayv1alpha2.Namespace)(&tls.SecretNamespace),
+				CertificateRefs: []gatewayapi.SecretObjectReference{{
+					Group:     (*gatewayapi.Group)(pointer.String("")),
+					Kind:      (*gatewayapi.Kind)(pointer.String("Secret")),
+					Name:      gatewayapi.ObjectName(tls.SecretName),
+					Namespace: (*gatewayapi.Namespace)(&tls.SecretNamespace),
 				}},
 			},
-			AllowedRoutes: &gatewayv1alpha2.AllowedRoutes{
-				Namespaces: &gatewayv1alpha2.RouteNamespaces{
+			AllowedRoutes: &gatewayapi.AllowedRoutes{
+				Namespaces: &gatewayapi.RouteNamespaces{
 					From: &selector,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -178,7 +178,7 @@ func (c *Reconciler) reconcileTLS(
 						},
 					},
 				},
-				Kinds: []gatewayv1alpha2.RouteGroupKind{},
+				Kinds: []gatewayapi.RouteGroupKind{},
 			},
 		}
 		listeners = append(listeners, &listener)
@@ -188,7 +188,7 @@ func (c *Reconciler) reconcileTLS(
 }
 
 func (c *Reconciler) reconcileGatewayListeners(
-	ctx context.Context, listeners []*gatewayv1alpha2.Listener,
+	ctx context.Context, listeners []*gatewayapi.Listener,
 	ing *netv1alpha1.Ingress, gwName types.NamespacedName,
 ) error {
 	recorder := controller.GetEventRecorder(ctx)
@@ -202,7 +202,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 
 	update := gw.DeepCopy()
 
-	lmap := map[string]*gatewayv1alpha2.Listener{}
+	lmap := map[string]*gatewayapi.Listener{}
 	for _, l := range listeners {
 		lmap[string(l.Name)] = l
 	}
@@ -233,7 +233,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 	}
 
 	if updated {
-		_, err := c.gwapiclient.GatewayV1alpha2().Gateways(update.Namespace).Update(
+		_, err := c.gwapiclient.GatewayV1beta1().Gateways(update.Namespace).Update(
 			ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to update Gateway %s: %v", gwName, err)
@@ -270,7 +270,7 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	}
 
 	if len(update.Spec.Listeners) != numListeners {
-		_, err := c.gwapiclient.GatewayV1alpha2().Gateways(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		_, err := c.gwapiclient.GatewayV1beta1().Gateways(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to remove Listener from Gateway %s: %v", gwName, err)
 			return fmt.Errorf("failed to update Gateway %s/%s: %w", update.Namespace, update.Name, err)

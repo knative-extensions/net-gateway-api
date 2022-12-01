@@ -22,7 +22,7 @@ import (
 
 	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestMultipleHosts verifies that an Ingress can respond to multiple hosts.
@@ -32,7 +32,7 @@ func TestMultipleHosts(t *testing.T) {
 
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
-	hosts := []gatewayv1alpha2.Hostname{
+	hosts := []gatewayapi.Hostname{
 		"foo.com",
 		"www.foo.com",
 		"a-b-1.something-really-really-long.knative.dev",
@@ -42,21 +42,21 @@ func TestMultipleHosts(t *testing.T) {
 	// Using fixed hostnames can lead to conflicts when -count=N>1
 	// so pseudo-randomize the hostnames to avoid conflicts.
 	for i, host := range hosts {
-		hosts[i] = gatewayv1alpha2.Hostname(name + "." + string(host))
+		hosts[i] = gatewayapi.Hostname(name + "." + string(host))
 	}
 
 	// Create a simple HTTPRoute over the Service.
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
 		Hostnames: hosts,
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					}}},
 			},
 		}},

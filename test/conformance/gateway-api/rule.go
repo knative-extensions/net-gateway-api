@@ -23,7 +23,7 @@ import (
 	"k8s.io/utils/pointer"
 	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestRule verifies that an Ingress properly dispatches to backends based on different rules.
@@ -37,70 +37,70 @@ func TestRule(t *testing.T) {
 	fooName, fooPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 	barName, barPort, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(fooName + ".example.com"), gatewayv1alpha2.Hostname(barName + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(fooName + ".example.com"), gatewayapi.Hostname(barName + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(fooPort),
-							Name: gatewayv1alpha2.ObjectName(fooName),
+							Name: gatewayapi.ObjectName(fooName),
 						},
 					},
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: fooName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
-						Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  headerMatchTypePtr(gatewayapi.HeaderMatchExact),
 						Name:  "Host",
 						Value: fooName + ".example.com",
 					}},
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(barPort),
-							Name: gatewayv1alpha2.ObjectName(barName),
+							Name: gatewayapi.ObjectName(barName),
 						},
 					},
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: barName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
-						Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  headerMatchTypePtr(gatewayapi.HeaderMatchExact),
 						Name:  "Host",
 						Value: barName + ".example.com",
 					}},
 					// This should be removed once https://github.com/kubernetes-sigs/gateway-api/issues/563 was solved.
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/"),
 					},
 				}},

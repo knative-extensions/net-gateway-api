@@ -28,7 +28,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/ptr"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestTagHeaders verifies that an Ingress properly dispatches to backends based on the tag header
@@ -48,31 +48,31 @@ func TestTagHeaders(t *testing.T) {
 		backendWithoutTag = "no-tag"
 	)
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(port),
-							Name: gatewayv1alpha2.ObjectName(name),
+							Name: gatewayapi.ObjectName(name),
 						}}},
 				},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Headers: []gatewayv1alpha2.HTTPHeaderMatch{{
-						Type:  headerMatchTypePtr(gatewayv1alpha2.HeaderMatchExact),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  headerMatchTypePtr(gatewayapi.HeaderMatchExact),
 						Name:  header.RouteTagKey,
 						Value: tagName,
 					}},
 				}},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  backendHeader,
 							Value: backendWithTag,
 						}},
@@ -80,17 +80,17 @@ func TestTagHeaders(t *testing.T) {
 				},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(port),
-							Name: gatewayv1alpha2.ObjectName(name),
+							Name: gatewayapi.ObjectName(name),
 						}}},
 				},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  backendHeader,
 							Value: backendWithoutTag,
 						}},
@@ -159,23 +159,23 @@ func TestPreSplitSetHeaders(t *testing.T) {
 
 	const headerName = "Foo-Bar-Baz"
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					}}},
 			},
-			Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-				Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-					Set: []gatewayv1alpha2.HTTPHeader{{
+			Filters: []gatewayapi.HTTPRouteFilter{{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+					Set: []gatewayapi.HTTPHeader{{
 						Name:  headerName,
 						Value: name,
 					}},
@@ -225,25 +225,25 @@ func TestPostSplitSetHeaders(t *testing.T) {
 		maxRequests = 100
 	)
 
-	backendRefs := make([]gatewayv1alpha2.HTTPBackendRef, 0, splits)
+	backendRefs := make([]gatewayapi.HTTPBackendRef, 0, splits)
 
 	names := make(sets.String, splits)
 	for i := 0; i < splits; i++ {
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 		backendRefs = append(backendRefs,
-			gatewayv1alpha2.HTTPBackendRef{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+			gatewayapi.HTTPBackendRef{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					},
 					Weight: pointer.Int32(100 / splits),
 				},
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  headerName,
 							Value: name,
 						}},
@@ -255,12 +255,12 @@ func TestPostSplitSetHeaders(t *testing.T) {
 
 	// Create a simple Ingress over the 10 Services.
 	name := test.ObjectNameForTest(t)
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{{
 			BackendRefs: backendRefs,
 		}},
 	})

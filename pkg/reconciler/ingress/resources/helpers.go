@@ -19,24 +19,16 @@ package resources
 import (
 	"sort"
 
-	gatewayv1alpa2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func namespacePtr(val gatewayv1alpa2.Namespace) *gatewayv1alpa2.Namespace {
+func ptr[T any](val T) *T {
 	return &val
 }
 
-func headerMatchTypePtr(val gatewayv1alpa2.HeaderMatchType) *gatewayv1alpa2.HeaderMatchType {
-	return &val
-}
-
-func portNumPtr(port int) *gatewayv1alpa2.PortNumber {
-	pn := gatewayv1alpa2.PortNumber(port)
+func portNumPtr(port int) *gatewayapi.PortNumber {
+	pn := gatewayapi.PortNumber(port)
 	return &pn
-}
-
-func pathMatchTypePtr(val gatewayv1alpa2.PathMatchType) *gatewayv1alpa2.PathMatchType {
-	return &val
 }
 
 // LongestHost returns the most specific host.

@@ -27,7 +27,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 )
 
 // Clients holds instances of interfaces for making requests to Knative Serving.
@@ -40,7 +40,7 @@ type Clients struct {
 // GatewayAPIClients holds instances of interfaces for making requests to Knative
 // networking clients.
 type GatewayAPIClients struct {
-	HTTPRoutes gatewayv1alpha2.HTTPRouteInterface
+	HTTPRoutes gatewayapi.HTTPRouteInterface
 }
 
 // NewClientsFromConfig instantiates and returns several clientsets required for making request to the
@@ -82,6 +82,6 @@ func newGatewayAPIClients(cfg *rest.Config, namespace string) (*GatewayAPIClient
 		return nil, err
 	}
 	return &GatewayAPIClients{
-		HTTPRoutes: cs.GatewayV1alpha2().HTTPRoutes(namespace),
+		HTTPRoutes: cs.GatewayV1beta1().HTTPRoutes(namespace),
 	}, nil
 }

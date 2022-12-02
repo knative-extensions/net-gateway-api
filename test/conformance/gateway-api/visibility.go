@@ -30,7 +30,7 @@ import (
 	"knative.dev/net-gateway-api/test"
 	"knative.dev/networking/pkg/apis/networking"
 	nettest "knative.dev/networking/test"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func TestVisibility(t *testing.T) {
@@ -41,23 +41,23 @@ func TestVisibility(t *testing.T) {
 	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 	// Generate a different hostname for each of these tests, so that they do not fail when run concurrently.
-	var privateHostNames = map[string]gatewayv1alpha2.Hostname{
-		"fqdn":     gatewayv1alpha2.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace + ".svc." + nettest.NetworkingFlags.ClusterSuffix),
-		"short":    gatewayv1alpha2.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace + ".svc"),
-		"shortest": gatewayv1alpha2.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace),
+	var privateHostNames = map[string]gatewayapi.Hostname{
+		"fqdn":     gatewayapi.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace + ".svc." + nettest.NetworkingFlags.ClusterSuffix),
+		"short":    gatewayapi.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace + ".svc"),
+		"shortest": gatewayapi.Hostname(test.ObjectNameForTest(t) + "." + test.ServingNamespace),
 	}
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testLocalGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{privateHostNames["fqdn"], privateHostNames["short"], privateHostNames["shortest"]},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					}}},
 			},
 		}},
@@ -86,19 +86,19 @@ func testProxyToHelloworld(ctx context.Context, t *testing.T, clients *test.Clie
 
 	// Using fixed hostnames can lead to conflicts when -count=N>1
 	// so pseudo-randomize the hostnames to avoid conflicts.
-	publicHostName := gatewayv1alpha2.Hostname(test.ObjectNameForTest(t) + ".publicproxy.example.com")
+	publicHostName := gatewayapi.Hostname(test.ObjectNameForTest(t) + ".publicproxy.example.com")
 
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{publicHostName},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{publicHostName},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(proxyPort),
-						Name: gatewayv1alpha2.ObjectName(proxyName),
+						Name: gatewayapi.ObjectName(proxyName),
 					}}},
 			},
 		}},
@@ -115,7 +115,7 @@ func TestVisibilitySplit(t *testing.T) {
 	// Use a post-split injected header to establish which split we are sending traffic to.
 	const headerName = "Foo-Bar-Baz"
 
-	backends := make([]gatewayv1alpha2.HTTPBackendRef, 0, 10)
+	backends := make([]gatewayapi.HTTPBackendRef, 0, 10)
 	weights := make(map[string]float64, len(backends))
 
 	// Double the percentage of the split each iteration until it would overflow, and then
@@ -125,20 +125,20 @@ func TestVisibilitySplit(t *testing.T) {
 		weight := percent
 		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 		backends = append(backends,
-			gatewayv1alpha2.HTTPBackendRef{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+			gatewayapi.HTTPBackendRef{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					},
 					Weight: &weight,
 				},
 				// Append different headers to each split, which lets us identify
 				// which backend we hit.
-				Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-					Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-						Set: []gatewayv1alpha2.HTTPHeader{{
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  headerName,
 							Value: name,
 						}},
@@ -160,12 +160,12 @@ func TestVisibilitySplit(t *testing.T) {
 
 	// Create a simple Ingress over the 10 Services.
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testLocalGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(privateHostName)},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(privateHostName)},
+		Rules: []gatewayapi.HTTPRouteRule{{
 			BackendRefs: backends,
 		}},
 	})
@@ -178,17 +178,17 @@ func TestVisibilitySplit(t *testing.T) {
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
-	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(publicHostName)},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(publicHostName)},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(proxyPort),
-						Name: gatewayv1alpha2.ObjectName(proxyName),
+						Name: gatewayapi.ObjectName(proxyName),
 					}}},
 			},
 		}},
@@ -262,103 +262,103 @@ func TestVisibilityPath(t *testing.T) {
 
 	name := test.ObjectNameForTest(t)
 	privateHostName := fmt.Sprintf("%s.%s.svc.%s", name, test.ServingNamespace, nettest.NetworkingFlags.ClusterSuffix)
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testLocalGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(privateHostName)},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(privateHostName)},
+		Rules: []gatewayapi.HTTPRouteRule{
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(fooPort),
-							Name: gatewayv1alpha2.ObjectName(fooName),
+							Name: gatewayapi.ObjectName(fooName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: fooName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/foo"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(barPort),
-							Name: gatewayv1alpha2.ObjectName(barName),
+							Name: gatewayapi.ObjectName(barName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: barName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/bar"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(bazPort),
-							Name: gatewayv1alpha2.ObjectName(bazName),
+							Name: gatewayapi.ObjectName(bazName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: bazName,
 							}},
 						}},
 					},
 				}},
-				Matches: []gatewayv1alpha2.HTTPRouteMatch{{
-					Path: &gatewayv1alpha2.HTTPPathMatch{
-						Type:  pathMatchTypePtr(gatewayv1alpha2.PathMatchPathPrefix),
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  pathMatchTypePtr(gatewayapi.PathMatchPathPrefix),
 						Value: pointer.String("/baz"),
 					},
 				}},
 			},
 			{
-				BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-					BackendRef: gatewayv1alpha2.BackendRef{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Port: portNumPtr(port),
-							Name: gatewayv1alpha2.ObjectName(mainName),
+							Name: gatewayapi.ObjectName(mainName),
 						}},
 					// Append different headers to each split, which lets us identify
 					// which backend we hit.
-					Filters: []gatewayv1alpha2.HTTPRouteFilter{{
-						Type: gatewayv1alpha2.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayv1alpha2.HTTPRequestHeaderFilter{
-							Set: []gatewayv1alpha2.HTTPHeader{{
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
 								Name:  headerName,
 								Value: mainName,
 							}},
@@ -379,17 +379,17 @@ func TestVisibilityPath(t *testing.T) {
 	proxyName, proxyPort, _ := CreateProxyService(ctx, t, clients, privateHostName, loadbalancerAddress)
 
 	publicHostName := fmt.Sprintf("%s.%s", name, "example.com")
-	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ = CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(publicHostName)},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(publicHostName)},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(proxyPort),
-						Name: gatewayv1alpha2.ObjectName(proxyName),
+						Name: gatewayapi.ObjectName(proxyName),
 					}}},
 			},
 		}},

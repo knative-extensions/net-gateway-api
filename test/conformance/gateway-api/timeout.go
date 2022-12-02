@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"knative.dev/net-gateway-api/test"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // TestTimeout verifies that an Ingress implements "no timeout".
@@ -35,17 +35,17 @@ func TestTimeout(t *testing.T) {
 	name, port, _ := CreateTimeoutService(ctx, t, clients)
 
 	// Create a simple HTTPRoute over the Service.
-	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayv1alpha2.HTTPRouteSpec{
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentReference{
+	_, client, _ := CreateHTTPRouteReady(ctx, t, clients, gatewayapi.HTTPRouteSpec{
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
 			testGateway,
 		}},
-		Hostnames: []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(name + ".example.com")},
-		Rules: []gatewayv1alpha2.HTTPRouteRule{{
-			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{{
-				BackendRef: gatewayv1alpha2.BackendRef{
-					BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+		Hostnames: []gatewayapi.Hostname{gatewayapi.Hostname(name + ".example.com")},
+		Rules: []gatewayapi.HTTPRouteRule{{
+			BackendRefs: []gatewayapi.HTTPBackendRef{{
+				BackendRef: gatewayapi.BackendRef{
+					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Port: portNumPtr(port),
-						Name: gatewayv1alpha2.ObjectName(name),
+						Name: gatewayapi.ObjectName(name),
 					}}},
 			},
 		}},

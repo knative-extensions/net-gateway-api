@@ -29,8 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/utils/pointer"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeingressclient "knative.dev/networking/pkg/client/injection/client/fake"
@@ -42,12 +44,11 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 
+	gatewayapialpha "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 	. "knative.dev/pkg/reconciler/testing"
-
-	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 )
 
 var (
@@ -392,10 +393,10 @@ func TestReconcileTLS(t *testing.T) {
 
 	table.Test(t, GatewayFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher, tr *TableRow) controller.Reconciler {
 		r := &Reconciler{
-			gwapiclient:           fakegwapiclientset.Get(ctx),
-			httprouteLister:       listers.GetHTTPRouteLister(),
-			referencePolicyLister: listers.GetReferencePolicyLister(),
-			gatewayLister:         listers.GetGatewayLister(),
+			gwapiclient:          fakegwapiclientset.Get(ctx),
+			httprouteLister:      listers.GetHTTPRouteLister(),
+			referenceGrantLister: listers.GetReferenceGrantLister(),
+			gatewayLister:        listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
 				return true, nil
 			}},
@@ -404,9 +405,9 @@ func TestReconcileTLS(t *testing.T) {
 		// so create this via explicit call (per note in client-go/testing/fixture.go in tracker.Add)
 		fakeCreates := []runtime.Object{}
 		for _, x := range tr.Objects {
-			myGw, ok := x.(*gatewayv1alpha2.Gateway)
+			myGw, ok := x.(*gatewayapi.Gateway)
 			if ok {
-				fakegwapiclientset.Get(ctx).GatewayV1alpha2().Gateways(myGw.Namespace).Create(ctx, myGw, metav1.CreateOptions{})
+				fakegwapiclientset.Get(ctx).GatewayV1beta1().Gateways(myGw.Namespace).Create(ctx, myGw, metav1.CreateOptions{})
 				tr.SkipNamespaceValidation = true
 				fakeCreates = append(fakeCreates, myGw)
 			}
@@ -500,7 +501,7 @@ func httpRoute(t *testing.T, i *v1alpha1.Ingress, opts ...HTTPRouteOption) runti
 	return httpRoute
 }
 
-type HTTPRouteOption func(h *gatewayv1alpha2.HTTPRoute)
+type HTTPRouteOption func(h *gatewayapi.HTTPRoute)
 
 func withGatewayAPIclass(i *v1alpha1.Ingress) {
 	withAnnotation(map[string]string{
@@ -536,15 +537,15 @@ func GatewayFactory(ctor func(context.Context, *Listers, configmap.Watcher, *Tab
 	}
 }
 
-type GatewayOption func(*gatewayv1alpha2.Gateway)
+type GatewayOption func(*gatewayapi.Gateway)
 
-func gw(opts ...GatewayOption) *gatewayv1alpha2.Gateway {
-	g := &gatewayv1alpha2.Gateway{
+func gw(opts ...GatewayOption) *gatewayapi.Gateway {
+	g := &gatewayapi.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      publicName,
 			Namespace: testNamespace,
 		},
-		Spec: gatewayv1alpha2.GatewaySpec{
+		Spec: gatewayapi.GatewaySpec{
 			GatewayClassName: gatewayAPIIngressClassName,
 		},
 	}
@@ -554,8 +555,8 @@ func gw(opts ...GatewayOption) *gatewayv1alpha2.Gateway {
 	return g
 }
 
-func defaultListener(g *gatewayv1alpha2.Gateway) {
-	g.Spec.Listeners = append(g.Spec.Listeners, gatewayv1alpha2.Listener{
+func defaultListener(g *gatewayapi.Gateway) {
+	g.Spec.Listeners = append(g.Spec.Listeners, gatewayapi.Listener{
 		Name:     "http",
 		Port:     80,
 		Protocol: "HTTP",
@@ -563,32 +564,32 @@ func defaultListener(g *gatewayv1alpha2.Gateway) {
 }
 
 func tlsListener(hostname, nsName, secretName string) GatewayOption {
-	return func(g *gatewayv1alpha2.Gateway) {
-		g.Spec.Listeners = append(g.Spec.Listeners, gatewayv1alpha2.Listener{
-			Name:     gatewayv1alpha2.SectionName("kni-"),
-			Hostname: (*gatewayv1alpha2.Hostname)(&hostname),
+	return func(g *gatewayapi.Gateway) {
+		g.Spec.Listeners = append(g.Spec.Listeners, gatewayapi.Listener{
+			Name:     gatewayapi.SectionName("kni-"),
+			Hostname: (*gatewayapi.Hostname)(&hostname),
 			Port:     443,
 			Protocol: "HTTPS",
-			TLS: &gatewayv1alpha2.GatewayTLSConfig{
-				Mode: (*gatewayv1alpha2.TLSModeType)(pointer.String("Terminate")),
-				CertificateRefs: []gatewayv1alpha2.SecretObjectReference{{
-					Group:     (*gatewayv1alpha2.Group)(pointer.String("")),
-					Kind:      (*gatewayv1alpha2.Kind)(pointer.String("Secret")),
-					Name:      gatewayv1alpha2.ObjectName(secretName),
-					Namespace: (*gatewayv1alpha2.Namespace)(&nsName),
+			TLS: &gatewayapi.GatewayTLSConfig{
+				Mode: (*gatewayapi.TLSModeType)(pointer.String("Terminate")),
+				CertificateRefs: []gatewayapi.SecretObjectReference{{
+					Group:     (*gatewayapi.Group)(pointer.String("")),
+					Kind:      (*gatewayapi.Kind)(pointer.String("Secret")),
+					Name:      gatewayapi.ObjectName(secretName),
+					Namespace: (*gatewayapi.Namespace)(&nsName),
 				}},
-				Options: map[gatewayv1alpha2.AnnotationKey]gatewayv1alpha2.AnnotationValue{},
+				Options: map[gatewayapi.AnnotationKey]gatewayapi.AnnotationValue{},
 			},
-			AllowedRoutes: &gatewayv1alpha2.AllowedRoutes{
-				Namespaces: &gatewayv1alpha2.RouteNamespaces{
-					From: (*gatewayv1alpha2.FromNamespaces)(pointer.String("Selector")),
+			AllowedRoutes: &gatewayapi.AllowedRoutes{
+				Namespaces: &gatewayapi.RouteNamespaces{
+					From: (*gatewayapi.FromNamespaces)(pointer.String("Selector")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"kubernetes.io/metadata.name": nsName,
 						},
 					},
 				},
-				Kinds: []gatewayv1alpha2.RouteGroupKind{},
+				Kinds: []gatewayapi.RouteGroupKind{},
 			},
 		})
 	}
@@ -622,9 +623,9 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
+func rp(to *corev1.Secret) *gatewayapialpha.ReferenceGrant {
 	t := true
-	return &gatewayv1alpha2.ReferencePolicy{
+	return &gatewayapialpha.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,
@@ -636,16 +637,16 @@ func rp(to *corev1.Secret) *gatewayv1alpha2.ReferencePolicy {
 				BlockOwnerDeletion: &t,
 			}},
 		},
-		Spec: gatewayv1alpha2.ReferenceGrantSpec{
-			From: []gatewayv1alpha2.ReferenceGrantFrom{{
+		Spec: gatewayapialpha.ReferenceGrantSpec{
+			From: []gatewayapialpha.ReferenceGrantFrom{{
 				Group:     "gateway.networking.k8s.io",
 				Kind:      "Gateway",
-				Namespace: gatewayv1alpha2.Namespace(testNamespace),
+				Namespace: gatewayapialpha.Namespace(testNamespace),
 			}},
-			To: []gatewayv1alpha2.ReferenceGrantTo{{
-				Group: gatewayv1alpha2.Group(""),
-				Kind:  gatewayv1alpha2.Kind("Secret"),
-				Name:  (*gatewayv1alpha2.ObjectName)(&to.Name),
+			To: []gatewayapialpha.ReferenceGrantTo{{
+				Group: gatewayapialpha.Group(""),
+				Kind:  gatewayapialpha.Kind("Secret"),
+				Name:  (*gatewayapialpha.ObjectName)(&to.Name),
 			}},
 		},
 	}

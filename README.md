@@ -11,11 +11,12 @@ This work is still in early development, which means it's _not ready for product
 This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact.
 You can also find the tested Ingress and unavailable features [here](docs/test-version.md).
 
-## Tests
-Note: conformance and e2e tests are a wip at the moment. Please see:
+## KIngress Conformance Tests
 
-- [EPIC - Contour tests · Issue #36 · knative-sandbox/net-gateway-api](https://github.com/knative-sandbox/net-gateway-api/issues/36)
-- [EPIC - Istio tests · Issue #23 · knative-sandbox/net-gateway-api](https://github.com/knative-sandbox/net-gateway-api/issues/23)
+We run our Knative Ingress Conformance tests and are tracking support by different implementations here:
+
+- [Contour Epic · Issue #384](https://github.com/knative-sandbox/net-gateway-api/issues/384)
+- [Istio EPIC · Issue #383](https://github.com/knative-sandbox/net-gateway-api/issues/383)
 
 Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 ---

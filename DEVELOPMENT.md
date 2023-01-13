@@ -38,40 +38,34 @@ export KO_DOCKER_REPO='gcr.io/my-gcloud-project-id'
 NOTE: this is only required when you run conformance/e2e tests locally with `go test` commands, and may be required periodically.
 
 The [`upload-test-images.sh`](test/upload-test-images.sh) script can be used to build and push the test images used by the conformance and e2e tests.
-
-To run the script for all end to end test images:
-
 ```bash
 ./test/upload-test-images.sh
 ```
 
 ## Tests
-### Conformance
-#### Istio
-`./test/kind-conformance-istio.sh`
+### Conformance and HA
+* Calling the script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
+* Calling the script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
+* Use the script with `--kind` to run the tests against a kind cluster.
 
-#### Contour
-`./test/kind-conformance-contour.sh`
+#### Examples
+`./test/e2e-tests.sh --istio --run-tests --kind --skip-dump-on-failure`
+`./test/e2e-tests.sh --contour --run-tests --kind --skip-dump-on-failure`
 
-### e2e
-Calling a script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
-
-Calling a script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
-
-#### All tests
-To run conformance tests for all vendors, run: `./test/e2e-tests.sh`
 
 #### Individual tests
-To run an individual
+To run an individual test use
 ```bash
+# Prepare environment
 cd test
 source e2e-common.sh
-test_setup
+initialize --istio --run-tests --kind --skip-dump-on-failure
 cd ..
+
+# Running a single conformance test
+go_test_e2e -tags=e2e -parallel=1 ./test/conformance \
+    -enable-alpha \
+    -enable-beta \
+    -run ^TestIngressConformance/basics$ \
+    -ingressClass=gateway-api.ingress.networking.knative.dev
 ```
-
-Then run one of the available tests:
-
-`./test/kind-e2e-istio.sh`
-
-`./test/kind-e2e-contour.sh`

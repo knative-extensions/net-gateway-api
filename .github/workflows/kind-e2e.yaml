@@ -47,7 +47,6 @@ jobs:
           --${{ matrix.ingress }} \
           --run-tests \
           --kind \
-          --skip-teardowns \
           --skip-dump-on-failure
 
     - uses: chainguard-dev/actions/kind-diag@main

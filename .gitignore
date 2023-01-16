@@ -11,3 +11,6 @@ bazel-*
 *.out
 
 tmp
+
+# Exclude downloaded istio folder
+istio-*/

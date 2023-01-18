@@ -53,7 +53,7 @@ jobs:
       if: ${{ failure() }}
       with:
         cluster-resources: nodes,namespaces,crds,gatewayclass
-        namespace-resources: pods,svc,king,gateway,httproute,referencegrant,referencepolicy,tcproute,tlsroute,udproute
+        namespace-resources: pods,svc,king,gateway,httproute,referencegrant,tcproute,tlsroute,udproute
         artifact-name: logs-${{ matrix.k8s-version}}-${{ matrix.ingress }}
 
     - name: Post failure notice to Slack

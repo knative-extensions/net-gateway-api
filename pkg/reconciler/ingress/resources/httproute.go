@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"sort"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"knative.dev/pkg/kmap"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/pkg/features"
 
@@ -36,6 +38,8 @@ import (
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
 )
+
+const redirectHTTPRoutePostfix = "-redirect"
 
 func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 	// Note: we use indices and references to avoid mutating copies
@@ -189,11 +193,7 @@ func HTTPRouteKey(ing *netv1alpha1.Ingress, rule *netv1alpha1.IngressRule) types
 }
 
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.
-func MakeHTTPRoute(
-	ctx context.Context,
-	ing *netv1alpha1.Ingress,
-	rule *netv1alpha1.IngressRule,
-) (*gatewayapi.HTTPRoute, error) {
+func MakeHTTPRoute(ctx context.Context, ing *netv1alpha1.Ingress, rule *netv1alpha1.IngressRule, sectionName *gatewayapi.SectionName) (*gatewayapi.HTTPRoute, error) {
 
 	visibility := ""
 	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
@@ -204,22 +204,41 @@ func MakeHTTPRoute(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
-			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
+			Labels: kmap.Union(ing.Labels, map[string]string{
 				networking.VisibilityLabelKey: visibility,
 			}),
-			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
+			Annotations: kmap.Filter(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation
 			}),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
-		Spec: makeHTTPRouteSpec(ctx, rule),
+		Spec: makeHTTPRouteSpec(ctx, rule, sectionName),
 	}, nil
 }
 
-func makeHTTPRouteSpec(
+// MakeRedirectHTTPRoute creates a HTTPRoute with a redirection filter.
+func MakeRedirectHTTPRoute(
 	ctx context.Context,
+	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) gatewayapi.HTTPRouteSpec {
+) (*gatewayapi.HTTPRoute, error) {
+	return &gatewayapi.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      LongestHost(rule.Hosts) + redirectHTTPRoutePostfix,
+			Namespace: ing.Namespace,
+			Labels: kmap.Union(ing.Labels, map[string]string{
+				networking.VisibilityLabelKey: "",
+			}),
+			Annotations: kmap.Filter(ing.GetAnnotations(), func(key string) bool {
+				return key == corev1.LastAppliedConfigAnnotation
+			}),
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
+		},
+		Spec: makeRedirectHTTPRouteSpec(ctx, rule),
+	}, nil
+}
+
+func makeHTTPRouteSpec(ctx context.Context, rule *netv1alpha1.IngressRule, sectionName *gatewayapi.SectionName) gatewayapi.HTTPRouteSpec {
 
 	hostnames := make([]gatewayapi.Hostname, 0, len(rule.Hosts))
 	for _, hostname := range rule.Hosts {
@@ -243,6 +262,10 @@ func makeHTTPRouteSpec(
 		Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
 		Namespace: ptr.To(gatewayapi.Namespace(gateway.Namespace)),
 		Name:      gatewayapi.ObjectName(gateway.Name),
+	}
+
+	if sectionName != nil {
+		gatewayRef.SectionName = sectionName
 	}
 
 	return gatewayapi.HTTPRouteSpec{
@@ -363,6 +386,95 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+func makeRedirectHTTPRouteSpec(
+	ctx context.Context,
+	rule *netv1alpha1.IngressRule,
+) gatewayapi.HTTPRouteSpec {
+	hostnames := make([]gatewayapi.Hostname, 0, len(rule.Hosts))
+	for _, hostname := range rule.Hosts {
+		hostnames = append(hostnames, gatewayapi.Hostname(hostname))
+	}
+
+	pluginConfig := config.FromContext(ctx).GatewayPlugin
+
+	var gateway config.Gateway
+
+	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
+		gateway = pluginConfig.LocalGateway()
+	} else {
+		gateway = pluginConfig.ExternalGateway()
+	}
+
+	rules := makeRedirectHTTPRouteRule(rule)
+
+	gatewayRef := gatewayapi.ParentReference{
+		Group:     (*gatewayapi.Group)(&gatewayapi.GroupVersion.Group),
+		Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+		Namespace: ptr.To(gatewayapi.Namespace(gateway.Namespace)),
+		Name:      gatewayapi.ObjectName(gateway.Name),
+		// Redirect routes are only added on to the http listener
+		SectionName: ptr.To(gatewayapi.SectionName(gateway.HTTPListenerName)),
+	}
+
+	return gatewayapi.HTTPRouteSpec{
+		Hostnames: hostnames,
+		Rules:     rules,
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
+			gatewayRef,
+		}},
+	}
+}
+
+func makeRedirectHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule {
+	rules := []gatewayapi.HTTPRouteRule{}
+
+	for _, path := range rule.HTTP.Paths {
+		preFilters := []gatewayapi.HTTPRouteFilter{
+			{
+				Type: gatewayapi.HTTPRouteFilterRequestRedirect,
+				RequestRedirect: &gatewayapi.HTTPRequestRedirectFilter{
+					Scheme:     ptr.To("https"),
+					Port:       ptr.To(gatewayapi.PortNumber(443)),
+					StatusCode: ptr.To(http.StatusMovedPermanently),
+				},
+			}}
+
+		matches := matchesFromRulePath(path)
+		rule := gatewayapi.HTTPRouteRule{
+			Filters: preFilters,
+			Matches: matches,
+		}
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
+func matchesFromRulePath(path netv1alpha1.HTTPIngressPath) []gatewayapi.HTTPRouteMatch {
+	pathPrefix := "/"
+	if path.Path != "" {
+		pathPrefix = path.Path
+	}
+	pathMatch := gatewayapi.HTTPPathMatch{
+		Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+		Value: ptr.To(pathPrefix),
+	}
+
+	var headerMatchList []gatewayapi.HTTPHeaderMatch
+	for k, v := range path.Headers {
+		headerMatch := gatewayapi.HTTPHeaderMatch{
+			Type:  ptr.To(gatewayapi.HeaderMatchExact),
+			Name:  gatewayapi.HTTPHeaderName(k),
+			Value: v.Exact,
+		}
+		headerMatchList = append(headerMatchList, headerMatch)
+	}
+
+	// Sort HTTPHeaderMatch as the order is random.
+	sort.Sort(HTTPHeaderMatchList(headerMatchList))
+
+	return []gatewayapi.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
 }
 
 type HTTPHeaderList []gatewayapi.HTTPHeader

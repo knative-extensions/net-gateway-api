@@ -58,9 +58,11 @@ func TestFromConfigMapErrors(t *testing.T) {
 		data: map[string]string{
 			"external-gateways": `[{
 					"class":"boo",
+					"http-listener-name":"http",
 					"gateway": "ns/n"
 				},{
 					"class":"boo",
+					"http-listener-name":"http",
 					"gateway": "ns/n"
 				}]`,
 		},
@@ -70,9 +72,11 @@ func TestFromConfigMapErrors(t *testing.T) {
 		data: map[string]string{
 			"local-gateways": `[{
 					"class":"boo",
+					"http-listener-name":"http",
 					"gateway": "ns/n"
 				},{
 					"class":"boo",
+					"http-listener-name":"http",
 					"gateway": "ns/n"
 				}]`,
 		},
@@ -119,6 +123,12 @@ func TestFromConfigMapErrors(t *testing.T) {
 			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"name"}]`,
 		},
 		want: `unable to parse "local-gateways"`,
+	}, {
+		name: "missing gateway http-listener-name",
+		data: map[string]string{
+			"local-gateways": `[{"class":"class", "gateway": "namespace/name"}]`,
+		},
+		want: `unable to parse "local-gateways": entry [0] field "http-listener-name" is required`,
 	}}
 
 	for _, tc := range cases {
@@ -141,9 +151,11 @@ func TestGatewayNoService(t *testing.T) {
 		Data: map[string]string{
 			"external-gateways": `
       - class: istio
+        http-listener-name: http
         gateway: istio-system/knative-gateway`,
 			"local-gateways": `
       - class: istio
+        http-listener-name: http
         gateway: istio-system/knative-local-gateway`,
 		},
 	})

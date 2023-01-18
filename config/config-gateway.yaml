@@ -50,6 +50,7 @@ data:
       - class: istio
         gateway: istio-system/knative-gateway
         service: istio-system/istio-ingressgateway
+        http-listener-name: http
         supported-features:
         - HTTPRouteRequestTimeout
 
@@ -58,5 +59,6 @@ data:
       - class: istio
         gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway
+        http-listener-name: http
         supported-features:
         - HTTPRouteRequestTimeout

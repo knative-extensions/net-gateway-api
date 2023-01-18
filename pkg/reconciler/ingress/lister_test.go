@@ -36,7 +36,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 
-	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
+	rtesting "knative.dev/net-gateway-api/pkg/reconciler/testing"
 )
 
 var (
@@ -256,7 +256,7 @@ func TestBackendsToProbeTargets(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			tl := NewListers(test.objects)
+			tl := rtesting.NewListers(test.objects)
 
 			l := &gatewayPodTargetLister{
 				endpointsLister: tl.GetEndpointsLister(),
@@ -404,7 +404,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tl := NewListers(test.objects)
+			tl := rtesting.NewListers(test.objects)
 
 			l := &gatewayPodTargetLister{
 				endpointsLister: tl.GetEndpointsLister(),
@@ -596,6 +596,10 @@ func withBackendAppendHeaders(key, val string) IngressOption {
 	return func(i *v1alpha1.Ingress) {
 		i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders[key] = val
 	}
+}
+
+func withHTTPOptionRedirected(i *v1alpha1.Ingress) {
+	i.Spec.HTTPOption = v1alpha1.HTTPOptionRedirected
 }
 
 func withInternalSpec(i *v1alpha1.Ingress) {

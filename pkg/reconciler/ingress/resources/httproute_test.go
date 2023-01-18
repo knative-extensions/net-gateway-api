@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -613,7 +614,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 				tcs := &testConfigStore{config: cfg}
 				ctx := tcs.ToContext(context.Background())
 
-				route, err := MakeHTTPRoute(ctx, tc.ing, &rule)
+				route, err := MakeHTTPRoute(ctx, tc.ing, &rule, nil)
 				if err != nil {
 					t.Fatal("MakeHTTPRoute failed:", err)
 				}
@@ -632,7 +633,7 @@ func TestAddEndpointProbes(t *testing.T) {
 
 	ing := testIngress.DeepCopy()
 	rule := &ing.Spec.Rules[0]
-	route, err := MakeHTTPRoute(ctx, ing, rule)
+	route, err := MakeHTTPRoute(ctx, ing, rule, nil)
 	if err != nil {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
@@ -819,7 +820,7 @@ func TestRemoveEndpointProbes(t *testing.T) {
 
 	ing := testIngress.DeepCopy()
 	rule := &ing.Spec.Rules[0]
-	route, err := MakeHTTPRoute(ctx, ing, rule)
+	route, err := MakeHTTPRoute(ctx, ing, rule, nil)
 	if err != nil {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
@@ -840,7 +841,7 @@ func TestUpdateProbeHash(t *testing.T) {
 	ctx := tcs.ToContext(context.Background())
 	ing := testIngress.DeepCopy()
 	rule := &ing.Spec.Rules[0]
-	route, err := MakeHTTPRoute(ctx, ing, rule)
+	route, err := MakeHTTPRoute(ctx, ing, rule, nil)
 	if err != nil {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
@@ -1028,7 +1029,7 @@ func TestAddOldBackend(t *testing.T) {
 	ing := testIngress.DeepCopy()
 
 	rule := &ing.Spec.Rules[0]
-	route, err := MakeHTTPRoute(ctx, ing, rule)
+	route, err := MakeHTTPRoute(ctx, ing, rule, nil)
 	if err != nil {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
@@ -1185,6 +1186,236 @@ func TestAddOldBackend(t *testing.T) {
 	}
 }
 
+func TestMakeRedirectHTTPRoute(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		ing      *v1alpha1.Ingress
+		expected []*gatewayapi.HTTPRoute
+	}{
+		{
+			name: "single external domain and cluster local",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{
+					Rules: []v1alpha1.IngressRule{
+						{
+							Hosts:      testHosts,
+							Visibility: v1alpha1.IngressVisibilityExternalIP,
+							HTTP: &v1alpha1.HTTPIngressRuleValue{
+								Paths: []v1alpha1.HTTPIngressPath{{
+									Splits: []v1alpha1.IngressBackendSplit{{
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "goo",
+											ServicePort: intstr.FromInt(123),
+										},
+										Percent: 100,
+									}},
+								}},
+							},
+						}, {
+							Hosts:      testLocalHosts,
+							Visibility: v1alpha1.IngressVisibilityClusterLocal,
+							HTTP: &v1alpha1.HTTPIngressRuleValue{
+								Paths: []v1alpha1.HTTPIngressPath{{
+									Splits: []v1alpha1.IngressBackendSplit{{
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "goo",
+											ServicePort: intstr.FromInt(123),
+										},
+										Percent: 100,
+									}},
+								}},
+							},
+						},
+					}},
+			},
+			expected: []*gatewayapi.HTTPRoute{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      LongestHost(testHosts) + redirectHTTPRoutePostfix,
+						Namespace: testNamespace,
+						Labels: map[string]string{
+							networking.IngressLabelKey:          testIngressName,
+							"networking.knative.dev/visibility": "",
+						},
+						Annotations: map[string]string{},
+					},
+					Spec: gatewayapi.HTTPRouteSpec{
+						Hostnames: []gatewayapi.Hostname{externalHost},
+						Rules: []gatewayapi.HTTPRouteRule{{
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestRedirect,
+								RequestRedirect: &gatewayapi.HTTPRequestRedirectFilter{
+									Scheme:     ptr.To("https"),
+									Port:       ptr.To(gatewayapi.PortNumber(443)),
+									StatusCode: ptr.To(http.StatusMovedPermanently),
+								},
+							}},
+							Matches: []gatewayapi.HTTPRouteMatch{
+								{
+									Path: &gatewayapi.HTTPPathMatch{
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+						}},
+						CommonRouteSpec: gatewayapi.CommonRouteSpec{
+							ParentRefs: []gatewayapi.ParentReference{{
+								Group:       (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+								Kind:        (*gatewayapi.Kind)(ptr.To("Gateway")),
+								Namespace:   ptr.To[gatewayapi.Namespace]("test-ns"),
+								Name:        gatewayapi.ObjectName("foo"),
+								SectionName: ptr.To[gatewayapi.SectionName]("http"),
+							}},
+						},
+					},
+				},
+			},
+		}, {
+			name: "multiple paths with header conditions",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      testHosts,
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							Headers: map[string]v1alpha1.HeaderMatch{
+								"tag": {
+									Exact: "goo",
+								},
+							},
+							Splits: []v1alpha1.IngressBackendSplit{{
+								IngressBackend: v1alpha1.IngressBackend{
+									ServiceName: "goo",
+									ServicePort: intstr.FromInt(123),
+								},
+								Percent: 100,
+							}},
+						}, {
+							Path: "/doo",
+							Headers: map[string]v1alpha1.HeaderMatch{
+								"tag": {
+									Exact: "doo",
+								},
+							},
+							Splits: []v1alpha1.IngressBackendSplit{{
+								IngressBackend: v1alpha1.IngressBackend{
+									ServiceName: "doo",
+									ServicePort: intstr.FromInt(124),
+								},
+								Percent: 100,
+							}},
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      LongestHost(testHosts) + redirectHTTPRoutePostfix,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{externalHost},
+					Rules: []gatewayapi.HTTPRouteRule{
+						{
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestRedirect,
+								RequestRedirect: &gatewayapi.HTTPRequestRedirectFilter{
+									Scheme:     ptr.To("https"),
+									Port:       ptr.To(gatewayapi.PortNumber(443)),
+									StatusCode: ptr.To(http.StatusMovedPermanently),
+								},
+							}},
+							Matches: []gatewayapi.HTTPRouteMatch{
+								{
+									Path: &gatewayapi.HTTPPathMatch{
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+									Headers: []gatewayapi.HTTPHeaderMatch{{
+										Type:  ptr.To(gatewayapi.HeaderMatchExact),
+										Name:  gatewayapi.HTTPHeaderName("tag"),
+										Value: "goo",
+									}},
+								}},
+						}, {
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestRedirect,
+								RequestRedirect: &gatewayapi.HTTPRequestRedirectFilter{
+									Scheme:     ptr.To("https"),
+									Port:       ptr.To(gatewayapi.PortNumber(443)),
+									StatusCode: ptr.To(http.StatusMovedPermanently),
+								},
+							}},
+							Matches: []gatewayapi.HTTPRouteMatch{
+								{
+									Path: &gatewayapi.HTTPPathMatch{
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+										Value: ptr.To("/doo"),
+									},
+									Headers: []gatewayapi.HTTPHeaderMatch{{
+										Type:  ptr.To(gatewayapi.HeaderMatchExact),
+										Name:  gatewayapi.HTTPHeaderName("tag"),
+										Value: "doo",
+									}},
+								}},
+						},
+					},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:       (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:        (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace:   ptr.To[gatewayapi.Namespace]("test-ns"),
+							Name:        gatewayapi.ObjectName("foo"),
+							SectionName: ptr.To[gatewayapi.SectionName]("http"),
+						}},
+					},
+				},
+			}},
+		}} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, exp := range tc.expected {
+				exp.OwnerReferences = []metav1.OwnerReference{*kmeta.NewControllerRef(tc.ing)}
+			}
+			for i, rule := range tc.ing.Spec.Rules {
+				if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
+					rule := rule
+					cfg := testConfig.DeepCopy()
+					tcs := &testConfigStore{config: cfg}
+					ctx := tcs.ToContext(context.Background())
+
+					route, err := MakeRedirectHTTPRoute(ctx, tc.ing, &rule)
+					if err != nil {
+						t.Fatal("MakeRedirectHTTPRoute failed:", err)
+					}
+					if diff := cmp.Diff(tc.expected[i], route); diff != "" {
+						t.Error("Unexpected redirect HTTPRoute (-want +got):", diff)
+					}
+				}
+			}
+		})
+	}
+}
+
 type testConfigStore struct {
 	config *config.Config
 }
@@ -1198,11 +1429,13 @@ var testConfig = &config.Config{
 		ExternalGateways: []config.Gateway{{
 			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo"},
 			Class:             testGatewayClass,
+			HTTPListenerName:  "http",
 			SupportedFeatures: sets.New[features.SupportedFeature](),
 		}},
 		LocalGateways: []config.Gateway{{
 			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo-local"},
 			Class:             testGatewayClass,
+			HTTPListenerName:  "http",
 			SupportedFeatures: sets.New[features.SupportedFeature](),
 		}},
 	},

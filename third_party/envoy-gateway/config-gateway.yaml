@@ -26,6 +26,7 @@ data:
     - class: eg-external
       gateway: eg-external/eg-external
       service: envoy-gateway-system/knative-external
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout
 
@@ -34,5 +35,6 @@ data:
     - class: eg-internal
       gateway: eg-internal/eg-internal
       service: envoy-gateway-system/knative-internal
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout

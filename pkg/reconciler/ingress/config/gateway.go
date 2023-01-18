@@ -47,6 +47,7 @@ func defaultExternalGateways() []Gateway {
 			Name:      "istio-ingressgateway",
 			Namespace: "istio-system",
 		},
+		HTTPListenerName: "http",
 		SupportedFeatures: sets.New(
 			features.SupportHTTPRouteRequestTimeout,
 		),
@@ -64,6 +65,7 @@ func defaultLocalGateways() []Gateway {
 			Name:      "knative-local-gateway",
 			Namespace: "istio-system",
 		},
+		HTTPListenerName: "http",
 		SupportedFeatures: sets.New(
 			features.SupportHTTPRouteRequestTimeout,
 		),
@@ -90,6 +92,7 @@ type Gateway struct {
 	types.NamespacedName
 
 	Class             string
+	HTTPListenerName  string
 	Service           *types.NamespacedName
 	SupportedFeatures sets.Set[features.SupportedFeature]
 }
@@ -138,6 +141,7 @@ type gatewayEntry struct {
 	Gateway           string                      `json:"gateway"`
 	Service           *string                     `json:"service"`
 	Class             string                      `json:"class"`
+	HTTPListenerName  string                      `json:"http-listener-name"`
 	SupportedFeatures []features.SupportedFeature `json:"supported-features"`
 }
 
@@ -152,6 +156,7 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 	for i, entry := range entries {
 		gw := Gateway{
 			Class:             entry.Class,
+			HTTPListenerName:  entry.HTTPListenerName,
 			SupportedFeatures: sets.New(entry.SupportedFeatures...),
 		}
 
@@ -173,6 +178,9 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 		}
 		if len(strings.TrimSpace(gw.Class)) == 0 {
 			return nil, fmt.Errorf(`entry [%d] field "class" is required`, i)
+		}
+		if len(strings.TrimSpace(gw.HTTPListenerName)) == 0 {
+			return nil, fmt.Errorf(`entry [%d] field "http-listener-name" is required`, i)
 		}
 
 		gws = append(gws, gw)

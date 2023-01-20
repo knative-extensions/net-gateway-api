@@ -161,7 +161,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
 												Name:  "Bleep",
@@ -184,7 +184,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
 												Name:  "Baz",
@@ -195,7 +195,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
 								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
 											Name:  "Foo",
@@ -246,7 +246,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
 												Name:  "Bleep",
@@ -269,7 +269,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
 												Name:  "Baz",
@@ -280,7 +280,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
 								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-								RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
 											Name:  "Foo",
@@ -377,7 +377,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
@@ -405,7 +405,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-									RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{

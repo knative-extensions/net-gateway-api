@@ -113,6 +113,137 @@ func (w *wrapGatewayV1alpha2) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
 
+func (w *wrapGatewayV1alpha2) GRPCRoutes(namespace string) typedgatewayv1alpha2.GRPCRouteInterface {
+	return &wrapGatewayV1alpha2GRPCRouteImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1alpha2",
+			Resource: "grpcroutes",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapGatewayV1alpha2GRPCRouteImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedgatewayv1alpha2.GRPCRouteInterface = (*wrapGatewayV1alpha2GRPCRouteImpl)(nil)
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Create(ctx context.Context, in *v1alpha2.GRPCRoute, opts v1.CreateOptions) (*v1alpha2.GRPCRoute, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "GRPCRoute",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRoute{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.GRPCRoute, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRoute{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.GRPCRouteList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRouteList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.GRPCRoute, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRoute{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Update(ctx context.Context, in *v1alpha2.GRPCRoute, opts v1.UpdateOptions) (*v1alpha2.GRPCRoute, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "GRPCRoute",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRoute{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) UpdateStatus(ctx context.Context, in *v1alpha2.GRPCRoute, opts v1.UpdateOptions) (*v1alpha2.GRPCRoute, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "GRPCRoute",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha2.GRPCRoute{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1alpha2GRPCRouteImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapGatewayV1alpha2) Gateways(namespace string) typedgatewayv1alpha2.GatewayInterface {
 	return &wrapGatewayV1alpha2GatewayImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
@@ -630,137 +761,6 @@ func (w *wrapGatewayV1alpha2ReferenceGrantImpl) UpdateStatus(ctx context.Context
 }
 
 func (w *wrapGatewayV1alpha2ReferenceGrantImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapGatewayV1alpha2) ReferencePolicies(namespace string) typedgatewayv1alpha2.ReferencePolicyInterface {
-	return &wrapGatewayV1alpha2ReferencePolicyImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "gateway.networking.k8s.io",
-			Version:  "v1alpha2",
-			Resource: "referencepolicies",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapGatewayV1alpha2ReferencePolicyImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedgatewayv1alpha2.ReferencePolicyInterface = (*wrapGatewayV1alpha2ReferencePolicyImpl)(nil)
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Create(ctx context.Context, in *v1alpha2.ReferencePolicy, opts v1.CreateOptions) (*v1alpha2.ReferencePolicy, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
-		Kind:    "ReferencePolicy",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicy{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.ReferencePolicy, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicy{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.ReferencePolicyList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicyList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ReferencePolicy, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicy{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Update(ctx context.Context, in *v1alpha2.ReferencePolicy, opts v1.UpdateOptions) (*v1alpha2.ReferencePolicy, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
-		Kind:    "ReferencePolicy",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicy{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) UpdateStatus(ctx context.Context, in *v1alpha2.ReferencePolicy, opts v1.UpdateOptions) (*v1alpha2.ReferencePolicy, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
-		Kind:    "ReferencePolicy",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha2.ReferencePolicy{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapGatewayV1alpha2ReferencePolicyImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -1558,5 +1558,136 @@ func (w *wrapGatewayV1beta1HTTPRouteImpl) UpdateStatus(ctx context.Context, in *
 }
 
 func (w *wrapGatewayV1beta1HTTPRouteImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+func (w *wrapGatewayV1beta1) ReferenceGrants(namespace string) typedgatewayv1beta1.ReferenceGrantInterface {
+	return &wrapGatewayV1beta1ReferenceGrantImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1beta1",
+			Resource: "referencegrants",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapGatewayV1beta1ReferenceGrantImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedgatewayv1beta1.ReferenceGrantInterface = (*wrapGatewayV1beta1ReferenceGrantImpl)(nil)
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Create(ctx context.Context, in *v1beta1.ReferenceGrant, opts v1.CreateOptions) (*v1beta1.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1beta1",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.ReferenceGrant, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) List(ctx context.Context, opts v1.ListOptions) (*v1beta1.ReferenceGrantList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrantList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ReferenceGrant, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Update(ctx context.Context, in *v1beta1.ReferenceGrant, opts v1.UpdateOptions) (*v1beta1.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1beta1",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) UpdateStatus(ctx context.Context, in *v1beta1.ReferenceGrant, opts v1.UpdateOptions) (*v1beta1.ReferenceGrant, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1beta1",
+		Kind:    "ReferenceGrant",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ReferenceGrant{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapGatewayV1beta1ReferenceGrantImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }

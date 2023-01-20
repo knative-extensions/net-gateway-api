@@ -28,11 +28,11 @@ import (
 
 type GatewayV1alpha2Interface interface {
 	RESTClient() rest.Interface
+	GRPCRoutesGetter
 	GatewaysGetter
 	GatewayClassesGetter
 	HTTPRoutesGetter
 	ReferenceGrantsGetter
-	ReferencePoliciesGetter
 	TCPRoutesGetter
 	TLSRoutesGetter
 	UDPRoutesGetter
@@ -41,6 +41,10 @@ type GatewayV1alpha2Interface interface {
 // GatewayV1alpha2Client is used to interact with features provided by the gateway.networking.k8s.io group.
 type GatewayV1alpha2Client struct {
 	restClient rest.Interface
+}
+
+func (c *GatewayV1alpha2Client) GRPCRoutes(namespace string) GRPCRouteInterface {
+	return newGRPCRoutes(c, namespace)
 }
 
 func (c *GatewayV1alpha2Client) Gateways(namespace string) GatewayInterface {
@@ -57,10 +61,6 @@ func (c *GatewayV1alpha2Client) HTTPRoutes(namespace string) HTTPRouteInterface 
 
 func (c *GatewayV1alpha2Client) ReferenceGrants(namespace string) ReferenceGrantInterface {
 	return newReferenceGrants(c, namespace)
-}
-
-func (c *GatewayV1alpha2Client) ReferencePolicies(namespace string) ReferencePolicyInterface {
-	return newReferencePolicies(c, namespace)
 }
 
 func (c *GatewayV1alpha2Client) TCPRoutes(namespace string) TCPRouteInterface {

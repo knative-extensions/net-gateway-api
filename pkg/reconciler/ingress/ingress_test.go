@@ -44,7 +44,6 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 
-	gatewayapialpha "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
@@ -623,9 +622,9 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayapialpha.ReferenceGrant {
+func rp(to *corev1.Secret) *gatewayapi.ReferenceGrant {
 	t := true
-	return &gatewayapialpha.ReferenceGrant{
+	return &gatewayapi.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,
@@ -637,16 +636,16 @@ func rp(to *corev1.Secret) *gatewayapialpha.ReferenceGrant {
 				BlockOwnerDeletion: &t,
 			}},
 		},
-		Spec: gatewayapialpha.ReferenceGrantSpec{
-			From: []gatewayapialpha.ReferenceGrantFrom{{
+		Spec: gatewayapi.ReferenceGrantSpec{
+			From: []gatewayapi.ReferenceGrantFrom{{
 				Group:     "gateway.networking.k8s.io",
 				Kind:      "Gateway",
-				Namespace: gatewayapialpha.Namespace(testNamespace),
+				Namespace: gatewayapi.Namespace(testNamespace),
 			}},
-			To: []gatewayapialpha.ReferenceGrantTo{{
-				Group: gatewayapialpha.Group(""),
-				Kind:  gatewayapialpha.Kind("Secret"),
-				Name:  (*gatewayapialpha.ObjectName)(&to.Name),
+			To: []gatewayapi.ReferenceGrantTo{{
+				Group: gatewayapi.Group(""),
+				Kind:  gatewayapi.Kind("Secret"),
+				Name:  (*gatewayapi.ObjectName)(&to.Name),
 			}},
 		},
 	}

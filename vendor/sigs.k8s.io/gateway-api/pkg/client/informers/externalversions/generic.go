@@ -54,6 +54,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=gateway.networking.k8s.io, Version=v1alpha2
+	case v1alpha2.SchemeGroupVersion.WithResource("grpcroutes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().GRPCRoutes().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("gateways"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().Gateways().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("gatewayclasses"):
@@ -62,8 +64,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().HTTPRoutes().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("referencegrants"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().ReferenceGrants().Informer()}, nil
-	case v1alpha2.SchemeGroupVersion.WithResource("referencepolicies"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().ReferencePolicies().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("tcproutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1alpha2().TCPRoutes().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("tlsroutes"):
@@ -78,6 +78,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1beta1().GatewayClasses().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("httproutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1beta1().HTTPRoutes().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("referencegrants"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Gateway().V1beta1().ReferenceGrants().Informer()}, nil
 
 	}
 

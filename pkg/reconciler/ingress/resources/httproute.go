@@ -112,7 +112,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 
 			preFilters = []gatewayapi.HTTPRouteFilter{{
 				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: headers,
 				}}}
 		}
@@ -143,7 +143,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 				},
 				Filters: []gatewayapi.HTTPRouteFilter{{
 					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayapi.HTTPRequestHeaderFilter{
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: headers,
 					}},
 				}}

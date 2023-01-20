@@ -28,10 +28,8 @@ import (
 	networkinglisters "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/pkg/reconciler/testing"
 
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	fakegatewayapiclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/fake"
-	gatewaylistersalpha "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
@@ -106,6 +104,6 @@ func (l *Listers) GetGatewayLister() gatewaylisters.GatewayLister {
 	return gatewaylisters.NewGatewayLister(l.IndexerFor(&gatewayv1beta1.Gateway{}))
 }
 
-func (l *Listers) GetReferenceGrantLister() gatewaylistersalpha.ReferenceGrantLister {
-	return gatewaylistersalpha.NewReferenceGrantLister(l.IndexerFor(&gatewayv1alpha2.ReferenceGrant{}))
+func (l *Listers) GetReferenceGrantLister() gatewaylisters.ReferenceGrantLister {
+	return gatewaylisters.NewReferenceGrantLister(l.IndexerFor(&gatewayv1beta1.ReferenceGrant{}))
 }

@@ -32,6 +32,7 @@ import (
 
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayalphalisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
@@ -49,7 +50,7 @@ type Reconciler struct {
 	// Listers index properties about resources
 	httprouteLister gatewaylisters.HTTPRouteLister
 
-	referenceGrantLister gatewaylisters.ReferenceGrantLister
+	referenceGrantLister gatewayalphalisters.ReferenceGrantLister
 
 	gatewayLister gatewaylisters.GatewayLister
 }

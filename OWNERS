@@ -3,9 +3,9 @@
 approvers:
 - technical-oversight-committee
 - knative-release-leads
-- networking-wg-leads
+- serving-writers
 - net-gateway-api-approvers
 
 reviewers:
-- networking-wg-leads
+- serving-reviewers
 - net-gateway-api-approvers

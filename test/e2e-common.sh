@@ -42,6 +42,16 @@ function parse_flags() {
       readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
+     --envoy-gateway)
+      readonly INGRESS=envoy-gateway
+      # Envoy Gateway dynamically creates an Envoy service with a unique name
+      # based off the namespace, name and hash of contents to ensure service names
+      # are always less than 63 char
+      readonly GATEWAY_OVERRIDE=envoy-external-envoy-gateway-system-knative-gateway-65787465
+      readonly GATEWAY_NAMESPACE_OVERRIDE=external-envoy-gateway-system
+      readonly UNSUPPORTED_E2E_TESTS="${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}"
+      return 1
+      ;;     
     --kind)
       readonly KIND=1
       return 1
@@ -91,6 +101,8 @@ function setup_networking() {
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour
+  elif [[ "${INGRESS}" == "envoy-gateway" ]]; then  
+    setup_envoy_gateway
   else
     setup_istio
   fi
@@ -101,6 +113,9 @@ function teardown_networking() {
 
   if [[ "$INGRESS" == "contour" ]]; then
     kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
+  elif [[ "$INGRESS" == "envoy-gateway" ]]; then
+    helm uninstall internal
+    helm uninstall external
   else
     istioctl uninstall -y --purge
     kubectl delete namespace istio-system
@@ -130,6 +145,20 @@ function setup_istio() {
   local ret=$?
   if [ $ret -ne 0 ]; then
     echo "failed to setup istio" >&2
+    return $ret
+  fi
+}
+
+function setup_envoy_gateway() {
+  # Version is selected is in $REPO_ROOT/hack/test-env.sh
+  helm install --set config.envoyGateway.gateway.controllerName=gateway.envoyproxy.io/external-gatewayclass-controller external oci://docker.io/envoyproxy/gateway-helm --version ${ENVOY_GATEWAY_VERSION} -n external-envoy-gateway-system --create-namespace
+  helm install --set config.envoyGateway.gateway.controllerName=gateway.envoyproxy.io/internal-gatewayclass-controller internal oci://docker.io/envoyproxy/gateway-helm --version ${ENVOY_GATEWAY_VERSION} -n internal-envoy-gateway-system --create-namespace
+  kubectl wait --timeout=5m -n external-envoy-gateway-system deployment/envoy-gateway --for=condition=Available && \
+  kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
+
+  local ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "failed to setup envoy-gateway" >&2
     return $ret
   fi
 }

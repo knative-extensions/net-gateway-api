@@ -21,23 +21,15 @@ package httproute
 import (
 	context "context"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	cache "k8s.io/client-go/tools/cache"
-	client "knative.dev/net-gateway-api/pkg/client/injection/client"
 	factory "knative.dev/net-gateway-api/pkg/client/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
-	gatewayapiapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	versioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	v1alpha2 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha2"
-	apisv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 )
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
-	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -49,11 +41,6 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
-func withDynamicInformer(ctx context.Context) context.Context {
-	inf := &wrapper{client: client.Get(ctx), resourceVersion: injection.GetResourceVersion(ctx)}
-	return context.WithValue(ctx, Key{}, inf)
-}
-
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1alpha2.HTTPRouteInformer {
 	untyped := ctx.Value(Key{})
@@ -62,55 +49,4 @@ func Get(ctx context.Context) v1alpha2.HTTPRouteInformer {
 			"Unable to fetch sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha2.HTTPRouteInformer from context.")
 	}
 	return untyped.(v1alpha2.HTTPRouteInformer)
-}
-
-type wrapper struct {
-	client versioned.Interface
-
-	namespace string
-
-	resourceVersion string
-}
-
-var _ v1alpha2.HTTPRouteInformer = (*wrapper)(nil)
-var _ apisv1alpha2.HTTPRouteLister = (*wrapper)(nil)
-
-func (w *wrapper) Informer() cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(nil, &gatewayapiapisv1alpha2.HTTPRoute{}, 0, nil)
-}
-
-func (w *wrapper) Lister() apisv1alpha2.HTTPRouteLister {
-	return w
-}
-
-func (w *wrapper) HTTPRoutes(namespace string) apisv1alpha2.HTTPRouteNamespaceLister {
-	return &wrapper{client: w.client, namespace: namespace, resourceVersion: w.resourceVersion}
-}
-
-// SetResourceVersion allows consumers to adjust the minimum resourceVersion
-// used by the underlying client.  It is not accessible via the standard
-// lister interface, but can be accessed through a user-defined interface and
-// an implementation check e.g. rvs, ok := foo.(ResourceVersionSetter)
-func (w *wrapper) SetResourceVersion(resourceVersion string) {
-	w.resourceVersion = resourceVersion
-}
-
-func (w *wrapper) List(selector labels.Selector) (ret []*gatewayapiapisv1alpha2.HTTPRoute, err error) {
-	lo, err := w.client.GatewayV1alpha2().HTTPRoutes(w.namespace).List(context.TODO(), v1.ListOptions{
-		LabelSelector:   selector.String(),
-		ResourceVersion: w.resourceVersion,
-	})
-	if err != nil {
-		return nil, err
-	}
-	for idx := range lo.Items {
-		ret = append(ret, &lo.Items[idx])
-	}
-	return ret, nil
-}
-
-func (w *wrapper) Get(name string) (*gatewayapiapisv1alpha2.HTTPRoute, error) {
-	return w.client.GatewayV1alpha2().HTTPRoutes(w.namespace).Get(context.TODO(), name, v1.GetOptions{
-		ResourceVersion: w.resourceVersion,
-	})
 }

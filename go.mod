@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/golang-lru v0.5.4
-	go.uber.org/zap v1.19.1
+	go.uber.org/zap v1.24.0
 	k8s.io/api v0.26.5
 	k8s.io/apimachinery v0.26.5
 	k8s.io/client-go v0.26.5
@@ -23,6 +23,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
+	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect

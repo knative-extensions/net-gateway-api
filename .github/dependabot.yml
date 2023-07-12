@@ -11,3 +11,4 @@ updates:
     ignore:
       - dependency-name: "k8s.io/*"
       - dependency-name: "knative.dev/*"
+      - dependency-name: "sigs.k8s.io/gateway-api"

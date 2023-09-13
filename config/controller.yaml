@@ -80,3 +80,5 @@ spec:
           capabilities:
             drop:
             - all
+          seccompProfile:
+            type: RuntimeDefault

@@ -26,7 +26,7 @@ import (
 )
 
 // Grant the resource "to" access to the resource "from"
-func MakeReferenceGrant(ctx context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1alpha2.ReferenceGrant {
+func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1alpha2.ReferenceGrant {
 	name := to.Name
 	if len(name)+len(from.Namespace) > 62 {
 		name = name[:62-len(from.Namespace)]

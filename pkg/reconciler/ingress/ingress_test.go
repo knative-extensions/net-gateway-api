@@ -275,12 +275,12 @@ func TestReconcileTLS(t *testing.T) {
 		Name: "Happy TLS",
 		Key:  "ns/name",
 		Objects: []runtime.Object{
-			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName)),
+			ing(withBasicSpec, withGatewayAPIClass, withTLS()),
 			secret(secretName, nsName),
 			gw(defaultListener),
 		},
 		WantCreates: []runtime.Object{
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{{
@@ -294,7 +294,7 @@ func TestReconcileTLS(t *testing.T) {
 			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
 		}},
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
 				i.Status.MarkLoadBalancerReady(
 					[]v1alpha1.LoadBalancerIngressStatus{{
@@ -313,17 +313,17 @@ func TestReconcileTLS(t *testing.T) {
 		Name: "Already Configured",
 		Key:  "ns/name",
 		Objects: []runtime.Object{
-			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(secretName)),
+			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS()),
 			secret(secretName, nsName),
 			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{
 			// None
 		},
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+			Object: ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
 				i.Status.MarkLoadBalancerReady(
 					[]v1alpha1.LoadBalancerIngressStatus{{
@@ -342,14 +342,14 @@ func TestReconcileTLS(t *testing.T) {
 		Key:                     "ns/name",
 		SkipNamespaceValidation: true,
 		Objects: []runtime.Object{
-			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+			ing(withBasicSpec, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
 				i.DeletionTimestamp = &metav1.Time{
 					Time: deleteTime,
 				}
 			}),
 			secret(secretName, nsName),
 			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{{
@@ -360,11 +360,11 @@ func TestReconcileTLS(t *testing.T) {
 		Key:     "ns/name",
 		WantErr: true,
 		Objects: []runtime.Object{
-			ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName)),
+			ing(withBasicSpec, withGatewayAPIClass, withTLS()),
 			secret(secretName, nsName),
 		},
 		WantCreates: []runtime.Object{
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName))),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{
@@ -378,7 +378,7 @@ func TestReconcileTLS(t *testing.T) {
 			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
 		}},
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(secretName), func(i *v1alpha1.Ingress) {
+			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
 				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
 			}),
@@ -599,7 +599,7 @@ var withFinalizer = func(i *v1alpha1.Ingress) {
 	i.Finalizers = append(i.Finalizers, "ingresses.networking.internal.knative.dev")
 }
 
-func withTLS(secret string) IngressOption {
+func withTLS() IngressOption {
 	return func(i *v1alpha1.Ingress) {
 		i.Spec.TLS = append(i.Spec.TLS, v1alpha1.IngressTLS{
 			Hosts:           []string{"secure.example.com"},

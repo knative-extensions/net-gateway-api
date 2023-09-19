@@ -6,8 +6,8 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/golang-lru v1.0.2
 	go.uber.org/zap v1.26.0
-	k8s.io/api v0.26.5
-	k8s.io/apimachinery v0.26.5
+	k8s.io/api v0.26.9
+	k8s.io/apimachinery v0.26.9
 	k8s.io/client-go v0.26.5
 	k8s.io/code-generator v0.26.5
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
@@ -19,8 +19,6 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.23.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -97,9 +95,9 @@ require (
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.25.4
-	k8s.io/apimachinery => k8s.io/apimachinery v0.25.4
-	k8s.io/client-go => k8s.io/client-go v0.25.4
-	k8s.io/code-generator => k8s.io/code-generator v0.25.4
+	k8s.io/api => k8s.io/api v0.26.9
+	k8s.io/apimachinery => k8s.io/apimachinery v0.26.9
+	k8s.io/client-go => k8s.io/client-go v0.26.9
+	k8s.io/code-generator => k8s.io/code-generator v0.26.9
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
 )

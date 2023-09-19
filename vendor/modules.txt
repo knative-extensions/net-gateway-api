@@ -34,8 +34,8 @@ github.com/emicklei/go-restful/v3/log
 # github.com/evanphx/json-patch v4.12.0+incompatible
 ## explicit
 github.com/evanphx/json-patch
-# github.com/evanphx/json-patch/v5 v5.6.0
-## explicit; go 1.12
+# github.com/evanphx/json-patch/v5 v5.7.0
+## explicit; go 1.18
 github.com/evanphx/json-patch/v5
 # github.com/go-kit/log v0.2.1
 ## explicit; go 1.17
@@ -275,7 +275,7 @@ golang.org/x/tools/internal/typeparams
 # gomodules.xyz/jsonpatch/v2 v2.4.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.140.0
+# google.golang.org/api v0.141.0
 ## explicit; go 1.19
 google.golang.org/api/support/bundler
 # google.golang.org/appengine v1.6.7
@@ -296,7 +296,7 @@ google.golang.org/genproto/googleapis/api/httpbody
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20230911183012-2d3300fd4832
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.58.0
+# google.golang.org/grpc v1.58.1
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -887,7 +887,7 @@ k8s.io/utils/trace
 # knative.dev/hack v0.0.0-20230914013105-0bb79ff2d162
 ## explicit; go 1.18
 knative.dev/hack
-# knative.dev/networking v0.0.0-20230915133548-50368a78c1c3
+# knative.dev/networking v0.0.0-20230918152419-6feaf0cf4a0e
 ## explicit; go 1.18
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -932,7 +932,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20230914012755-978068686674
+# knative.dev/pkg v0.0.0-20230918163324-7fe699e4f743
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

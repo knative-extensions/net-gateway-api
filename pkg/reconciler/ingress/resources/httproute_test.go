@@ -432,6 +432,63 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 				},
 			}},
+		}, {
+			name: "path with host rewrites",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      testHosts,
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							RewriteHost: "hello-example.example.com",
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      LongestHost(testHosts),
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{externalHost},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapi.HTTPRouteFilterURLRewrite,
+							URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+								Hostname: (*gatewayapi.PreciseHostname)(ptr("hello-example.example.com")),
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{},
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr(gatewayapi.PathMatchPathPrefix),
+								Value: pointer.String("/"),
+							},
+						}}},
+					},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     (*gatewayapi.Group)(pointer.String("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(pointer.String("Gateway")),
+							Namespace: ptr[gatewayapi.Namespace]("test-ns"),
+							Name:      gatewayapi.ObjectName("foo"),
+						}},
+					},
+				},
+			}},
 		}} {
 		t.Run(tc.name, func(t *testing.T) {
 			for i, rule := range tc.ing.Spec.Rules {

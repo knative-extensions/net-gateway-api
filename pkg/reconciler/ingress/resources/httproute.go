@@ -117,6 +117,15 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 				}}}
 		}
 
+		if path.RewriteHost != "" {
+			preFilters = append(preFilters, gatewayapi.HTTPRouteFilter{
+				Type: gatewayapi.HTTPRouteFilterURLRewrite,
+				URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+					Hostname: (*gatewayapi.PreciseHostname)(&path.RewriteHost),
+				},
+			})
+		}
+
 		for _, split := range path.Splits {
 			headers := []gatewayapi.HTTPHeader{}
 			for k, v := range split.AppendHeaders {

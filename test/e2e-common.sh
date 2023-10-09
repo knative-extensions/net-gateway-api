@@ -110,7 +110,7 @@ function teardown_networking() {
 function setup_contour() {
   # Version is selected is in $REPO_ROOT/hack/test-env.sh
   kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml" && \
-  kubectl wait deploy --for=condition=Available --timeout=60s -n "projectcontour" && \
+  kubectl wait deploy --for=condition=Available --timeout=60s -n "projectcontour" contour-gateway-provisioner && \
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/contour"
 
   local ret=$?

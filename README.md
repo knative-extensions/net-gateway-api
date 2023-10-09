@@ -94,7 +94,7 @@ echo ">> Bringing up Contour"
 kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"
 
 # wait for operator deployment to be Available
-kubectl wait deploy --for=condition=Available --timeout=60s -n "projectcontour"
+kubectl wait deploy --for=condition=Available --timeout=60s -n "projectcontour" contour-gateway-provisioner
 
 echo ">> Deploy Gateway API resources"
 kubectl apply -f ./third_party/contour

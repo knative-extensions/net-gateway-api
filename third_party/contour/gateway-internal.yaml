@@ -23,6 +23,23 @@ metadata:
   name: contour-internal-gatewayclass
 spec:
   controllerName: projectcontour.io/gateway-controller
+  parametersRef:
+    kind: ContourDeployment
+    group: projectcontour.io
+    name: contour-internal-gatewayclass
+    namespace: contour-internal
+---
+kind: ContourDeployment
+apiVersion: projectcontour.io/v1alpha1
+metadata:
+  name: contour-internal-gatewayclass
+  namespace: contour-internal
+spec:
+  runtimeSettings:
+    enableExternalNameService: true
+  contour:
+    deployment:
+      replicas: 1
 ---
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
@@ -38,3 +55,12 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+---
+#apiVersion: v1
+#kind: ConfigMap
+#metadata:
+#  name: contourconfig-knative-local-gateway
+#  namespace: contour-internal
+#data:
+#  contour.yaml: |
+#    enableExternalNameService: true

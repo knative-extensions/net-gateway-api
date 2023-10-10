@@ -23,6 +23,23 @@ metadata:
   name: contour-external-gatewayclass
 spec:
   controllerName: projectcontour.io/gateway-controller
+  parametersRef:
+    kind: ContourDeployment
+    group: projectcontour.io
+    name: contour-external-gatewayclass
+    namespace: contour-external
+---
+kind: ContourDeployment
+apiVersion: projectcontour.io/v1alpha1
+metadata:
+  name: contour-external-gatewayclass
+  namespace: contour-external
+spec:
+  runtimeSettings:
+    enableExternalNameService: true
+  contour:
+    deployment:
+      replicas: 1
 ---
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1

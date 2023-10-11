@@ -58,12 +58,3 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
----
-#apiVersion: v1
-#kind: ConfigMap
-#metadata:
-#  name: contourconfig-knative-local-gateway
-#  namespace: contour-internal
-#data:
-#  contour.yaml: |
-#    enableExternalNameService: true

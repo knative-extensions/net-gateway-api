@@ -37,6 +37,9 @@ metadata:
 spec:
   runtimeSettings:
     enableExternalNameService: true
+  envoy:
+    networkPublishing:
+      type: ClusterIPService
   contour:
     deployment:
       replicas: 1

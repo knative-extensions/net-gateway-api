@@ -15,30 +15,31 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  labels:
-    control-plane: contour-operator
   name: contour-external
----
-apiVersion: operator.projectcontour.io/v1alpha1
-kind: Contour
-metadata:
-  name: contour-external
-  namespace: contour-external
-spec:
-  gatewayControllerName: projectcontour.io/contour-external/contour
-  namespace:
-    name: contour-external
-  ingressClassName: contour-external
-  networkPublishing:
-    envoy:
-      type: LoadBalancerService
 ---
 kind: GatewayClass
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
   name: contour-external-gatewayclass
 spec:
-  controllerName: projectcontour.io/contour-external/contour
+  controllerName: projectcontour.io/gateway-controller
+  parametersRef:
+    kind: ContourDeployment
+    group: projectcontour.io
+    name: contour-external-gatewayclass
+    namespace: contour-external
+---
+kind: ContourDeployment
+apiVersion: projectcontour.io/v1alpha1
+metadata:
+  name: contour-external-gatewayclass
+  namespace: contour-external
+spec:
+  runtimeSettings:
+    enableExternalNameService: true
+  contour:
+    deployment:
+      replicas: 1
 ---
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
@@ -48,7 +49,7 @@ metadata:
 spec:
   gatewayClassName: contour-external-gatewayclass
   listeners:
-  - name: default
+  - name: http
     port: 80
     protocol: HTTP
     allowedRoutes:

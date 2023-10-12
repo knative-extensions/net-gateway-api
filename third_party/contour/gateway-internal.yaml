@@ -15,35 +15,34 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  labels:
-    control-plane: contour-operator
   name: contour-internal
----
-apiVersion: operator.projectcontour.io/v1alpha1
-kind: Contour
-metadata:
-  name: contour-internal
-  namespace: contour-internal
-spec:
-  gatewayControllerName: projectcontour.io/contour-internal/contour
-  namespace:
-    name: contour-internal
-  ingressClassName: contour-internal
-  networkPublishing:
-    envoy:
-      containerPorts:
-      - name: http
-        portNumber: 8081
-      - name: https
-        portNumber: 8443
-      type: ClusterIPService
 ---
 kind: GatewayClass
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
   name: contour-internal-gatewayclass
 spec:
-  controllerName: projectcontour.io/contour-internal/contour
+  controllerName: projectcontour.io/gateway-controller
+  parametersRef:
+    kind: ContourDeployment
+    group: projectcontour.io
+    name: contour-internal-gatewayclass
+    namespace: contour-internal
+---
+kind: ContourDeployment
+apiVersion: projectcontour.io/v1alpha1
+metadata:
+  name: contour-internal-gatewayclass
+  namespace: contour-internal
+spec:
+  runtimeSettings:
+    enableExternalNameService: true
+  envoy:
+    networkPublishing:
+      type: ClusterIPService
+  contour:
+    deployment:
+      replicas: 1
 ---
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
@@ -53,7 +52,7 @@ metadata:
 spec:
   gatewayClassName: contour-internal-gatewayclass
   listeners:
-  - name: default
+  - name: http
     port: 80
     protocol: HTTP
     allowedRoutes:

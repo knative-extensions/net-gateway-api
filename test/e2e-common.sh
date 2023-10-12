@@ -37,7 +37,7 @@ function parse_flags() {
       ;;
     --contour)
       readonly INGRESS=contour
-      readonly GATEWAY_OVERRIDE=envoy
+      readonly GATEWAY_OVERRIDE=envoy-knative-gateway
       readonly GATEWAY_NAMESPACE_OVERRIDE=contour-external
       readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1
@@ -100,7 +100,7 @@ function teardown_networking() {
   kubectl delete -f "${REPO_ROOT_DIR}/third_party/${INGRESS}"
 
   if [[ "$INGRESS" == "contour" ]]; then
-    kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml"
+    kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"
   else
     istioctl uninstall -y --purge
     kubectl delete namespace istio-system
@@ -109,8 +109,9 @@ function teardown_networking() {
 
 function setup_contour() {
   # Version is selected is in $REPO_ROOT/hack/test-env.sh
-  kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour-operator/${CONTOUR_VERSION}/examples/operator/operator.yaml" && \
-  kubectl wait deploy --for=condition=Available --timeout=60s -n "contour-operator" -l '!job-name' && \
+  kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml" && \
+  kubectl wait deploy --for=condition=Available --timeout=60s -n projectcontour contour-gateway-provisioner && \
+  kubectl wait deploy --for=condition=Available --timeout=60s -n gateway-system gateway-api-admission-server && \
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/contour"
 
   local ret=$?

@@ -89,6 +89,8 @@ function knative_teardown() {
 function setup_networking() {
   echo ">> Installing Gateway API CRDs"
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" || return $?
+  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission
+  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission-patch
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour

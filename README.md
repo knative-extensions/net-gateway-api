@@ -78,7 +78,7 @@ source ./hack/test-env.sh
 ```bash
 # gateway-api CRD must be installed before Istio.
 echo ">> Installing Gateway API CRDs"
-kubectl apply -f config/100-gateway-api.yaml
+kubectl apply -f third_party/gateway-api/gateway-api.yaml
 
 echo ">> Bringing up Istio"
 curl -sL https://istio.io/downloadIstioctl | sh -

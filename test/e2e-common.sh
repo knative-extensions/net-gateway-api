@@ -87,7 +87,10 @@ function knative_teardown() {
 }
 
 function setup_networking() {
-  kubectl apply -f config/100-gateway-api.yaml || return $?
+  echo ">> Installing Gateway API CRDs"
+  kubectl apply -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" || return $?
+  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission
+  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission-patch
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour
@@ -98,6 +101,7 @@ function setup_networking() {
 
 function teardown_networking() {
   kubectl delete -f "${REPO_ROOT_DIR}/third_party/${INGRESS}"
+  kubectl delete -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" 
 
   if [[ "$INGRESS" == "contour" ]]; then
     kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"

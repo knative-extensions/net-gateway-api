@@ -8,9 +8,6 @@ net-gateway-api repository contains a KIngress implementation and testing for Kn
 
 This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact. You can find the tested Ingress and unavailable features [here](docs/test-version.md).
 
-This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact.
-You can also find the tested Ingress and unavailable features [here](docs/test-version.md).
-
 ## KIngress Conformance Tests
 
 We run our Knative Ingress Conformance tests and are tracking support by different implementations here:

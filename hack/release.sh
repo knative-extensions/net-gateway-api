@@ -25,6 +25,7 @@ COMPONENTS=(
   ["net-gateway-api.yaml"]="config"
   ["istio-gateway.yaml"]="third_party/istio"
   ["contour-gateway.yaml"]="third_party/contour"
+  ["gateway-api.yaml"]="third_party/gateway-api"
 )
 readonly COMPONENTS
 

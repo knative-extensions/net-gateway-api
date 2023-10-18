@@ -15,5 +15,5 @@ The following Gateway API version and Ingress were tested as part of the release
 
 | Ingress | Tested version          | Unavailable features           |
 | ------- | ----------------------- | ------------------------------ |
-| Istio   | v1.19.0     | retry,httpoption   |
+| Istio   | v1.19.3     | retry,httpoption   |
 | Contour | v1.26.0    | httpoption,basics/http2,grpc,grpc/split,update |

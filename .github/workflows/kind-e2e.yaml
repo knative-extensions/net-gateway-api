@@ -22,9 +22,7 @@ jobs:
       KO_DOCKER_REPO: kind.local
       # Use a semi-random cluster suffix, but somewhat predictable
       # so reruns don't just give us a completely new value.
-      #
-      # Re-enable when https://github.com/chainguard-dev/actions/pull/175 is fixed
-      # CLUSTER_SUFFIX: c${{ github.run_id }}.local
+      CLUSTER_SUFFIX: c${{ github.run_id }}.local
 
     steps:
 

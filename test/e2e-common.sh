@@ -92,6 +92,9 @@ function setup_networking() {
   kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission
   kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission-patch
 
+  # make sure webhook is ready.
+  kubectl wait -n gateway-system --for=condition=Available --timeout=60s deploy/gateway-api-admission-server
+
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour
   else

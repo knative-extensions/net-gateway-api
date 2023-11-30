@@ -110,8 +110,9 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		}
 	}
 
-	listeners := make([]*gatewayapi.Listener, 0, len(ing.Spec.TLS))
-	for _, tls := range ing.Spec.TLS {
+	externalIngressTLS := ing.GetIngressTLSForVisibility(v1alpha1.IngressVisibilityExternalIP)
+	listeners := make([]*gatewayapi.Listener, 0, len(externalIngressTLS))
+	for _, tls := range externalIngressTLS {
 		tls := tls
 
 		l, err := c.reconcileTLS(ctx, &tls, ing)

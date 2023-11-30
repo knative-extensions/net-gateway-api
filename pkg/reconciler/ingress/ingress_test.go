@@ -284,7 +284,7 @@ func TestReconcileTLS(t *testing.T) {
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
+			Object: gw(defaultListener, tlsListener("example.com", nsName, secretName)),
 		}},
 		WantPatches: []clientgotesting.PatchActionImpl{{
 			ActionImpl: clientgotesting.ActionImpl{
@@ -315,7 +315,7 @@ func TestReconcileTLS(t *testing.T) {
 		Objects: []runtime.Object{
 			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS()),
 			secret(secretName, nsName),
-			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
+			gw(defaultListener, tlsListener("example.com", nsName, secretName)),
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
 			rp(secret(secretName, nsName)),
 		},
@@ -602,7 +602,7 @@ var withFinalizer = func(i *v1alpha1.Ingress) {
 func withTLS() IngressOption {
 	return func(i *v1alpha1.Ingress) {
 		i.Spec.TLS = append(i.Spec.TLS, v1alpha1.IngressTLS{
-			Hosts:           []string{"secure.example.com"},
+			Hosts:           []string{"example.com"},
 			SecretName:      "name-WE-STICK-A-LONG-UID-HERE",
 			SecretNamespace: "ns",
 		})

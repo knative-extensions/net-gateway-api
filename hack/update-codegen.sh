@@ -33,7 +33,7 @@ EXTERNAL_INFORMER_PKG="sigs.k8s.io/gateway-api/pkg/client/informers/externalvers
 ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   sigs.k8s.io/gateway-api/pkg/client \
   sigs.k8s.io/gateway-api \
-  "apis:v1alpha2,v1beta1" \
+  "apis:v1beta1" \
   --go-header-file "${boilerplate}"
 
 group "Deepcopy Gen"

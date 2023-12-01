@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source $(dirname $0)/../vendor/knative.dev/hack/codegen-library.sh
+source $(dirname "$0")/../vendor/knative.dev/hack/codegen-library.sh
 
 boilerplate="${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt"
 
@@ -30,10 +30,10 @@ group "Gateway API Codegen"
 OUTPUT_PKG="knative.dev/net-gateway-api/pkg/client/injection" \
 VERSIONED_CLIENTSET_PKG="sigs.k8s.io/gateway-api/pkg/client/clientset/versioned" \
 EXTERNAL_INFORMER_PKG="sigs.k8s.io/gateway-api/pkg/client/informers/externalversions" \
-${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
+"${KNATIVE_CODEGEN_PKG}"/hack/generate-knative.sh "injection" \
   sigs.k8s.io/gateway-api/pkg/client \
   sigs.k8s.io/gateway-api \
-  "apis:v1alpha2,v1beta1" \
+  "apis:v1beta1" \
   --go-header-file "${boilerplate}"
 
 group "Deepcopy Gen"
@@ -45,9 +45,9 @@ go run k8s.io/code-generator/cmd/deepcopy-gen \
 group "Update deps post-codegen"
 
 # Make sure our dependencies are up-to-date
-${REPO_ROOT_DIR}/hack/update-deps.sh
+"${REPO_ROOT_DIR}"/hack/update-deps.sh
 group "Update tested version docs"
 
-source ${REPO_ROOT_DIR}/hack/test-env.sh
-template=$(cat ${REPO_ROOT_DIR}/docs/.test-version.template)
-eval "echo \"${template}\"" > ${REPO_ROOT_DIR}/docs/test-version.md
+source "${REPO_ROOT_DIR}"/hack/test-env.sh
+template=$(cat "${REPO_ROOT_DIR}"/docs/.test-version.template)
+eval "echo \"${template}\"" > "${REPO_ROOT_DIR}"/docs/test-version.md

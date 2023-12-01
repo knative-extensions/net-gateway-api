@@ -22,18 +22,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // Grant the resource "to" access to the resource "from"
-func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1alpha2.ReferenceGrant {
+func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1beta1.ReferenceGrant {
 	name := to.Name
 	if len(name)+len(from.Namespace) > 62 {
 		name = name[:62-len(from.Namespace)]
 	}
 	name += "-" + from.Namespace
 
-	return &gatewayv1alpha2.ReferenceGrant{
+	return &gatewayv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       to.Namespace,
@@ -41,16 +41,16 @@ func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from me
 			Annotations:     to.Annotations,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
-		Spec: gatewayv1alpha2.ReferenceGrantSpec{
-			From: []gatewayv1alpha2.ReferenceGrantFrom{{
-				Group:     gatewayv1alpha2.Group(from.GroupVersionKind().Group),
-				Kind:      gatewayv1alpha2.Kind(from.Kind),
-				Namespace: gatewayv1alpha2.Namespace(from.Namespace),
+		Spec: gatewayv1beta1.ReferenceGrantSpec{
+			From: []gatewayv1beta1.ReferenceGrantFrom{{
+				Group:     gatewayv1beta1.Group(from.GroupVersionKind().Group),
+				Kind:      gatewayv1beta1.Kind(from.Kind),
+				Namespace: gatewayv1beta1.Namespace(from.Namespace),
 			}},
-			To: []gatewayv1alpha2.ReferenceGrantTo{{
-				Group: gatewayv1alpha2.Group(to.GroupVersionKind().Group),
-				Kind:  gatewayv1alpha2.Kind(to.Kind),
-				Name:  (*gatewayv1alpha2.ObjectName)(&to.Name),
+			To: []gatewayv1beta1.ReferenceGrantTo{{
+				Group: gatewayv1beta1.Group(to.GroupVersionKind().Group),
+				Kind:  gatewayv1beta1.Kind(to.Kind),
+				Name:  (*gatewayv1beta1.ObjectName)(&to.Name),
 			}},
 		},
 	}

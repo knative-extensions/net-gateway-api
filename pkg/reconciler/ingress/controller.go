@@ -35,9 +35,9 @@ import (
 	"knative.dev/pkg/reconciler"
 
 	gwapiclient "knative.dev/net-gateway-api/pkg/client/injection/client"
-	referencegrantinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1alpha2/referencegrant"
 	gatewayinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/gateway"
 	httprouteinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/httproute"
+	referencegrantinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/referencegrant"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 )
 

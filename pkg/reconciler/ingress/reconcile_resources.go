@@ -122,7 +122,7 @@ func (c *Reconciler) reconcileTLS(
 	rp, err := c.referenceGrantLister.ReferenceGrants(desired.Namespace).Get(desired.Name)
 
 	if apierrs.IsNotFound(err) {
-		rp, err = c.gwapiclient.GatewayV1alpha2().ReferenceGrants(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		rp, err = c.gwapiclient.GatewayV1beta1().ReferenceGrants(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferenceGrant: %v", err)
@@ -141,7 +141,7 @@ func (c *Reconciler) reconcileTLS(
 		update := rp.DeepCopy()
 		update.Spec = desired.Spec
 
-		_, err := c.gwapiclient.GatewayV1alpha2().ReferenceGrants(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		_, err := c.gwapiclient.GatewayV1beta1().ReferenceGrants(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update ReferenceGrant: %v", err)
 			return nil, fmt.Errorf("failed to update ReferenceGrant: %w", err)

@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source $(dirname $0)/../vendor/knative.dev/hack/codegen-library.sh
+source $(dirname "$0")/../vendor/knative.dev/hack/codegen-library.sh
 
 boilerplate="${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt"
 

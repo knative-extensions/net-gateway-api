@@ -1,4 +1,4 @@
-name: depndabot - update-deps.sh
+name: dependabot - update-deps.sh
 
 on:
   pull_request:

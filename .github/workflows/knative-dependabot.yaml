@@ -1,4 +1,4 @@
-name: depndabot - update-deps.sh
+name: dependabot - update-deps.sh
 
 on:
   pull_request:
@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
+      - name: Set up Go 1.21.x
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+
       - name: Checkout
         uses: actions/checkout@v4
         with:

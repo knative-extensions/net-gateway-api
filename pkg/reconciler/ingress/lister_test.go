@@ -58,7 +58,7 @@ func TestListProbeTargets(t *testing.T) {
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{
 			{
-				PodIPs:  sets.NewString("1.2.3.4"),
+				PodIPs:  sets.New("1.2.3.4"),
 				PodPort: "8080",
 				URLs: []*url.URL{{
 					Scheme: "http",
@@ -105,7 +105,7 @@ func TestListProbeTargets(t *testing.T) {
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
 		want: []status.ProbeTarget{{
-			PodIPs:  sets.NewString("1.2.3.4"),
+			PodIPs:  sets.New("1.2.3.4"),
 			PodPort: "8443",
 			URLs: []*url.URL{{
 				Scheme: "https",
@@ -122,7 +122,7 @@ func TestListProbeTargets(t *testing.T) {
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{
 			{
-				PodIPs:  sets.NewString("2.3.4.5"),
+				PodIPs:  sets.New("2.3.4.5"),
 				PodPort: "1234",
 				URLs: []*url.URL{{
 					Scheme: "http",
@@ -130,7 +130,7 @@ func TestListProbeTargets(t *testing.T) {
 					Path:   "/",
 				}},
 			}, {
-				PodIPs:  sets.NewString("3.4.5.6", "4.3.2.1"),
+				PodIPs:  sets.New("3.4.5.6", "4.3.2.1"),
 				PodPort: "4321",
 				URLs: []*url.URL{{
 					Scheme: "http",

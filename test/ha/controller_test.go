@@ -48,7 +48,7 @@ func TestNetGatewayAPIControlHA(t *testing.T) {
 		t.Fatalf("Deployment %s not scaled to %d: %v", controlDeployment, haReplicas, err)
 	}
 
-	leaders, err := pkgHa.WaitForNewLeaders(ctx, t, clients.KubeClient, controlDeployment, controlNamespace, sets.NewString(), 1 /* numBuckets */)
+	leaders, err := pkgHa.WaitForNewLeaders(ctx, t, clients.KubeClient, controlDeployment, controlNamespace, sets.New[string](), 1 /* numBuckets */)
 	if err != nil {
 		t.Fatalf("Failed to get leader: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestNetGatewayAPIControlHA(t *testing.T) {
 	prober := test.RunRouteProber(t.Logf, clients, url.URL())
 	defer test.AssertProberDefault(t, prober)
 
-	for _, leader := range leaders.List() {
+	for _, leader := range leaders.UnsortedList() {
 		if err := clients.KubeClient.CoreV1().Pods(controlNamespace).Delete(ctx, leader, metav1.DeleteOptions{
 			GracePeriodSeconds: ptr.Int64(0),
 		}); err != nil && !apierrs.IsNotFound(err) {

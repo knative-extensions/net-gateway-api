@@ -17,7 +17,7 @@
 source $(dirname $0)/e2e-common.sh
 
 # Script entry point.
-initialize "$@"
+initialize "$@" --cluster-version=1.28
 
 # Run the tests
 header "Running e2e tests"

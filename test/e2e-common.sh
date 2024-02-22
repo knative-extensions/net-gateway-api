@@ -89,11 +89,6 @@ function knative_teardown() {
 function setup_networking() {
   echo ">> Installing Gateway API CRDs"
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" || return $?
-  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission
-  kubectl wait --for=condition=complete --timeout=60s -n "gateway-system" job/gateway-api-admission-patch
-
-  # make sure webhook is ready.
-  kubectl wait -n gateway-system --for=condition=Available --timeout=60s deploy --all
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour
@@ -104,7 +99,7 @@ function setup_networking() {
 
 function teardown_networking() {
   kubectl delete -f "${REPO_ROOT_DIR}/third_party/${INGRESS}"
-  kubectl delete -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" 
+  kubectl delete -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml"
 
   if [[ "$INGRESS" == "contour" ]]; then
     kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"
@@ -118,7 +113,6 @@ function setup_contour() {
   # Version is selected is in $REPO_ROOT/hack/test-env.sh
   kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml" && \
   kubectl wait deploy --for=condition=Available --timeout=60s -n projectcontour contour-gateway-provisioner && \
-  kubectl wait deploy --for=condition=Available --timeout=60s -n gateway-system gateway-api-admission-server && \
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/contour"
 
   local ret=$?

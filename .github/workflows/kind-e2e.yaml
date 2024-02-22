@@ -25,15 +25,10 @@ jobs:
 
     steps:
 
-    - name: Set up Go 1.21.x
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.21.x
-
+    - uses: knative/actions/setup-go@main
     - uses: ko-build/setup-ko@v0.6
 
-    - name: Setup KinD
-      uses: chainguard-dev/actions/setup-kind@main
+    - uses: chainguard-dev/actions/setup-kind@main
       with:
         k8s-version: ${{ matrix.k8s-version }}
         kind-worker-count: 3
@@ -53,18 +48,3 @@ jobs:
         cluster-resources: nodes,namespaces,crds,gatewayclass
         namespace-resources: pods,svc,king,gateway,httproute,referencegrant,tcproute,tlsroute,udproute
         artifact-name: logs-${{ matrix.k8s-version}}-${{ matrix.ingress }}
-
-    - name: Post failure notice to Slack
-      uses: rtCamp/action-slack-notify@v2.2.1
-      if: ${{ failure() && github.event_name != 'pull_request' }}
-      env:
-        SLACK_ICON: http://github.com/knative.png?size=48
-        SLACK_USERNAME: github-actions
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-
-        SLACK_CHANNEL: 'net-gateway-api'
-        SLACK_COLOR: '#8E1600'
-        MSG_MINIMAL: 'true'
-        SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.
-        SLACK_MESSAGE: |
-          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

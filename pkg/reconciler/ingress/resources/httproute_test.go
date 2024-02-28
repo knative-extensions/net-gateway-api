@@ -24,12 +24,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
+	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -152,15 +153,15 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayapi.HTTPBackendRef{{
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
 										Name:  gatewayapi.ObjectName("goo"),
-										Port:  portNumPtr(123),
+										Port:  ptr.To[gatewayapiv1.PortNumber](123),
 									},
-									Weight: pointer.Int32(int32(12)),
+									Weight: ptr.To(int32(12)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -175,15 +176,15 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}, {
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
-										Port:  portNumPtr(124),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapiv1.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
-									Weight: pointer.Int32(int32(88)),
+									Weight: ptr.To(int32(88)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -194,7 +195,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
-								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
@@ -206,17 +207,17 @@ func TestMakeHTTPRoute(t *testing.T) {
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr(gatewayapi.PathMatchPathPrefix),
-										Value: pointer.String("/"),
+										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Value: ptr.To("/"),
 									},
 								},
 							},
 						}},
 						CommonRouteSpec: gatewayapi.CommonRouteSpec{
 							ParentRefs: []gatewayapi.ParentReference{{
-								Group:     (*gatewayapi.Group)(pointer.String("gateway.networking.k8s.io")),
-								Kind:      (*gatewayapi.Kind)(pointer.String("Gateway")),
-								Namespace: ptr[gatewayapi.Namespace]("test-ns"),
+								Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+								Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+								Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
 								Name:      gatewayapi.ObjectName("foo"),
 							}},
 						},
@@ -237,15 +238,15 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayapi.HTTPBackendRef{{
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
-										Port:  ptr[gatewayapi.PortNumber](123),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapi.PortNumber](123),
 										Name:  gatewayapi.ObjectName("goo"),
 									},
-									Weight: pointer.Int32(int32(12)),
+									Weight: ptr.To(int32(12)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -260,15 +261,15 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}, {
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
-										Port:  portNumPtr(124),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapiv1.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
-									Weight: pointer.Int32(int32(88)),
+									Weight: ptr.To(int32(88)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -279,7 +280,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
-								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
@@ -290,16 +291,16 @@ func TestMakeHTTPRoute(t *testing.T) {
 								}}},
 							Matches: []gatewayapi.HTTPRouteMatch{{
 								Path: &gatewayapi.HTTPPathMatch{
-									Type:  ptr(gatewayapi.PathMatchPathPrefix),
-									Value: pointer.String("/"),
+									Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+									Value: ptr.To("/"),
 								},
 							}},
 						}},
 						CommonRouteSpec: gatewayapi.CommonRouteSpec{
 							ParentRefs: []gatewayapi.ParentReference{{
-								Group:     (*gatewayapi.Group)(pointer.String("gateway.networking.k8s.io")),
-								Kind:      (*gatewayapi.Kind)(pointer.String("Gateway")),
-								Namespace: ptr[gatewayapi.Namespace]("test-ns"),
+								Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+								Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+								Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
 								Name:      gatewayapi.ObjectName("foo-local"),
 							}},
 						},
@@ -368,27 +369,27 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayapi.HTTPBackendRef{{
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
-										Port:  portNumPtr(123),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapiv1.PortNumber](123),
 										Name:  gatewayapi.ObjectName("goo"),
 									},
-									Weight: pointer.Int32(int32(100)),
+									Weight: ptr.To(int32(100)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr(gatewayapi.PathMatchPathPrefix),
-										Value: pointer.String("/"),
+										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Value: ptr.To("/"),
 									},
 									Headers: []gatewayapi.HTTPHeaderMatch{{
-										Type:  ptr(gatewayapi.HeaderMatchExact),
-										Name:  gatewayapi.HTTPHeaderName("tag"),
+										Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+										Name:  gatewayapiv1.HTTPHeaderName("tag"),
 										Value: "goo",
 									}},
 								}},
@@ -396,27 +397,27 @@ func TestMakeHTTPRoute(t *testing.T) {
 							BackendRefs: []gatewayapi.HTTPBackendRef{{
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
-										Group: (*gatewayapi.Group)(pointer.String("")),
-										Kind:  (*gatewayapi.Kind)(pointer.String("Service")),
-										Port:  portNumPtr(124),
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapiv1.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
-									Weight: pointer.Int32(int32(100)),
+									Weight: ptr.To(int32(100)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr(gatewayapi.PathMatchPathPrefix),
-										Value: pointer.String("/doo"),
+										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Value: ptr.To("/doo"),
 									},
 									Headers: []gatewayapi.HTTPHeaderMatch{{
-										Type:  ptr(gatewayapi.HeaderMatchExact),
-										Name:  gatewayapi.HTTPHeaderName("tag"),
+										Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+										Name:  gatewayapiv1.HTTPHeaderName("tag"),
 										Value: "doo",
 									}},
 								}},
@@ -424,9 +425,9 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
 						ParentRefs: []gatewayapi.ParentReference{{
-							Group:     (*gatewayapi.Group)(pointer.String("gateway.networking.k8s.io")),
-							Kind:      (*gatewayapi.Kind)(pointer.String("Gateway")),
-							Namespace: ptr[gatewayapi.Namespace]("test-ns"),
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
 							Name:      gatewayapi.ObjectName("foo"),
 						}},
 					},
@@ -466,24 +467,24 @@ func TestMakeHTTPRoute(t *testing.T) {
 					Hostnames: []gatewayapi.Hostname{externalHost},
 					Rules: []gatewayapi.HTTPRouteRule{{
 						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapi.HTTPRouteFilterURLRewrite,
+							Type: gatewayapiv1.HTTPRouteFilterURLRewrite,
 							URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
-								Hostname: (*gatewayapi.PreciseHostname)(ptr("hello-example.example.com")),
+								Hostname: (*gatewayapi.PreciseHostname)(ptr.To("hello-example.example.com")),
 							},
 						}},
 						BackendRefs: []gatewayapi.HTTPBackendRef{},
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr(gatewayapi.PathMatchPathPrefix),
-								Value: pointer.String("/"),
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/"),
 							},
 						}}},
 					},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
 						ParentRefs: []gatewayapi.ParentReference{{
-							Group:     (*gatewayapi.Group)(pointer.String("gateway.networking.k8s.io")),
-							Kind:      (*gatewayapi.Kind)(pointer.String("Gateway")),
-							Namespace: ptr[gatewayapi.Namespace]("test-ns"),
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
 							Name:      gatewayapi.ObjectName("foo"),
 						}},
 					},

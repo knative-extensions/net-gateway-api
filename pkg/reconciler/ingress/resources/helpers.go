@@ -18,18 +18,7 @@ package resources
 
 import (
 	"sort"
-
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
-
-func ptr[T any](val T) *T {
-	return &val
-}
-
-func portNumPtr(port int) *gatewayapi.PortNumber {
-	pn := gatewayapi.PortNumber(port)
-	return &pn
-}
 
 // LongestHost returns the most specific host.
 // The length is:

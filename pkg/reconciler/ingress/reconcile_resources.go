@@ -25,7 +25,8 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
+	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
@@ -150,8 +151,8 @@ func (c *Reconciler) reconcileTLS(
 
 	// Gateway API loves typed pointers and constants, so we need to copy the constants
 	// to something we can reference
-	mode := gatewayapi.TLSModeTerminate
-	selector := gatewayapi.NamespacesFromSelector
+	mode := gatewayapiv1.TLSModeTerminate
+	selector := gatewayapiv1.NamespacesFromSelector
 	listeners := make([]*gatewayapi.Listener, 0, len(tls.Hosts))
 	for _, h := range tls.Hosts {
 		h := h
@@ -159,12 +160,12 @@ func (c *Reconciler) reconcileTLS(
 			Name:     gatewayapi.SectionName(listenerPrefix + ing.GetUID()),
 			Hostname: (*gatewayapi.Hostname)(&h),
 			Port:     443,
-			Protocol: gatewayapi.HTTPSProtocolType,
+			Protocol: gatewayapiv1.HTTPSProtocolType,
 			TLS: &gatewayapi.GatewayTLSConfig{
 				Mode: &mode,
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
-					Group:     (*gatewayapi.Group)(pointer.String("")),
-					Kind:      (*gatewayapi.Kind)(pointer.String("Secret")),
+					Group:     (*gatewayapi.Group)(ptr.To("")),
+					Kind:      (*gatewayapi.Kind)(ptr.To("Secret")),
 					Name:      gatewayapi.ObjectName(tls.SecretName),
 					Namespace: (*gatewayapi.Namespace)(&tls.SecretNamespace),
 				}},

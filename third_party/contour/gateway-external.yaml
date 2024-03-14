@@ -35,8 +35,6 @@ metadata:
   name: contour-external-gatewayclass
   namespace: contour-external
 spec:
-  runtimeSettings:
-    enableExternalNameService: true
   contour:
     deployment:
       replicas: 1

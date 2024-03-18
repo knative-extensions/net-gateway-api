@@ -121,6 +121,20 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		listeners = append(listeners, l...)
 	}
 
+	if len(listeners) == 0 && gatewayConfig.DefaultTLSSecret != nil {
+		//AutoTLS is not on, but there is a defaultTLSSecret
+		ingressTLS := &v1alpha1.IngressTLS{
+			Hosts:           getExternalVisibilityHostnames(ing),
+			SecretName:      gatewayConfig.DefaultTLSSecret.Name,
+			SecretNamespace: gatewayConfig.DefaultTLSSecret.Namespace,
+		}
+		l, err := c.reconcileTLS(ctx, ingressTLS, ing)
+		if err != nil {
+			return err
+		}
+		listeners = append(listeners, l...)
+	}
+
 	if len(listeners) > 0 {
 		// For now, we only reconcile the external visibility, because there's
 		// no way to provide TLS for internal listeners.
@@ -179,4 +193,20 @@ func isGatewayAdmitted(gw gatewayapi.RouteParentStatus) bool {
 		}
 	}
 	return false
+}
+
+func getExternalVisibilityHostnames(ing *v1alpha1.Ingress) []string {
+	var hostnames []string
+
+	for _, rule := range ing.Spec.Rules {
+		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
+			if rule.Hosts == nil || len(rule.Hosts) == 0 {
+				return nil
+			}
+			hostnames = append(hostnames, rule.Hosts...)
+		}
+	}
+
+	return hostnames
+
 }

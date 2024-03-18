@@ -23,7 +23,7 @@ import (
 )
 
 func TestGateway(t *testing.T) {
-	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName, defaultTLSSecretKey)
 
 	if _, err := NewGatewayFromConfigMap(cm); err != nil {
 		t.Error("NewContourFromConfigMap(actual) =", err)

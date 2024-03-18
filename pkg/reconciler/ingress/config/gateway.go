@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/configmap"
 	"sigs.k8s.io/yaml"
 
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -34,6 +35,8 @@ const (
 	GatewayConfigName = "config-gateway"
 
 	visibilityConfigKey = "visibility"
+
+	defaultTLSSecretKey = "default-tls-secret"
 
 	// defaultGatewayClass is the gatewayclass name for the gateway.
 	defaultGatewayClass = "istio"
@@ -73,35 +76,39 @@ type Gateway struct {
 	// corresponding gateway.  If multiple selectors match, we choose
 	// the most specific selector.
 	Gateways map[v1alpha1.IngressVisibility]GatewayConfig
+
+	DefaultTLSSecret *types.NamespacedName
 }
 
 // NewGatewayFromConfigMap creates a Gateway from the supplied ConfigMap
 func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
-	v, ok := configMap.Data[visibilityConfigKey]
-	if !ok {
-		// These are the defaults.
-		return &Gateway{
-			Gateways: map[v1alpha1.IngressVisibility]GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP:   {GatewayClass: defaultGatewayClass, Gateway: defaultIstioGateway, Service: defaultGatewayService},
-				v1alpha1.IngressVisibilityClusterLocal: {GatewayClass: defaultGatewayClass, Gateway: defaultIstioLocalGateway, Service: defaultLocalGatewayService},
-			},
-		}, nil
-	}
 
-	visConfig := make(map[v1alpha1.IngressVisibility]visibilityValue)
-	if err := yaml.Unmarshal([]byte(v), &visConfig); err != nil {
+	var defaultTlsSecret *types.NamespacedName
+	if err := configmap.Parse(configMap.Data, configmap.AsOptionalNamespacedName(defaultTLSSecretKey, &defaultTlsSecret)); err != nil {
 		return nil, err
 	}
 
-	for _, vis := range []v1alpha1.IngressVisibility{
-		v1alpha1.IngressVisibilityClusterLocal,
-		v1alpha1.IngressVisibilityExternalIP,
-	} {
-		if _, ok := visConfig[vis]; !ok {
-			return nil, fmt.Errorf("visibility %q must not be empty", vis)
+	v, ok := configMap.Data[visibilityConfigKey]
+	visConfig := make(map[v1alpha1.IngressVisibility]visibilityValue)
+	if !ok {
+		// These are the defaults.
+		visConfig[v1alpha1.IngressVisibilityExternalIP] = visibilityValue{GatewayClass: defaultGatewayClass, Gateway: defaultIstioGateway.String(), Service: defaultGatewayService.String()}
+		visConfig[v1alpha1.IngressVisibilityClusterLocal] = visibilityValue{GatewayClass: defaultGatewayClass, Gateway: defaultIstioLocalGateway.String(), Service: defaultLocalGatewayService.String()}
+	} else {
+		if err := yaml.Unmarshal([]byte(v), &visConfig); err != nil {
+			return nil, err
 		}
-	}
 
+		for _, vis := range []v1alpha1.IngressVisibility{
+			v1alpha1.IngressVisibilityClusterLocal,
+			v1alpha1.IngressVisibilityExternalIP,
+		} {
+			if _, ok := visConfig[vis]; !ok {
+				return nil, fmt.Errorf("visibility %q must not be empty", vis)
+			}
+		}
+
+	}
 	entry := make(map[v1alpha1.IngressVisibility]GatewayConfig)
 	for key, value := range visConfig {
 		// Check that the visibility makes sense.
@@ -127,7 +134,8 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 			Service:      service,
 		}
 	}
-	return &Gateway{Gateways: entry}, nil
+
+	return &Gateway{Gateways: entry, DefaultTLSSecret: defaultTlsSecret}, nil
 }
 
 func parseNamespacedName(namespacedName string) (*types.NamespacedName, error) {

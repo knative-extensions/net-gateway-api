@@ -83,8 +83,8 @@ type Gateway struct {
 // NewGatewayFromConfigMap creates a Gateway from the supplied ConfigMap
 func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 
-	var defaultTlsSecret *types.NamespacedName
-	if err := configmap.Parse(configMap.Data, configmap.AsOptionalNamespacedName(defaultTLSSecretKey, &defaultTlsSecret)); err != nil {
+	var defaultTLSSecret *types.NamespacedName
+	if err := configmap.Parse(configMap.Data, configmap.AsOptionalNamespacedName(defaultTLSSecretKey, &defaultTLSSecret)); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		}
 	}
 
-	return &Gateway{Gateways: entry, DefaultTLSSecret: defaultTlsSecret}, nil
+	return &Gateway{Gateways: entry, DefaultTLSSecret: defaultTLSSecret}, nil
 }
 
 func parseNamespacedName(namespacedName string) (*types.NamespacedName, error) {

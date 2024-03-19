@@ -200,10 +200,9 @@ func getExternalVisibilityHostnames(ing *v1alpha1.Ingress) []string {
 
 	for _, rule := range ing.Spec.Rules {
 		if rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
-			if rule.Hosts == nil || len(rule.Hosts) == 0 {
-				return nil
+			if rule.Hosts != nil && len(rule.Hosts) > 0 {
+				hostnames = append(hostnames, rule.Hosts...)
 			}
-			hostnames = append(hostnames, rule.Hosts...)
 		}
 	}
 

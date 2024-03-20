@@ -36,7 +36,7 @@ const (
 
 	visibilityConfigKey = "visibility"
 
-	defaultTLSSecretKey = "default-tls-secret"
+	defaultTLSSecretKey = "default-tls-secret" // #nosec G101
 
 	// defaultGatewayClass is the gatewayclass name for the gateway.
 	defaultGatewayClass = "istio"

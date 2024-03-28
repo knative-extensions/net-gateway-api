@@ -18,6 +18,7 @@ metadata:
   name: config-gateway
   namespace: knative-serving
 data:
+  default-tls-secret: test-ns/test-secret
   _example: |
     ################################
     #                              #
@@ -46,3 +47,9 @@ data:
         class: istio
         gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway
+
+    # If auto-TLS is disabled fallback to the following certificate
+    #
+    # An operator is required to setup a ReferenceGrant
+    # for this secret to be used
+    default-tls-secret: "some-namespace/some-secret"

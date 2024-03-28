@@ -63,6 +63,11 @@ func (in *Gateway) DeepCopyInto(out *Gateway) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	if in.DefaultTLSSecret != nil {
+		in, out := &in.DefaultTLSSecret, &out.DefaultTLSSecret
+		*out = new(types.NamespacedName)
+		**out = **in
+	}
 	return
 }
 

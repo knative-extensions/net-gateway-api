@@ -35,6 +35,7 @@ data:
     #     gatewayClass: GatewayClass Name
     #     gateway: the namespace/name of Gateway
     #     service: the namespace/name of Service for the Gateway
+    #     httpListenerName: the name of the listener for HTTP traffic in the Gateway (required)
     #
     # The gateway configuration for the default visibility.
     visibility: |
@@ -42,7 +43,9 @@ data:
         class: istio
         gateway: istio-system/knative-gateway
         service: istio-system/istio-ingressgateway
+        httpListenerName: default
       ClusterLocal:
         class: istio
         gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway
+        httpListenerName: http2

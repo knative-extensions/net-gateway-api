@@ -37,6 +37,12 @@ const (
 
 	// defaultGatewayClass is the gatewayclass name for the gateway.
 	defaultGatewayClass = "istio"
+
+	// defaultClusterLocalHTTPListener is the name of the listener for HTTP traffic
+	defaultClusterLocalHTTPListener = "default"
+
+	// defaultExternalIPHTTPListener
+	defaultExternalIPHTTPListener = "default"
 )
 
 var (
@@ -54,15 +60,17 @@ var (
 )
 
 type GatewayConfig struct {
-	GatewayClass string
-	Gateway      *types.NamespacedName
-	Service      *types.NamespacedName
+	GatewayClass     string
+	Gateway          *types.NamespacedName
+	Service          *types.NamespacedName
+	HTTPListenerName string
 }
 
 type visibilityValue struct {
-	GatewayClass string `json:"class,omitempty"`
-	Gateway      string `json:"gateway,omitempty"`
-	Service      string `json:"service,omitempty"`
+	GatewayClass     string `json:"class,omitempty"`
+	Gateway          string `json:"gateway,omitempty"`
+	Service          string `json:"service,omitempty"`
+	HTTPListenerName string `json:"httpListenerName,omitempty"`
 }
 
 // Gateway maps gateways to routes by matching the gateway's
@@ -82,8 +90,18 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		// These are the defaults.
 		return &Gateway{
 			Gateways: map[v1alpha1.IngressVisibility]GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP:   {GatewayClass: defaultGatewayClass, Gateway: defaultIstioGateway, Service: defaultGatewayService},
-				v1alpha1.IngressVisibilityClusterLocal: {GatewayClass: defaultGatewayClass, Gateway: defaultIstioLocalGateway, Service: defaultLocalGatewayService},
+				v1alpha1.IngressVisibilityExternalIP: {
+					GatewayClass:     defaultGatewayClass,
+					Gateway:          defaultIstioGateway,
+					Service:          defaultGatewayService,
+					HTTPListenerName: defaultExternalIPHTTPListener,
+				},
+				v1alpha1.IngressVisibilityClusterLocal: {
+					GatewayClass:     defaultGatewayClass,
+					Gateway:          defaultIstioLocalGateway,
+					Service:          defaultLocalGatewayService,
+					HTTPListenerName: defaultClusterLocalHTTPListener,
+				},
 			},
 		}, nil
 	}
@@ -121,10 +139,14 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		if err != nil {
 			return nil, fmt.Errorf("visibility %q failed to parse service: %w", key, err)
 		}
+		if value.HTTPListenerName == "" {
+			return nil, fmt.Errorf("visibility %q must set httpListenerName", key)
+		}
 		entry[key] = GatewayConfig{
-			GatewayClass: value.GatewayClass,
-			Gateway:      gateway,
-			Service:      service,
+			GatewayClass:     value.GatewayClass,
+			Gateway:          gateway,
+			Service:          service,
+			HTTPListenerName: value.HTTPListenerName,
 		}
 	}
 	return &Gateway{Gateways: entry}, nil

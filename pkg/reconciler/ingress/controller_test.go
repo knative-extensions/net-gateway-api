@@ -32,11 +32,11 @@ import (
 	_ "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress/fake"
 	_ "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints/fake"
 
-	. "knative.dev/pkg/reconciler/testing"
+	ktesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestNew(t *testing.T) {
-	ctx, _ := SetupFakeContext(t)
+	ctx, _ := ktesting.SetupFakeContext(t)
 
 	c := NewController(ctx, configmap.NewStaticWatcher(&corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

@@ -439,6 +439,21 @@ func TestReconcileProbing(t *testing.T) {
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 			Eventf(corev1.EventTypeWarning, "InternalError", "failed to probe Ingress: this is the error"),
 		},
+	}, {
+		Name: "prober callback all endpoints ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
+				return true, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady)},
+		},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
@@ -480,6 +495,15 @@ func httpRoute(t *testing.T, i *v1alpha1.Ingress, opts ...HTTPRouteOption) runti
 		opt(httpRoute)
 	}
 	return httpRoute
+}
+
+func httpRouteReady(h *gatewayapi.HTTPRoute) {
+	h.Status.Parents = []gatewayapi.RouteParentStatus{{
+		Conditions: []metav1.Condition{{
+			Type:   string(gatewayapi.RouteConditionAccepted),
+			Status: metav1.ConditionTrue,
+		}},
+	}}
 }
 
 type HTTPRouteOption func(h *gatewayapi.HTTPRoute)
@@ -580,6 +604,9 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 	}
 }
 
+var withInitialConditions = func(i *v1alpha1.Ingress) {
+	i.Status.InitializeConditions()
+}
 var withFinalizer = func(i *v1alpha1.Ingress) {
 	i.Finalizers = append(i.Finalizers, "ingresses.networking.internal.knative.dev")
 }

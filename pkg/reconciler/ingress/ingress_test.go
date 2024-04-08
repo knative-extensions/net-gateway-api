@@ -19,7 +19,6 @@ package ingress
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -39,6 +38,7 @@ import (
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/networking/pkg/ingress"
+	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -55,6 +55,8 @@ var (
 	privateSvcIP = "5.6.7.8"
 	publicSvc    = network.GetServiceHostname(publicName, testNamespace)
 	privateSvc   = network.GetServiceHostname(privateName, testNamespace)
+
+	fakeStatusKey struct{}
 )
 
 var (
@@ -217,54 +219,6 @@ func TestReconcile(t *testing.T) {
 	}))
 }
 
-func TestReconcileProberNotReady(t *testing.T) {
-	table := TableTest{{
-		Name: "first reconcile basic ingress wth prober",
-		Key:  "ns/name",
-		Objects: append([]runtime.Object{
-			ing(withBasicSpec, withGatewayAPIclass),
-		}, servicesAndEndpoints...),
-		WantCreates: []runtime.Object{httpRoute(t, ing(withBasicSpec, withGatewayAPIclass))},
-		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withGatewayAPIclass, func(i *v1alpha1.Ingress) {
-				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerNotReady()
-			}),
-		}},
-		WantPatches: []clientgotesting.PatchActionImpl{{
-			ActionImpl: clientgotesting.ActionImpl{
-				Namespace: "ns",
-			},
-			Name:  "name",
-			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
-		}},
-		WantEvents: []string{
-			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
-			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
-		},
-	}}
-
-	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
-		r := &Reconciler{
-			gwapiclient: fakegwapiclientset.Get(ctx),
-			// Listers index properties about resources
-			httprouteLister: listers.GetHTTPRouteLister(),
-			gatewayLister:   listers.GetGatewayLister(),
-			statusManager: &fakeStatusManager{
-				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-					return false, nil
-				},
-			},
-		}
-		return ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
-			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
-			controller.Options{
-				ConfigStore: &testConfigStore{
-					config: defaultConfig,
-				}})
-	}))
-}
-
 func TestReconcileTLS(t *testing.T) {
 	// The gateway API annoyingly has a number of
 	secretName := "name-WE-STICK-A-LONG-UID-HERE"
@@ -424,12 +378,44 @@ func TestReconcileTLS(t *testing.T) {
 	}))
 }
 
-func TestReconcileProbeError(t *testing.T) {
-	theError := errors.New("this is the error")
-
+func TestReconcileProbing(t *testing.T) {
 	table := TableTest{{
-		Name:    "first reconcile basic ingress",
-		Key:     "ns/name",
+		Name: "first reconciler probe returns false",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
+				return false, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass),
+		}, servicesAndEndpoints...),
+		WantCreates: []runtime.Object{httpRoute(t, ing(withBasicSpec, withGatewayAPIclass))},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIclass, func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkLoadBalancerNotReady()
+			}),
+		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
+		},
+	}, {
+		Name: "first reconcile probe returns an error",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
+				return false, errors.New("this is the error")
+			},
+		}),
 		WantErr: true,
 		Objects: append([]runtime.Object{
 			ing(withBasicSpec, withGatewayAPIclass),
@@ -451,22 +437,18 @@ func TestReconcileProbeError(t *testing.T) {
 		WantEvents: []string{
 			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
-			Eventf(corev1.EventTypeWarning, "InternalError", fmt.Sprintf("failed to probe Ingress: %v", theError)),
+			Eventf(corev1.EventTypeWarning, "InternalError", "failed to probe Ingress: this is the error"),
 		},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
+		statusManager := ctx.Value(fakeStatusKey).(status.Manager)
 		r := &Reconciler{
 			gwapiclient: fakegwapiclientset.Get(ctx),
 			// Listers index properties about resources
 			httprouteLister: listers.GetHTTPRouteLister(),
 			gatewayLister:   listers.GetGatewayLister(),
-
-			statusManager: &fakeStatusManager{
-				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-					return false, theError
-				},
-			},
+			statusManager:   statusManager,
 		}
 		return ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
 			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
@@ -506,6 +488,10 @@ func withGatewayAPIclass(i *v1alpha1.Ingress) {
 	withAnnotation(map[string]string{
 		networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
 	})(i)
+}
+
+func withStatusManager(f *fakeStatusManager) context.Context {
+	return context.WithValue(context.Background(), fakeStatusKey, f)
 }
 
 type fakeStatusManager struct {

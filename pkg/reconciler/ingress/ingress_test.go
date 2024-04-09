@@ -497,7 +497,7 @@ func TestReconcileProbing(t *testing.T) {
 					EndpointProbeRule{
 						Namespace: "ns",
 						Name:      "goo",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 					NormalRule{
@@ -510,7 +510,7 @@ func TestReconcileProbing(t *testing.T) {
 						Namespace: "ns",
 						Name:      "second-revision",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 				},
@@ -546,7 +546,7 @@ func TestReconcileProbing(t *testing.T) {
 					EndpointProbeRule{
 						Namespace: "ns",
 						Name:      "goo",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 					NormalRule{
@@ -559,7 +559,7 @@ func TestReconcileProbing(t *testing.T) {
 						Namespace: "ns",
 						Name:      "second-revision",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 				},
@@ -574,7 +574,7 @@ func TestReconcileProbing(t *testing.T) {
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
 			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
-				state := status.ProbeState{Ready: true, Version: "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				state := status.ProbeState{Ready: true, Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
 				return state, true
 			},
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
@@ -596,7 +596,7 @@ func TestReconcileProbing(t *testing.T) {
 					EndpointProbeRule{
 						Namespace: "ns",
 						Name:      "goo",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 					NormalRule{
@@ -609,7 +609,7 @@ func TestReconcileProbing(t *testing.T) {
 						Namespace: "ns",
 						Name:      "second-revision",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 				},
@@ -648,7 +648,7 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "backends ready - mark ingress ready",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsProbeActive: func(ing types.NamespacedName) (status.ProbeState, bool) {
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
 				state := status.ProbeState{Ready: true, Version: "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
 				return state, true
 			},
@@ -724,7 +724,7 @@ func TestReconcileProbing(t *testing.T) {
 					EndpointProbeRule{
 						Namespace: "ns",
 						Name:      "goo",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
 					NormalRule{
@@ -736,7 +736,7 @@ func TestReconcileProbing(t *testing.T) {
 					EndpointProbeRule{
 						Namespace: "ns",
 						Name:      "second-revision",
-						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
 						Port:      123,
 					},
@@ -747,6 +747,82 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}, servicesAndEndpoints...),
+	}, {
+		Name: "updated ingress - while endpoint probing in progress",
+		// Here we want the existing probe to stop and then new backends added
+		// to the endpoint probes
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: false, Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withThirdRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady, makeLoadBalancerNotReady),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		},
+			servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "third-revision",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+						Path:      "/.well-known/knative/revision/ns/third-revision",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

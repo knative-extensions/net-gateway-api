@@ -62,7 +62,22 @@ func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 	}
 }
 
-func AddEndpointProbes(ctx context.Context, r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
+func UpdateEndpointProbes(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
+	rules := r.Spec.Rules
+	r.Spec.Rules = make([]gatewayapi.HTTPRouteRule, 0, len(rules))
+
+	// Remove old endpoint probes
+outer:
+	for _, rule := range rules {
+		for _, match := range rule.Matches {
+			if match.Path != nil && match.Path.Value != nil &&
+				strings.HasPrefix(*match.Path.Value, "/.well-known/knative") {
+				continue outer
+			}
+			r.Spec.Rules = append(r.Spec.Rules, rule)
+		}
+	}
+
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{

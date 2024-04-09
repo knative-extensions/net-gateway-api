@@ -88,11 +88,10 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 
 	if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
 		desired = httproute.DeepCopy()
-
 		resources.UpdateProbeHash(desired, hash)
 
 		for _, backend := range newBackends {
-			resources.AddEndpointProbes(ctx, desired, hash, backend)
+			resources.UpdateEndpointProbes(desired, hash, backend)
 		}
 	} else {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
@@ -327,7 +326,7 @@ func newBackends(
 
 oldbackends:
 	for _, rule := range route.Spec.Rules {
-		// We want to skip probing rules
+		// We want to skip probes
 		for _, match := range rule.Matches {
 			for _, headers := range match.Headers {
 				if headers.Name == header.HashKey {

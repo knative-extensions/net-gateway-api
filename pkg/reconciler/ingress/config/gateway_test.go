@@ -19,11 +19,11 @@ package config
 import (
 	"testing"
 
-	. "knative.dev/pkg/configmap/testing"
+	ktesting "knative.dev/pkg/configmap/testing"
 )
 
 func TestGateway(t *testing.T) {
-	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+	cm, example := ktesting.ConfigMapsFromTestFile(t, GatewayConfigName)
 
 	if _, err := NewGatewayFromConfigMap(cm); err != nil {
 		t.Error("NewContourFromConfigMap(actual) =", err)

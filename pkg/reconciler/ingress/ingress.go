@@ -97,12 +97,22 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproutes, err := c.reconcileHTTPRoute(ctx, ing, &rule)
+		workloadHTTPRoute, err := c.reconcileWorkloadRoute(ctx, ing, &rule)
 		if err != nil {
 			return err
 		}
 
-		if isHTTPRouteReady(httproutes) {
+		// For now, we only generate the redirected HTTPRoute for external visibility,
+		// because currently we do not (yet) support HTTPs on cluster-local domains.
+		var redirectHTTPRoute *gatewayapi.HTTPRoute
+		if ing.Spec.HTTPOption == v1alpha1.HTTPOptionRedirected && rule.Visibility == v1alpha1.IngressVisibilityExternalIP {
+			redirectHTTPRoute, err = c.reconcileRedirectHTTPRoute(ctx, ing, &rule)
+			if err != nil {
+				return err
+			}
+		}
+
+		if isHTTPRouteReady(workloadHTTPRoute) && (redirectHTTPRoute == nil || isHTTPRouteReady(redirectHTTPRoute)) {
 			ing.Status.MarkNetworkConfigured()
 		} else {
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")

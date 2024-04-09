@@ -17,8 +17,10 @@ limitations under the License.
 package resources
 
 import (
-	"context"
+	"net/http"
 	"sort"
+
+	"knative.dev/pkg/kmap"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,17 +28,18 @@ import (
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 )
 
+const redirectHTTPRoutePostfix = "-redirect"
+
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.
 func MakeHTTPRoute(
-	ctx context.Context,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
+	gatewayRef gatewayapi.ParentReference,
 ) (*gatewayapi.HTTPRoute, error) {
 
 	visibility := ""
@@ -48,21 +51,21 @@ func MakeHTTPRoute(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
-			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
+			Labels: kmap.Union(ing.Labels, map[string]string{
 				networking.VisibilityLabelKey: visibility,
 			}),
-			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
+			Annotations: kmap.Filter(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation
 			}),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
-		Spec: makeHTTPRouteSpec(ctx, rule),
+		Spec: makeHTTPRouteSpec(rule, gatewayRef),
 	}, nil
 }
 
 func makeHTTPRouteSpec(
-	ctx context.Context,
 	rule *netv1alpha1.IngressRule,
+	gatewayRef gatewayapi.ParentReference,
 ) gatewayapi.HTTPRouteSpec {
 
 	hostnames := make([]gatewayapi.Hostname, 0, len(rule.Hosts))
@@ -71,16 +74,6 @@ func makeHTTPRouteSpec(
 	}
 
 	rules := makeHTTPRouteRule(rule)
-
-	gatewayConfig := config.FromContext(ctx).Gateway
-	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
-
-	gatewayRef := gatewayapi.ParentReference{
-		Group:     (*gatewayapi.Group)(&gatewayapi.GroupVersion.Group),
-		Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
-		Namespace: ptr.To(gatewayapi.Namespace(namespacedNameGateway.Namespace)),
-		Name:      gatewayapi.ObjectName(namespacedNameGateway.Name),
-	}
 
 	return gatewayapi.HTTPRouteSpec{
 		Hostnames: hostnames,
@@ -160,30 +153,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			backendRefs = append(backendRefs, backendRef)
 		}
 
-		pathPrefix := "/"
-		if path.Path != "" {
-			pathPrefix = path.Path
-		}
-		pathMatch := gatewayapi.HTTPPathMatch{
-			Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
-			Value: ptr.To(pathPrefix),
-		}
-
-		var headerMatchList []gatewayapi.HTTPHeaderMatch
-		for k, v := range path.Headers {
-			headerMatch := gatewayapi.HTTPHeaderMatch{
-				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
-				Name:  gatewayapiv1.HTTPHeaderName(k),
-				Value: v.Exact,
-			}
-			headerMatchList = append(headerMatchList, headerMatch)
-		}
-
-		// Sort HTTPHeaderMatch as the order is random.
-		sort.Sort(HTTPHeaderMatchList(headerMatchList))
-
-		matches := []gatewayapi.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
-
+		matches := matchesFromRulePath(path)
 		rule := gatewayapi.HTTPRouteRule{
 			BackendRefs: backendRefs,
 			Filters:     preFilters,
@@ -192,6 +162,104 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+// MakeRedirectHTTPRoute creates a HTTPRoute with a redirection filter.
+func MakeRedirectHTTPRoute(
+	ing *netv1alpha1.Ingress,
+	rule *netv1alpha1.IngressRule,
+	gatewayRef gatewayapi.ParentReference,
+) (*gatewayapi.HTTPRoute, error) {
+
+	visibility := ""
+	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
+		visibility = "cluster-local"
+	}
+
+	return &gatewayapi.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      LongestHost(rule.Hosts) + redirectHTTPRoutePostfix,
+			Namespace: ing.Namespace,
+			Labels: kmap.Union(ing.Labels, map[string]string{
+				networking.VisibilityLabelKey: visibility,
+			}),
+			Annotations: kmap.Filter(ing.GetAnnotations(), func(key string) bool {
+				return key == corev1.LastAppliedConfigAnnotation
+			}),
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
+		},
+		Spec: makeRedirectHTTPRouteSpec(rule, gatewayRef),
+	}, nil
+}
+
+func makeRedirectHTTPRouteSpec(
+	rule *netv1alpha1.IngressRule,
+	gatewayRef gatewayapi.ParentReference,
+) gatewayapi.HTTPRouteSpec {
+	hostnames := make([]gatewayapi.Hostname, 0, len(rule.Hosts))
+	for _, hostname := range rule.Hosts {
+		hostnames = append(hostnames, gatewayapi.Hostname(hostname))
+	}
+
+	rules := makeRedirectHTTPRouteRule(rule)
+
+	return gatewayapi.HTTPRouteSpec{
+		Hostnames: hostnames,
+		Rules:     rules,
+		CommonRouteSpec: gatewayapi.CommonRouteSpec{ParentRefs: []gatewayapi.ParentReference{
+			gatewayRef,
+		}},
+	}
+}
+
+func makeRedirectHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule {
+	rules := []gatewayapi.HTTPRouteRule{}
+
+	for _, path := range rule.HTTP.Paths {
+		preFilters := []gatewayapi.HTTPRouteFilter{
+			{
+				Type: gatewayapiv1.HTTPRouteFilterRequestRedirect,
+				RequestRedirect: &gatewayapi.HTTPRequestRedirectFilter{
+					Scheme:     ptr.To("https"),
+					Port:       ptr.To(gatewayapi.PortNumber(443)),
+					StatusCode: ptr.To(http.StatusMovedPermanently),
+				},
+			}}
+
+		matches := matchesFromRulePath(path)
+		rule := gatewayapi.HTTPRouteRule{
+			Filters: preFilters,
+			Matches: matches,
+		}
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
+func matchesFromRulePath(path netv1alpha1.HTTPIngressPath) []gatewayapi.HTTPRouteMatch {
+	pathPrefix := "/"
+	if path.Path != "" {
+		pathPrefix = path.Path
+	}
+	pathMatch := gatewayapi.HTTPPathMatch{
+		Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+		Value: ptr.To(pathPrefix),
+	}
+
+	var headerMatchList []gatewayapi.HTTPHeaderMatch
+	for k, v := range path.Headers {
+		headerMatch := gatewayapi.HTTPHeaderMatch{
+			Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+			Name:  gatewayapiv1.HTTPHeaderName(k),
+			Value: v.Exact,
+		}
+		headerMatchList = append(headerMatchList, headerMatch)
+	}
+
+	// Sort HTTPHeaderMatch as the order is random.
+	sort.Sort(HTTPHeaderMatchList(headerMatchList))
+
+	return []gatewayapi.HTTPRouteMatch{{Path: &pathMatch, Headers: headerMatchList}}
 }
 
 type HTTPHeaderList []gatewayapi.HTTPHeader

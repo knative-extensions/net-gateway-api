@@ -79,14 +79,20 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	httproute *gatewayapi.HTTPRoute,
 ) (*gatewayapi.HTTPRoute, error) {
 
-	// logger := logging.FromContext(ctx)
 	var (
+		probeKey = types.NamespacedName{
+			Name:      ing.Name,
+			Namespace: ing.Namespace,
+		}
 		recorder = controller.GetEventRecorder(ctx)
 		desired  *gatewayapi.HTTPRoute
 		err      error
+		probe, _ = c.statusManager.IsProbeActive(probeKey)
 	)
 
-	if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
+	if probe.Version == hash && probe.Ready {
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+	} else if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
 		desired = httproute.DeepCopy()
 		resources.UpdateProbeHash(desired, hash)
 

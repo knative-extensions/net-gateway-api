@@ -205,6 +205,9 @@ func TestReconcile(t *testing.T) {
 				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 					return status.ProbeState{Ready: true}, nil
 				},
+				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+					return status.ProbeState{Ready: true}, true
+				},
 			},
 		}
 
@@ -353,7 +356,11 @@ func TestReconcileTLS(t *testing.T) {
 			statusManager: &fakeStatusManager{
 				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 					return status.ProbeState{Ready: true}, nil
-				}},
+				},
+				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+					return status.ProbeState{Ready: true}, true
+				},
+			},
 		}
 		// The fake tracker's `Add` method incorrectly pluralizes "gatewaies" using UnsafeGuessKindToResource,
 		// so create this via explicit call (per note in client-go/testing/fixture.go in tracker.Add)
@@ -447,6 +454,9 @@ func TestReconcileProbing(t *testing.T) {
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 				return status.ProbeState{Ready: true}, nil
 			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
 		}),
 		Objects: append([]runtime.Object{
 			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
@@ -517,6 +527,9 @@ func TestReconcileProbing(t *testing.T) {
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 				return status.ProbeState{Ready: false}, nil
 			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
 		}),
 		Objects: append([]runtime.Object{
 			ing(withSecondRevisionSpec,
@@ -556,6 +569,81 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}, servicesAndEndpoints...),
+	}, {
+		Name: "endpoints are ready - transition to new backends",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

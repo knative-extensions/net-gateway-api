@@ -111,18 +111,21 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproute, err := c.reconcileHTTPRoute(ctx, hash, ing, &rule)
+		httproute, err := c.reconcileHTTPRoute(ctx, &hash, ing, &rule)
 		if err != nil {
 			return err
 		}
 
 		if isHTTPRouteReady(httproute) {
-			gatherProbes(&backends, httproute, rule.Visibility)
 			ing.Status.MarkNetworkConfigured()
+			gatherProbes(&backends, httproute, rule.Visibility)
 		} else {
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
 		}
 	}
+
+	// Hash might have changed depending on HTTPRoute reconciliation
+	backends.Version = hash
 
 	externalIngressTLS := ing.GetIngressTLSForVisibility(v1alpha1.IngressVisibilityExternalIP)
 	listeners := make([]*gatewayapi.Listener, 0, len(externalIngressTLS))

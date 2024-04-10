@@ -44,7 +44,7 @@ const listenerPrefix = "kni-"
 // reconcileHTTPRoute reconciles HTTPRoute.
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context,
-	hash string,
+	hash *string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 ) (*gatewayapi.HTTPRoute, error) {
@@ -73,7 +73,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
-	hash string,
+	hash *string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 	httproute *gatewayapi.HTTPRoute,
@@ -91,15 +91,15 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		probeHash = strings.TrimPrefix(probe.Version, "ep-")
 	)
 
-	if probeHash == hash && probe.Ready {
+	if probeHash == *hash && probe.Ready {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
-		hash = "ep-" + hash
+		*hash = "ep-" + *hash
 		desired = httproute.DeepCopy()
-		resources.UpdateProbeHash(desired, hash)
+		resources.UpdateProbeHash(desired, *hash)
 
 		for _, backend := range newBackends {
-			resources.UpdateEndpointProbes(desired, hash, backend)
+			resources.UpdateEndpointProbes(desired, *hash, backend)
 		}
 	} else {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)

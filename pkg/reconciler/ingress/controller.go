@@ -105,8 +105,8 @@ func NewController(
 		logger.Named("status-manager"),
 		NewProbeTargetLister(logger, endpointsInformer.Lister()),
 		func(ing types.NamespacedName) {
-			logger.Debugf("Ready callback triggered for ingress: %s/%s", ing.Namespace, ing.Name)
-			impl.EnqueueKey(types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name})
+			logger.Debugf("Ready callback triggered for ingress: %v", ing)
+			impl.EnqueueKey(ing)
 		})
 	c.statusManager = statusProber
 	statusProber.Start(ctx.Done())

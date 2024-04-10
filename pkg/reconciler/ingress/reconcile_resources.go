@@ -79,22 +79,41 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	httproute *gatewayapi.HTTPRoute,
 ) (*gatewayapi.HTTPRoute, error) {
 
+	const (
+		endpointPrefix   = "ep-"
+		transitionPrefix = "tr-"
+	)
+
 	var (
 		probeKey = types.NamespacedName{
 			Name:      ing.Name,
 			Namespace: ing.Namespace,
 		}
-		recorder  = controller.GetEventRecorder(ctx)
-		desired   *gatewayapi.HTTPRoute
-		err       error
-		probe, _  = c.statusManager.IsProbeActive(probeKey)
-		probeHash = strings.TrimPrefix(probe.Version, "ep-")
+		recorder = controller.GetEventRecorder(ctx)
+		desired  *gatewayapi.HTTPRoute
+		err      error
+		probe, _ = c.statusManager.IsProbeActive(probeKey)
+
+		wasEndpointProbe   = strings.HasPrefix(probe.Version, endpointPrefix)
+		wasTransitionProbe = strings.HasPrefix(probe.Version, transitionPrefix)
 	)
 
-	if probeHash == *hash && probe.Ready {
+	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
+	probeHash = strings.TrimPrefix(probeHash, transitionPrefix)
+
+	if wasTransitionProbe && probeHash == *hash && probe.Ready {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+	} else if wasEndpointProbe && probeHash == *hash && probe.Ready {
+		*hash = transitionPrefix + *hash
+
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		resources.UpdateProbeHash(desired, *hash)
+
+		for _, backend := range newBackends(httproute, rule) {
+			resources.UpdateEndpointProbes(desired, *hash, backend)
+		}
 	} else if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
-		*hash = "ep-" + *hash
+		*hash = endpointPrefix + *hash
 		desired = httproute.DeepCopy()
 		resources.UpdateProbeHash(desired, *hash)
 

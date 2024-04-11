@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"reflect"
 	"sync"
 	"time"
@@ -428,7 +427,10 @@ func (m *Prober) processWorkItem() bool {
 	}
 
 	probeURL := deepCopy(item.url)
-	probeURL.Path = path.Join(probeURL.Path, nethttp.HealthCheckPath)
+
+	if probeURL.Path == "" {
+		probeURL.Path = nethttp.HealthCheckPath
+	}
 
 	ctx, cancel := context.WithTimeout(item.context, probeTimeout)
 	defer cancel()

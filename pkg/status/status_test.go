@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -59,6 +60,28 @@ var (
 		},
 	}
 )
+
+func TestBackends(t *testing.T) {
+	var backends Backends
+
+	backends.AddURL("external", url.URL{Host: "www.example.com"})
+	backends.AddURL("cluster", url.URL{Host: "www.example.com"})
+	backends.AddURL("cluster", url.URL{Host: "www.blah.com"})
+
+	expected := map[Visibility]URLSet{
+		"external": sets.New(
+			url.URL{Host: "www.example.com"},
+		),
+		"cluster": sets.New(
+			url.URL{Host: "www.example.com"},
+			url.URL{Host: "www.blah.com"},
+		),
+	}
+
+	if diff := cmp.Diff(expected, backends.URLs); diff != "" {
+		t.Error("unexpected diff (-want,+got): ", diff)
+	}
+}
 
 func TestProbeAllHosts(t *testing.T) {
 	const hostA = "foo.bar.com"

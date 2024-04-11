@@ -416,7 +416,7 @@ func (m *Prober) processWorkItem() bool {
 		// Therefore, we can safely ignore any TLS certificate validation.
 		InsecureSkipVerify: true,
 	}
-	transport.DialContext = func(ctx context.Context, network, addr string) (conn net.Conn, e error) {
+	transport.DialContext = func(ctx context.Context, network, _ string) (conn net.Conn, e error) {
 		// Requests with the IP as hostname and the Host header set do no pass client-side validation
 		// because the HTTP client validates that the hostname (not the Host header) matches the server
 		// TLS certificate Common Name or Alternative Names. Therefore, http.Request.URL is set to the
@@ -482,7 +482,7 @@ func (m *Prober) onProbingCancellation(ingressState *ingressState, podState *pod
 		}
 
 		// Attempt to set pendingCount to 0.
-		if podState.pendingCount.CAS(pendingCount, 0) {
+		if podState.pendingCount.CompareAndSwap(pendingCount, 0) {
 			// This is the last pod being successfully probed, the Ingress is ready
 			if ingressState.pendingCount.Dec() == 0 {
 				m.readyCallback(ingressState.key)

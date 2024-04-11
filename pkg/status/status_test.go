@@ -686,7 +686,7 @@ func TestProbeVerifier(t *testing.T) {
 					Name:      "bar",
 				},
 			},
-			hash: hash,
+			version: hash,
 		},
 		podState: nil,
 		context:  nil,

@@ -60,8 +60,8 @@ var dialContext = (&net.Dialer{Timeout: probeTimeout}).DialContext
 
 // ingressState represents the probing state of an Ingress
 type ingressState struct {
-	hash string
-	ing  *v1alpha1.Ingress
+	version string
+	ing     *v1alpha1.Ingress
 
 	// pendingCount is the number of pods that haven't been successfully probed yet
 	pendingCount atomic.Int32
@@ -100,6 +100,11 @@ type ProbeTarget struct {
 	PodPort string
 	Port    string
 	URLs    []*url.URL
+}
+
+type ProbeState struct {
+	Version string
+	Ready   bool
 }
 
 // ProbeTargetLister lists all the targets that requires probing.
@@ -155,6 +160,21 @@ func NewProber(
 	}
 }
 
+func (m *Prober) IsProbeActive(ing *v1alpha1.Ingress) (ProbeState, bool) {
+	ingressKey := types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name}
+
+	state, ok := func() (ProbeState, bool) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		if state, ok := m.ingressStates[ingressKey]; ok {
+			return ProbeState{Version: state.version, Ready: state.pendingCount.Load() == 0}, true
+		}
+		return ProbeState{}, false
+	}()
+
+	return state, ok
+}
+
 // IsReady checks if the provided Ingress is ready, i.e. the Envoy pods serving the Ingress
 // have all been updated. This function is designed to be used by the Ingress controller, i.e. it
 // will be called in the order of reconciliation. This means that if IsReady is called on an Ingress,
@@ -174,7 +194,7 @@ func (m *Prober) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, erro
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		if state, ok := m.ingressStates[ingressKey]; ok {
-			if state.hash == hash {
+			if state.version == hash {
 				state.lastAccessed = time.Now()
 				return state.pendingCount.Load() == 0, true
 			}
@@ -190,7 +210,7 @@ func (m *Prober) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, erro
 
 	ingCtx, cancel := context.WithCancel(context.Background())
 	ingressState := &ingressState{
-		hash:         hash,
+		version:      hash,
 		ing:          ing,
 		lastAccessed: time.Now(),
 		cancel:       cancel,
@@ -460,10 +480,10 @@ func (m *Prober) probeVerifier(item *workItem) prober.Verifier {
 				item.logger.Errorf("Probing of %s abandoned, IP: %s:%s: the response doesn't contain the %q header",
 					item.url, item.podIP, item.podPort, header.HashKey)
 				return true, nil
-			case item.ingressState.hash:
+			case item.ingressState.version:
 				return true, nil
 			default:
-				return false, fmt.Errorf("unexpected hash: want %q, got %q", item.ingressState.hash, hash)
+				return false, fmt.Errorf("unexpected version: want %q, got %q", item.ingressState.version, hash)
 			}
 
 		case http.StatusNotFound, http.StatusServiceUnavailable:

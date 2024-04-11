@@ -155,12 +155,28 @@ func TestProbeAllHosts(t *testing.T) {
 		},
 	}
 
+	state, active := prober.IsProbeActive(ingressNN)
+	if active {
+		t.Error("probe as active when it should have been false")
+	}
+	if diff := cmp.Diff(ProbeState{}, state); diff != "" {
+		t.Error("inactive probe should have empty state: ", diff)
+	}
+
 	pstate, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
 	if pstate.Ready == true {
 		t.Fatal("IsReady() returned true")
+	}
+
+	state, active = prober.IsProbeActive(ingressNN)
+	if !active {
+		t.Error("active probe should report active")
+	}
+	if diff := cmp.Diff(ProbeState{Version: hash, Ready: false}, state); diff != "" {
+		t.Error("probe shouldn't be ready: ", diff)
 	}
 
 	// Wait for both hosts to be probed
@@ -203,6 +219,14 @@ func TestProbeAllHosts(t *testing.T) {
 		// Wait for the probing to eventually succeed
 	case <-time.After(5 * time.Second):
 		t.Error("Timed out waiting for probing to succeed.")
+	}
+
+	state, active = prober.IsProbeActive(ingressNN)
+	if !active {
+		t.Error("active probe should report active")
+	}
+	if diff := cmp.Diff(ProbeState{Version: hash, Ready: true}, state); diff != "" {
+		t.Error("probe should ready: ", diff)
 	}
 }
 

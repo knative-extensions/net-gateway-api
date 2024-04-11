@@ -181,13 +181,11 @@ func NewProber(
 	}
 }
 
-func (m *Prober) IsProbeActive(ing *v1alpha1.Ingress) (ProbeState, bool) {
-	ingressKey := types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name}
-
+func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
 	state, ok := func() (ProbeState, bool) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		if state, ok := m.ingressStates[ingressKey]; ok {
+		if state, ok := m.ingressStates[key]; ok {
 			return ProbeState{Version: state.version, Ready: state.pendingCount.Load() == 0}, true
 		}
 		return ProbeState{}, false

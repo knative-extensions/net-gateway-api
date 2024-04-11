@@ -40,7 +40,6 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	nethttp "knative.dev/networking/pkg/http"
 	"knative.dev/networking/pkg/http/header"
-	"knative.dev/networking/pkg/ingress"
 	"knative.dev/networking/pkg/prober"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
@@ -61,7 +60,7 @@ var dialContext = (&net.Dialer{Timeout: probeTimeout}).DialContext
 // ingressState represents the probing state of an Ingress
 type ingressState struct {
 	version string
-	ing     *v1alpha1.Ingress
+	key     types.NamespacedName
 
 	// pendingCount is the number of pods that haven't been successfully probed yet
 	pendingCount atomic.Int32
@@ -107,15 +106,38 @@ type ProbeState struct {
 	Ready   bool
 }
 
+type Backends struct {
+	Key        types.NamespacedName
+	Version    string
+	URLs       map[Visibility]URLSet
+	HTTPOption v1alpha1.HTTPOption
+}
+
+func (b *Backends) AddURL(v Visibility, u url.URL) {
+	if b.URLs == nil {
+		b.URLs = make(map[Visibility]URLSet)
+	}
+	urls, ok := b.URLs[v]
+	if !ok {
+		urls = make(URLSet)
+		b.URLs[v] = urls
+	}
+	urls.Insert(u)
+}
+
+type Visibility = v1alpha1.IngressVisibility
+type URLSet = sets.Set[url.URL]
+
 // ProbeTargetLister lists all the targets that requires probing.
 type ProbeTargetLister interface {
-	// ListProbeTargets returns a list of targets to be probed.
-	ListProbeTargets(ctx context.Context, ingress *v1alpha1.Ingress) ([]ProbeTarget, error)
+	// BackendsToProbeTargets produces list of targets for the given backends
+	BackendsToProbeTargets(ctx context.Context, backends Backends) ([]ProbeTarget, error)
 }
 
 // Manager provides a way to check if an Ingress is ready
 type Manager interface {
-	IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, error)
+	DoProbes(ctx context.Context, backends Backends) (ProbeState, error)
+	IsProbeActive(ing *v1alpha1.Ingress) (ProbeState, bool)
 }
 
 // Prober provides a way to check if a VirtualService is ready by probing the Envoy pods
@@ -132,7 +154,7 @@ type Prober struct {
 
 	targetLister ProbeTargetLister
 
-	readyCallback func(*v1alpha1.Ingress)
+	readyCallback func(types.NamespacedName)
 
 	probeConcurrency int
 }
@@ -141,7 +163,7 @@ type Prober struct {
 func NewProber(
 	logger *zap.SugaredLogger,
 	targetLister ProbeTargetLister,
-	readyCallback func(*v1alpha1.Ingress)) *Prober {
+	readyCallback func(types.NamespacedName)) *Prober {
 	return &Prober{
 		logger:        logger,
 		ingressStates: make(map[types.NamespacedName]*ingressState),
@@ -175,52 +197,60 @@ func (m *Prober) IsProbeActive(ing *v1alpha1.Ingress) (ProbeState, bool) {
 	return state, ok
 }
 
-// IsReady checks if the provided Ingress is ready, i.e. the Envoy pods serving the Ingress
-// have all been updated. This function is designed to be used by the Ingress controller, i.e. it
-// will be called in the order of reconciliation. This means that if IsReady is called on an Ingress,
-// this Ingress is the latest known version and therefore anything related to older versions can be ignored.
-// Also, it means that IsReady is not called concurrently.
-func (m *Prober) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, error) {
-	ingressKey := types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name}
-	logger := logging.FromContext(ctx)
-
-	bytes, err := ingress.ComputeHash(ing)
-	if err != nil {
-		return false, fmt.Errorf("failed to compute the hash of the Ingress: %w", err)
-	}
-	hash := fmt.Sprintf("%x", bytes)
-
-	if ready, ok := func() (bool, bool) {
+func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, error) {
+	if state, ok := func() (ProbeState, bool) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		if state, ok := m.ingressStates[ingressKey]; ok {
-			if state.version == hash {
+		if state, ok := m.ingressStates[backends.Key]; ok {
+			pstate := ProbeState{Version: state.version}
+			if state.version == backends.Version {
 				state.lastAccessed = time.Now()
-				return state.pendingCount.Load() == 0, true
+				pstate.Ready = state.pendingCount.Load() == 0
+				return pstate, true
 			}
 
 			// Cancel the polling for the outdated version
 			state.cancel()
-			delete(m.ingressStates, ingressKey)
+			delete(m.ingressStates, backends.Key)
 		}
-		return false, false
+		return ProbeState{}, false
 	}(); ok {
-		return ready, nil
+		return state, nil
 	}
 
+	targets, err := m.targetLister.BackendsToProbeTargets(ctx, backends)
+	if err != nil {
+		return ProbeState{}, err
+	}
+
+	logger := logging.FromContext(ctx)
+	ready := m.probeRequest(logger,
+		backends.Version,
+		backends.Key,
+		targets,
+	)
+
+	return ProbeState{
+		Version: backends.Version,
+		Ready:   ready,
+	}, nil
+}
+
+func (m *Prober) probeRequest(
+	logger *zap.SugaredLogger,
+	version string,
+	key types.NamespacedName,
+	targets []ProbeTarget,
+
+) bool {
 	ingCtx, cancel := context.WithCancel(context.Background())
 	ingressState := &ingressState{
-		version:      hash,
-		ing:          ing,
+		version:      version,
+		key:          key,
 		lastAccessed: time.Now(),
 		cancel:       cancel,
 	}
 
-	// Get the probe targets and group them by IP
-	targets, err := m.targetLister.ListProbeTargets(ctx, ing)
-	if err != nil {
-		return false, err
-	}
 	workItems := make(map[string][]*workItem)
 	for _, target := range targets {
 		for ip := range target.PodIPs {
@@ -292,9 +322,9 @@ func (m *Prober) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, erro
 	func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		m.ingressStates[ingressKey] = ingressState
+		m.ingressStates[key] = ingressState
 	}()
-	return len(workItems) == 0, nil
+	return len(workItems) == 0
 }
 
 // Start starts the Manager background operations
@@ -438,7 +468,7 @@ func (m *Prober) onProbingSuccess(ingressState *ingressState, podState *podState
 
 		// This is the last pod being successfully probed, the Ingress is ready
 		if ingressState.pendingCount.Dec() == 0 {
-			m.readyCallback(ingressState.ing)
+			m.readyCallback(ingressState.key)
 		}
 	}
 }
@@ -455,7 +485,7 @@ func (m *Prober) onProbingCancellation(ingressState *ingressState, podState *pod
 		if podState.pendingCount.CAS(pendingCount, 0) {
 			// This is the last pod being successfully probed, the Ingress is ready
 			if ingressState.pendingCount.Dec() == 0 {
-				m.readyCallback(ingressState.ing)
+				m.readyCallback(ingressState.key)
 			}
 			return
 		}

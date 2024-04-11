@@ -22,24 +22,27 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/networking/pkg/http/probe"
-	"knative.dev/networking/pkg/ingress"
 
 	"go.uber.org/atomic"
 	"go.uber.org/zap/zaptest"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
+	ingressNN = types.NamespacedName{
+		Namespace: "default",
+		Name:      "whatever",
+	}
 	ingTemplate = &v1alpha1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
@@ -62,12 +65,7 @@ func TestProbeAllHosts(t *testing.T) {
 	const hostB = "ksvc.test.dev"
 	var hostBEnabled atomic.Bool
 
-	ing := ingTemplate.DeepCopy()
-	ing.Spec.Rules[0].Hosts = append(ing.Spec.Rules[0].Hosts, hostB)
-	hash, err := ingress.InsertProbe(ing.DeepCopy())
-	if err != nil {
-		t.Fatal("Failed to insert probe:", err)
-	}
+	hash := "some-hash"
 
 	// Failing handler returning HTTP 500 (it should never be called during probing)
 	failedRequests := make(chan *http.Request)
@@ -99,21 +97,20 @@ func TestProbeAllHosts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
 	}
-	port, err := strconv.Atoi(tsURL.Port())
-	if err != nil {
-		t.Fatalf("Failed to parse port %q: %v", tsURL.Port(), err)
-	}
-	hostname := tsURL.Hostname()
 
-	ready := make(chan *v1alpha1.Ingress)
+	hostAURL := *tsURL
+	hostAURL.Host = hostA
+	hostBURL := *tsURL
+	hostBURL.Host = hostB
+
+	ready := make(chan types.NamespacedName)
 	prober := NewProber(
 		zaptest.NewLogger(t).Sugar(),
-		fakeProbeTargetLister{{
-			PodIPs:  sets.New(hostname),
-			PodPort: strconv.Itoa(port),
-			URLs:    []*url.URL{tsURL},
-		}},
-		func(ing *v1alpha1.Ingress) {
+		fakeProbeTargetLister{
+			PodIPs:  sets.New(tsURL.Hostname()),
+			PodPort: tsURL.Port(),
+		},
+		func(ing types.NamespacedName) {
 			ready <- ing
 		})
 
@@ -125,11 +122,21 @@ func TestProbeAllHosts(t *testing.T) {
 	}()
 
 	// The first call to IsReady must succeed and return false
-	ok, err := prober.IsReady(context.Background(), ing)
+	backends := Backends{
+		Key:     ingressNN,
+		Version: hash,
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				hostAURL, hostBURL,
+			),
+		},
+	}
+
+	pstate, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if pstate.Ready == true {
 		t.Fatal("IsReady() returned true")
 	}
 
@@ -178,11 +185,8 @@ func TestProbeAllHosts(t *testing.T) {
 
 func TestProbeLifecycle(t *testing.T) {
 	ing := ingTemplate.DeepCopy()
-	hash, err := ingress.InsertProbe(ing.DeepCopy())
-	if err != nil {
-		t.Fatal("Failed to insert probe:", err)
-	}
-
+	hash := "some-hash"
+	hostA := "foo.bar.com"
 	// Simulate that the latest configuration is not applied yet by returning a different
 	// hash once and then the by returning the expected hash.
 	hashes := make(chan string, 1)
@@ -207,7 +211,7 @@ func TestProbeLifecycle(t *testing.T) {
 	// and simulate a non-existing host by returning 404.
 	probeRequests := make(chan *http.Request)
 	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.Host, "foo.bar.com") {
+		if !strings.HasPrefix(r.Host, hostA) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -223,22 +227,19 @@ func TestProbeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
 	}
-	port, err := strconv.Atoi(tsURL.Port())
-	if err != nil {
-		t.Fatalf("Failed to parse port %q: %v", tsURL.Port(), err)
-	}
-	hostname := tsURL.Hostname()
 
-	ready := make(chan *v1alpha1.Ingress)
+	hostAURL := *tsURL
+	hostAURL.Host = hostA
+
+	ready := make(chan types.NamespacedName)
 	prober := NewProber(
 		zaptest.NewLogger(t).Sugar(),
-		fakeProbeTargetLister{{
-			PodIPs:  sets.New(hostname),
-			PodPort: strconv.Itoa(port),
-			URLs:    []*url.URL{tsURL},
-		}},
-		func(ing *v1alpha1.Ingress) {
-			ready <- ing
+		fakeProbeTargetLister{
+			PodIPs:  sets.New(tsURL.Hostname()),
+			PodPort: tsURL.Port(),
+		},
+		func(nn types.NamespacedName) {
+			ready <- nn
 		})
 
 	done := make(chan struct{})
@@ -248,22 +249,30 @@ func TestProbeLifecycle(t *testing.T) {
 		<-cancelled
 	}()
 
+	backends := Backends{
+		Key:     ingressNN,
+		Version: hash,
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				hostAURL,
+			),
+		},
+	}
+
 	// The first call to IsReady must succeed and return false
-	ok, err := prober.IsReady(context.Background(), ing)
+	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
-
-	const expHostHeader = "foo.bar.com"
 
 	// Wait for the first (failing) and second (success) requests to be executed and validate Host header
 	for i := 0; i < 2; i++ {
 		req := <-probeRequests
-		if req.Host != expHostHeader {
-			t.Fatalf("Host header = %q, want %q", req.Host, expHostHeader)
+		if req.Host != hostA {
+			t.Fatalf("Host header = %q, want %q", req.Host, hostA)
 		}
 	}
 
@@ -276,10 +285,10 @@ func TestProbeLifecycle(t *testing.T) {
 
 	// The subsequent calls to IsReady must succeed and return true
 	for i := 0; i < 5; i++ {
-		if ok, err = prober.IsReady(context.Background(), ing); err != nil {
+		if state, err = prober.DoProbes(context.Background(), backends); err != nil {
 			t.Fatal("IsReady failed:", err)
 		}
-		if !ok {
+		if !state.Ready {
 			t.Fatal("IsReady() returned false")
 		}
 	}
@@ -298,11 +307,11 @@ func TestProbeLifecycle(t *testing.T) {
 	}
 
 	// The state has been removed and IsReady must return False
-	ok, err = prober.IsReady(context.Background(), ing)
+	state, err = prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
 
@@ -326,22 +335,31 @@ func TestProbeLifecycle(t *testing.T) {
 }
 
 func TestProbeListerFail(t *testing.T) {
-	ing := ingTemplate.DeepCopy()
-	ready := make(chan *v1alpha1.Ingress)
+	ready := make(chan types.NamespacedName)
 	defer close(ready)
 	prober := NewProber(
 		zaptest.NewLogger(t).Sugar(),
 		notFoundLister{},
-		func(ing *v1alpha1.Ingress) {
+		func(ing types.NamespacedName) {
 			ready <- ing
 		})
 
+	backends := Backends{
+		Key:     ingressNN,
+		Version: "some-hash",
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				url.URL{Scheme: "http", Host: "foo.bar.com"},
+			),
+		},
+	}
+
 	// If we can't list, this  must fail and return false
-	ok, err := prober.IsReady(context.Background(), ing)
+	state, err := prober.DoProbes(context.Background(), backends)
 	if err == nil {
 		t.Fatal("IsReady returned unexpected success")
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
 }
@@ -357,7 +375,7 @@ func TestCancelPodProbing(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests <- &timedRequest{
 			Time:    time.Now(),
-			Request: r,
+			Request: r.Clone(context.Background()),
 		}
 		w.WriteHeader(http.StatusNotFound)
 	})
@@ -368,30 +386,25 @@ func TestCancelPodProbing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
 	}
-	port, err := strconv.Atoi(tsURL.Port())
-	if err != nil {
-		t.Fatalf("Failed to parse port %q: %v", tsURL.Port(), err)
-	}
-	hostname := tsURL.Hostname()
+
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "gateway",
 		},
 		Status: v1.PodStatus{
-			PodIP: strings.Split(tsURL.Host, ":")[0],
+			PodIP: tsURL.Hostname(),
 		},
 	}
 
-	ready := make(chan *v1alpha1.Ingress)
+	ready := make(chan types.NamespacedName)
 	prober := NewProber(
 		zaptest.NewLogger(t).Sugar(),
-		fakeProbeTargetLister{{
-			PodIPs:  sets.New(hostname),
-			PodPort: strconv.Itoa(port),
-			URLs:    []*url.URL{tsURL},
-		}},
-		func(ing *v1alpha1.Ingress) {
+		fakeProbeTargetLister{
+			PodIPs:  sets.New(tsURL.Hostname()),
+			PodPort: tsURL.Port(),
+		},
+		func(ing types.NamespacedName) {
 			ready <- ing
 		})
 
@@ -402,12 +415,20 @@ func TestCancelPodProbing(t *testing.T) {
 		<-cancelled
 	}()
 
-	ing := ingTemplate.DeepCopy()
-	ok, err := prober.IsReady(context.Background(), ing)
+	backends := Backends{
+		Key:     ingressNN,
+		Version: "some-hash",
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				url.URL{Scheme: "http", Host: "foo.bar.com"},
+			),
+		},
+	}
+	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
 
@@ -420,21 +441,36 @@ func TestCancelPodProbing(t *testing.T) {
 
 	// Create a new version of the Ingress (to replace the original Ingress)
 	const otherDomain = "blabla.net"
-	ing = ing.DeepCopy()
-	ing.Spec.Rules[0].Hosts[0] = otherDomain
+	backends = Backends{
+		Key:     ingressNN,
+		Version: "a-new-hash",
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				url.URL{Scheme: "http", Host: otherDomain},
+			),
+		},
+	}
 
 	// Create a different Ingress (to be probed in parallel)
 	const parallelDomain = "parallel.net"
 	func() {
-		dc := ing.DeepCopy()
-		dc.Spec.Rules[0].Hosts[0] = parallelDomain
-		dc.Name = "something"
+		parallelNN := ingressNN
+		parallelNN.Name = "something"
+		parallelBackends := Backends{
+			Key:     parallelNN,
+			Version: "another-hash",
+			URLs: map[v1alpha1.IngressVisibility]URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Scheme: "http", Host: parallelDomain},
+				),
+			},
+		}
 
-		ok, err = prober.IsReady(context.Background(), dc)
+		state, err := prober.DoProbes(context.Background(), parallelBackends)
 		if err != nil {
 			t.Fatal("IsReady failed:", err)
 		}
-		if ok {
+		if state.Ready {
 			t.Fatal("IsReady() returned true")
 		}
 	}()
@@ -446,19 +482,22 @@ func TestCancelPodProbing(t *testing.T) {
 	default:
 	}
 
-	ok, err = prober.IsReady(context.Background(), ing)
+	state, err = prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
 
 	// Drain requests for the old version
+	start := time.Now()
 	for req := range requests {
-		t.Log("req.Host:", req.Host)
 		if strings.HasPrefix(req.Host, otherDomain) {
 			break
+		}
+		if time.Since(start) > 5*time.Second {
+			t.Fatal("haven't received requests from", otherDomain, "after 5 seconds")
 		}
 	}
 
@@ -483,11 +522,8 @@ func TestCancelPodProbing(t *testing.T) {
 }
 
 func TestPartialPodCancellation(t *testing.T) {
-	ing := ingTemplate.DeepCopy()
-	hash, err := ingress.InsertProbe(ing.DeepCopy())
-	if err != nil {
-		t.Fatal("Failed to insert probe:", err)
-	}
+	hash := "some-hash"
+	hostA := "foo.bar.com"
 
 	// Simulate a probe target returning HTTP 200 OK and the correct hash
 	requests := make(chan *http.Request, 100)
@@ -502,10 +538,8 @@ func TestPartialPodCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
 	}
-	port, err := strconv.Atoi(tsURL.Port())
-	if err != nil {
-		t.Fatalf("Failed to parse port %q: %v", tsURL.Port(), err)
-	}
+	hostAURL := *tsURL
+	hostAURL.Host = hostA
 
 	// pods[0] will be probed successfully, pods[1] will never be probed successfully
 	pods := []*v1.Pod{{
@@ -514,7 +548,7 @@ func TestPartialPodCancellation(t *testing.T) {
 			Name:      "pod0",
 		},
 		Status: v1.PodStatus{
-			PodIP: strings.Split(tsURL.Host, ":")[0],
+			PodIP: tsURL.Hostname(),
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -526,15 +560,14 @@ func TestPartialPodCancellation(t *testing.T) {
 		},
 	}}
 
-	ready := make(chan *v1alpha1.Ingress)
+	ready := make(chan types.NamespacedName)
 	prober := NewProber(
 		zaptest.NewLogger(t).Sugar(),
-		fakeProbeTargetLister{{
+		fakeProbeTargetLister{
 			PodIPs:  sets.New(pods[0].Status.PodIP, pods[1].Status.PodIP),
-			PodPort: strconv.Itoa(port),
-			URLs:    []*url.URL{tsURL},
-		}},
-		func(ing *v1alpha1.Ingress) {
+			PodPort: tsURL.Port(),
+		},
+		func(ing types.NamespacedName) {
 			ready <- ing
 		})
 
@@ -545,11 +578,20 @@ func TestPartialPodCancellation(t *testing.T) {
 		<-cancelled
 	}()
 
-	ok, err := prober.IsReady(context.Background(), ing)
+	backends := Backends{
+		Key:     ingressNN,
+		Version: hash,
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				hostAURL,
+			),
+		},
+	}
+	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
-	if ok {
+	if state.Ready {
 		t.Fatal("IsReady() returned true")
 	}
 
@@ -579,113 +621,12 @@ func TestPartialPodCancellation(t *testing.T) {
 	}
 }
 
-func TestCancelIngressProbing(t *testing.T) {
-	ing := ingTemplate.DeepCopy()
-	// Handler keeping track of received requests and mimicking an Ingress not ready
-	requests := make(chan *http.Request, 100)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests <- r
-		w.WriteHeader(http.StatusNotFound)
-	})
-
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-	tsURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
-	}
-	port, err := strconv.Atoi(tsURL.Port())
-	if err != nil {
-		t.Fatalf("Failed to parse port %q: %v", tsURL.Port(), err)
-	}
-	hostname := tsURL.Hostname()
-
-	ready := make(chan *v1alpha1.Ingress)
-	prober := NewProber(
-		zaptest.NewLogger(t).Sugar(),
-		fakeProbeTargetLister{{
-			PodIPs:  sets.New(hostname),
-			PodPort: strconv.Itoa(port),
-			URLs:    []*url.URL{tsURL},
-		}},
-		func(ing *v1alpha1.Ingress) {
-			ready <- ing
-		})
-
-	done := make(chan struct{})
-	cancelled := prober.Start(done)
-	defer func() {
-		close(done)
-		<-cancelled
-	}()
-
-	ok, err := prober.IsReady(context.Background(), ing)
-	if err != nil {
-		t.Fatal("IsReady failed:", err)
-	}
-	if ok {
-		t.Fatal("IsReady() returned true")
-	}
-
-	select {
-	case <-requests:
-		// Wait for the first probe request
-	case <-time.After(5 * time.Second):
-		t.Error("Timed out waiting for probing to succeed.")
-	}
-
-	const domain = "blabla.net"
-
-	// Create a new version of the Ingress
-	ing = ing.DeepCopy()
-	ing.Spec.Rules[0].Hosts[0] = domain
-
-	// Check that probing is unsuccessful
-	select {
-	case <-ready:
-		t.Fatal("Probing succeeded while it should not have succeeded")
-	default:
-	}
-
-	ok, err = prober.IsReady(context.Background(), ing)
-	if err != nil {
-		t.Fatal("IsReady failed:", err)
-	}
-	if ok {
-		t.Fatal("IsReady() returned true")
-	}
-
-	// Drain requests for the old version.
-	for req := range requests {
-		t.Log("req.Host:", req.Host)
-		if strings.HasPrefix(req.Host, domain) {
-			break
-		}
-	}
-
-	// Cancel Ingress probing.
-	prober.CancelIngressProbing(ing)
-
-	// Check that the requests were for the new version.
-	close(requests)
-	for req := range requests {
-		if !strings.HasPrefix(req.Host, domain) {
-			t.Fatalf("Host = %s, want: %s", req.Host, domain)
-		}
-	}
-}
-
 func TestProbeVerifier(t *testing.T) {
 	const hash = "Hi! I am hash!"
 	prober := NewProber(zaptest.NewLogger(t).Sugar(), nil, nil)
 	verifier := prober.probeVerifier(&workItem{
 		ingressState: &ingressState{
-			ing: &v1alpha1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "bar",
-				},
-			},
+			key:     ingressNN,
 			version: hash,
 		},
 		podState: nil,
@@ -767,22 +708,23 @@ func TestProbeVerifier(t *testing.T) {
 	}
 }
 
-type fakeProbeTargetLister []ProbeTarget
+type fakeProbeTargetLister struct {
+	PodIPs  sets.Set[string]
+	PodPort string
+}
 
-func (l fakeProbeTargetLister) ListProbeTargets(_ context.Context, ing *v1alpha1.Ingress) ([]ProbeTarget, error) {
+func (l fakeProbeTargetLister) BackendsToProbeTargets(_ context.Context, backends Backends) ([]ProbeTarget, error) {
 	targets := []ProbeTarget{}
-	for _, target := range l {
+
+	for _, urls := range backends.URLs {
 		newTarget := ProbeTarget{
-			PodIPs:  target.PodIPs,
-			PodPort: target.PodPort,
-			Port:    target.Port,
+			PodIPs:  l.PodIPs,
+			PodPort: l.PodPort,
 		}
-		for _, url := range target.URLs {
-			for _, host := range ing.Spec.Rules[0].Hosts {
-				newURL := *url
-				newURL.Host = host
-				newTarget.URLs = append(newTarget.URLs, &newURL)
-			}
+
+		for url := range urls {
+			url := url
+			newTarget.URLs = append(newTarget.URLs, &url)
 		}
 		targets = append(targets, newTarget)
 	}
@@ -791,6 +733,6 @@ func (l fakeProbeTargetLister) ListProbeTargets(_ context.Context, ing *v1alpha1
 
 type notFoundLister struct{}
 
-func (l notFoundLister) ListProbeTargets(_ context.Context, _ *v1alpha1.Ingress) ([]ProbeTarget, error) {
+func (l notFoundLister) BackendsToProbeTargets(context.Context, Backends) ([]ProbeTarget, error) {
 	return nil, errors.New("not found")
 }

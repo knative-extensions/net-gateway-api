@@ -1145,7 +1145,7 @@ func RuntimeRequestWithExpectations(ctx context.Context, t *testing.T, client *h
 
 	if err != nil {
 		if !allowDialError || !IsDialError(err) {
-			t.Error("Error making GET request:", err)
+			t.Fatalf("Error making GET request: %v", err)
 		}
 		return nil
 	}

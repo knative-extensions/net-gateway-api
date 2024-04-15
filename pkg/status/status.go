@@ -181,6 +181,7 @@ func NewProber(
 	}
 }
 
+// IsProbeActive will return the state of the probes for the given key
 func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -190,6 +191,8 @@ func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
 	return ProbeState{}, false
 }
 
+// DoProbes will start probing the desired backends. If probing is already active with the
+// correct backend versions it will return the current state.
 func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, error) {
 	if state, ok := func() (ProbeState, bool) {
 		m.mu.Lock()

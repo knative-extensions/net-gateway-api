@@ -144,7 +144,7 @@ func TestProbeAllHosts(t *testing.T) {
 		<-cancelled
 	}()
 
-	// The first call to IsReady must succeed and return false
+	// The first call to DoProbes must succeed and return false
 	backends := Backends{
 		Key:     ingressNN,
 		Version: hash,
@@ -165,10 +165,10 @@ func TestProbeAllHosts(t *testing.T) {
 
 	pstate, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
-	if pstate.Ready == true {
-		t.Fatal("IsReady() returned true")
+	if pstate.Ready {
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	state, active = prober.IsProbeActive(ingressNN)
@@ -306,13 +306,13 @@ func TestProbeLifecycle(t *testing.T) {
 		},
 	}
 
-	// The first call to IsReady must succeed and return false
+	// The first call to DoProbes must succeed and return false
 	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	// Wait for the first (failing) and second (success) requests to be executed and validate Host header
@@ -330,13 +330,13 @@ func TestProbeLifecycle(t *testing.T) {
 		t.Error("Timed out waiting for probing to succeed.")
 	}
 
-	// The subsequent calls to IsReady must succeed and return true
+	// The subsequent calls to DoProbes must succeed and return true
 	for i := 0; i < 5; i++ {
 		if state, err = prober.DoProbes(context.Background(), backends); err != nil {
-			t.Fatal("IsReady failed:", err)
+			t.Fatal("DoProbes failed:", err)
 		}
 		if !state.Ready {
-			t.Fatal("IsReady() returned false")
+			t.Fatal("Probing should be ready")
 		}
 	}
 
@@ -353,13 +353,13 @@ func TestProbeLifecycle(t *testing.T) {
 	default:
 	}
 
-	// The state has been removed and IsReady must return False
+	// The state has been removed and DoProbes must return False
 	state, err = prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	// Wait for the first request (success) to be executed
@@ -404,10 +404,10 @@ func TestProbeListerFail(t *testing.T) {
 	// If we can't list, this  must fail and return false
 	state, err := prober.DoProbes(context.Background(), backends)
 	if err == nil {
-		t.Fatal("IsReady returned unexpected success")
+		t.Fatal("DoProbes returned unexpected success")
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 }
 
@@ -473,10 +473,10 @@ func TestCancelPodProbing(t *testing.T) {
 	}
 	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	select {
@@ -515,10 +515,10 @@ func TestCancelPodProbing(t *testing.T) {
 
 		state, err := prober.DoProbes(context.Background(), parallelBackends)
 		if err != nil {
-			t.Fatal("IsReady failed:", err)
+			t.Fatal("DoProbes failed:", err)
 		}
 		if state.Ready {
-			t.Fatal("IsReady() returned true")
+			t.Fatal("Probing returned ready but should be false")
 		}
 	}()
 
@@ -531,10 +531,10 @@ func TestCancelPodProbing(t *testing.T) {
 
 	state, err = prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	// Drain requests for the old version
@@ -636,10 +636,10 @@ func TestPartialPodCancellation(t *testing.T) {
 	}
 	state, err := prober.DoProbes(context.Background(), backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
-		t.Fatal("IsReady() returned true")
+		t.Fatal("Probing returned ready but should be false")
 	}
 
 	select {

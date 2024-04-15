@@ -185,8 +185,8 @@ func NewProber(
 func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if state, ok := m.ingressStates[key]; ok {
-		return ProbeState{Version: state.version, Ready: state.pendingCount.Load() == 0}, true
+	if ingState, ok := m.ingressStates[key]; ok {
+		return ProbeState{Version: ingState.version, Ready: ingState.pendingCount.Load() == 0}, true
 	}
 	return ProbeState{}, false
 }
@@ -197,16 +197,16 @@ func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, e
 	if state, ok := func() (ProbeState, bool) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		if state, ok := m.ingressStates[backends.Key]; ok {
-			pstate := ProbeState{Version: state.version}
-			if state.version == backends.Version {
-				state.lastAccessed = time.Now()
-				pstate.Ready = state.pendingCount.Load() == 0
+		if ingState, ok := m.ingressStates[backends.Key]; ok {
+			pstate := ProbeState{Version: ingState.version}
+			if ingState.version == backends.Version {
+				ingState.lastAccessed = time.Now()
+				pstate.Ready = ingState.pendingCount.Load() == 0
 				return pstate, true
 			}
 
 			// Cancel the polling for the outdated version
-			state.cancel()
+			ingState.cancel()
 			delete(m.ingressStates, backends.Key)
 		}
 		return ProbeState{}, false

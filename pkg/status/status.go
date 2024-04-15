@@ -136,7 +136,7 @@ type ProbeTargetLister interface {
 // Manager provides a way to check if an Ingress is ready
 type Manager interface {
 	DoProbes(ctx context.Context, backends Backends) (ProbeState, error)
-	IsProbeActive(ing *v1alpha1.Ingress) (ProbeState, bool)
+	IsProbeActive(key types.NamespacedName) (ProbeState, bool)
 }
 
 // Prober provides a way to check if a VirtualService is ready by probing the Envoy pods

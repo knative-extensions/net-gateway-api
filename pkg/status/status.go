@@ -145,7 +145,7 @@ type Prober struct {
 	logger *zap.SugaredLogger
 
 	// mu guards ingressStates and podContexts
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	ingressStates map[types.NamespacedName]*ingressState
 	podContexts   map[string]cancelContext
 
@@ -182,16 +182,12 @@ func NewProber(
 }
 
 func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
-	state, ok := func() (ProbeState, bool) {
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		if state, ok := m.ingressStates[key]; ok {
-			return ProbeState{Version: state.version, Ready: state.pendingCount.Load() == 0}, true
-		}
-		return ProbeState{}, false
-	}()
-
-	return state, ok
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if state, ok := m.ingressStates[key]; ok {
+		return ProbeState{Version: state.version, Ready: state.pendingCount.Load() == 0}, true
+	}
+	return ProbeState{}, false
 }
 
 func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, error) {

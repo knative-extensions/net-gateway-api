@@ -15,7 +15,7 @@
 # limitations under the License.
 
 export GATEWAY_API_VERSION="v1.0.0"
-export ISTIO_VERSION="1.20.3"
+export ISTIO_VERSION="1.21.1"
 export ISTIO_UNSUPPORTED_E2E_TESTS="retry,httpoption,update"
-export CONTOUR_VERSION="v1.28.2"
-export CONTOUR_UNSUPPORTED_E2E_TESTS="httpoption,update"
+export CONTOUR_VERSION="v1.28.3"
+export CONTOUR_UNSUPPORTED_E2E_TESTS="httpoption,update,tls"

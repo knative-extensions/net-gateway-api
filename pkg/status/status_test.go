@@ -723,7 +723,7 @@ func TestCancelIngressProbing(t *testing.T) {
 	}
 	state, err := prober.DoProbes(ctx, backends)
 	if err != nil {
-		t.Fatal("IsReady failed:", err)
+		t.Fatal("DoProbes failed:", err)
 	}
 	if state.Ready {
 		t.Fatal("Probing returned ready but should be false")

@@ -33,6 +33,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/networking/pkg/http/probe"
+	"knative.dev/pkg/logging"
 
 	"go.uber.org/atomic"
 	"go.uber.org/zap/zaptest"
@@ -89,6 +90,7 @@ func TestProbeAllHosts(t *testing.T) {
 	var hostBEnabled atomic.Bool
 
 	hash := "some-hash"
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	// Failing handler returning HTTP 500 (it should never be called during probing)
 	failedRequests := make(chan *http.Request)
@@ -163,7 +165,7 @@ func TestProbeAllHosts(t *testing.T) {
 		t.Error("inactive probe should have empty state: ", diff)
 	}
 
-	pstate, err := prober.DoProbes(context.Background(), backends)
+	pstate, err := prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -232,6 +234,8 @@ func TestProbeAllHosts(t *testing.T) {
 }
 
 func TestProbeLifecycle(t *testing.T) {
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
+
 	ing := ingTemplate.DeepCopy()
 	hash := "some-hash"
 	hostA := "foo.bar.com"
@@ -308,7 +312,7 @@ func TestProbeLifecycle(t *testing.T) {
 	}
 
 	// The first call to DoProbes must succeed and return false
-	state, err := prober.DoProbes(context.Background(), backends)
+	state, err := prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -333,7 +337,7 @@ func TestProbeLifecycle(t *testing.T) {
 
 	// The subsequent calls to DoProbes must succeed and return true
 	for i := 0; i < 5; i++ {
-		if state, err = prober.DoProbes(context.Background(), backends); err != nil {
+		if state, err = prober.DoProbes(ctx, backends); err != nil {
 			t.Fatal("DoProbes failed:", err)
 		}
 		if !state.Ready {
@@ -355,7 +359,7 @@ func TestProbeLifecycle(t *testing.T) {
 	}
 
 	// The state has been removed and DoProbes must return False
-	state, err = prober.DoProbes(context.Background(), backends)
+	state, err = prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -383,6 +387,8 @@ func TestProbeLifecycle(t *testing.T) {
 }
 
 func TestProbeListerFail(t *testing.T) {
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
+
 	ready := make(chan types.NamespacedName)
 	defer close(ready)
 	prober := NewProber(
@@ -403,7 +409,7 @@ func TestProbeListerFail(t *testing.T) {
 	}
 
 	// If we can't list, this  must fail and return false
-	state, err := prober.DoProbes(context.Background(), backends)
+	state, err := prober.DoProbes(ctx, backends)
 	if err == nil {
 		t.Fatal("DoProbes returned unexpected success")
 	}
@@ -413,6 +419,8 @@ func TestProbeListerFail(t *testing.T) {
 }
 
 func TestCancelPodProbing(t *testing.T) {
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
+
 	type timedRequest struct {
 		*http.Request
 		Time time.Time
@@ -472,7 +480,7 @@ func TestCancelPodProbing(t *testing.T) {
 			),
 		},
 	}
-	state, err := prober.DoProbes(context.Background(), backends)
+	state, err := prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -514,7 +522,7 @@ func TestCancelPodProbing(t *testing.T) {
 			},
 		}
 
-		state, err := prober.DoProbes(context.Background(), parallelBackends)
+		state, err := prober.DoProbes(ctx, parallelBackends)
 		if err != nil {
 			t.Fatal("DoProbes failed:", err)
 		}
@@ -530,7 +538,7 @@ func TestCancelPodProbing(t *testing.T) {
 	default:
 	}
 
-	state, err = prober.DoProbes(context.Background(), backends)
+	state, err = prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -572,6 +580,7 @@ func TestCancelPodProbing(t *testing.T) {
 func TestPartialPodCancellation(t *testing.T) {
 	hash := "some-hash"
 	hostA := "foo.bar.com"
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	// Simulate a probe target returning HTTP 200 OK and the correct hash
 	requests := make(chan *http.Request, 100)
@@ -635,7 +644,7 @@ func TestPartialPodCancellation(t *testing.T) {
 			),
 		},
 	}
-	state, err := prober.DoProbes(context.Background(), backends)
+	state, err := prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}
@@ -670,6 +679,7 @@ func TestPartialPodCancellation(t *testing.T) {
 }
 
 func TestCancelIngressProbing(t *testing.T) {
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 	// Handler keeping track of received requests and mimicking an Ingress not ready
 	requests := make(chan *http.Request, 100)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -711,7 +721,7 @@ func TestCancelIngressProbing(t *testing.T) {
 			),
 		},
 	}
-	state, err := prober.DoProbes(context.Background(), backends)
+	state, err := prober.DoProbes(ctx, backends)
 	if err != nil {
 		t.Fatal("IsReady failed:", err)
 	}
@@ -745,7 +755,7 @@ func TestCancelIngressProbing(t *testing.T) {
 	default:
 	}
 
-	state, err = prober.DoProbes(context.Background(), newBackends)
+	state, err = prober.DoProbes(ctx, newBackends)
 	if err != nil {
 		t.Fatal("DoProbes failed:", err)
 	}

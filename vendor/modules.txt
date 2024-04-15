@@ -922,7 +922,6 @@ knative.dev/networking/pkg/http/stats
 knative.dev/networking/pkg/ingress
 knative.dev/networking/pkg/k8s
 knative.dev/networking/pkg/prober
-knative.dev/networking/pkg/status
 knative.dev/networking/test
 knative.dev/networking/test/conformance/ingress
 knative.dev/networking/test/defaultsystem

@@ -19,14 +19,17 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	"knative.dev/net-gateway-api/pkg/status"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/networking/pkg/ingress"
-	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
@@ -86,23 +89,35 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	// in this getting written back to the API Server, but lets downstream logic make
 	// assumptions about defaulting.
 	ing.SetDefaults(ctx)
-	before := ing.DeepCopy()
-
 	ing.Status.InitializeConditions()
 
-	if _, err := ingress.InsertProbe(ing); err != nil {
+	var (
+		hash string
+		err  error
+	)
+
+	if hash, err = ingress.InsertProbe(ing); err != nil {
 		return fmt.Errorf("failed to add knative probe header: %w", err)
+	}
+
+	backends := status.Backends{
+		Version: hash,
+		Key: types.NamespacedName{
+			Name:      ing.Name,
+			Namespace: ing.Namespace,
+		},
 	}
 
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproutes, err := c.reconcileHTTPRoute(ctx, ing, &rule)
+		httproute, err := c.reconcileHTTPRoute(ctx, ing, &rule)
 		if err != nil {
 			return err
 		}
 
-		if isHTTPRouteReady(httproutes) {
+		if isHTTPRouteReady(httproute) {
+			gatherProbes(&backends, httproute, rule.Visibility)
 			ing.Status.MarkNetworkConfigured()
 		} else {
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
@@ -132,13 +147,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	}
 
 	// TODO: check Gateway readiness before reporting Ingress ready
-
-	ready, err := c.statusManager.IsReady(ctx, before)
+	state, err := c.statusManager.DoProbes(ctx, backends)
 	if err != nil {
 		return fmt.Errorf("failed to probe Ingress: %w", err)
 	}
 
-	if ready {
+	if state.Ready {
 		namespacedNameService := gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Service
 		publicLbs := []v1alpha1.LoadBalancerIngressStatus{
 			{DomainInternal: network.GetServiceHostname(namespacedNameService.Name, namespacedNameService.Namespace)},
@@ -155,6 +169,28 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	}
 
 	return nil
+}
+
+func gatherProbes(b *status.Backends, r *gatewayapi.HTTPRoute, visibility v1alpha1.IngressVisibility) {
+	if visibility == "" {
+		visibility = v1alpha1.IngressVisibilityExternalIP
+	}
+
+	for _, rule := range r.Spec.Rules {
+		for _, match := range rule.Matches {
+			for _, headers := range match.Headers {
+				// Skip non-probe matches
+				if headers.Name != header.HashKey {
+					continue
+				}
+
+				for _, hostname := range r.Spec.Hostnames {
+					url := url.URL{Host: string(hostname), Path: *match.Path.Value}
+					b.AddURL(visibility, url)
+				}
+			}
+		}
+	}
 }
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if

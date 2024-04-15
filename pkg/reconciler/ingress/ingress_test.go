@@ -32,13 +32,13 @@ import (
 	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
+	"knative.dev/net-gateway-api/pkg/status"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeingressclient "knative.dev/networking/pkg/client/injection/client/fake"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/networking/pkg/ingress"
-	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -202,8 +202,8 @@ func TestReconcile(t *testing.T) {
 			httprouteLister: listers.GetHTTPRouteLister(),
 			gatewayLister:   listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{
-				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-					return true, nil
+				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+					return status.ProbeState{Ready: true}, nil
 				},
 			},
 		}
@@ -350,9 +350,10 @@ func TestReconcileTLS(t *testing.T) {
 			httprouteLister:      listers.GetHTTPRouteLister(),
 			referenceGrantLister: listers.GetReferenceGrantLister(),
 			gatewayLister:        listers.GetGatewayLister(),
-			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return true, nil
-			}},
+			statusManager: &fakeStatusManager{
+				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+					return status.ProbeState{Ready: true}, nil
+				}},
 		}
 		// The fake tracker's `Add` method incorrectly pluralizes "gatewaies" using UnsafeGuessKindToResource,
 		// so create this via explicit call (per note in client-go/testing/fixture.go in tracker.Add)
@@ -383,8 +384,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconciler probe returns false",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return false, nil
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
 			},
 		}),
 		Objects: append([]runtime.Object{
@@ -412,8 +413,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconcile probe returns an error",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return false, errors.New("this is the error")
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, errors.New("this is the error")
 			},
 		}),
 		WantErr: true,
@@ -443,8 +444,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "prober callback all endpoints ready",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return true, nil
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
 			},
 		}),
 		Objects: append([]runtime.Object{
@@ -519,11 +520,15 @@ func withStatusManager(f *fakeStatusManager) context.Context {
 }
 
 type fakeStatusManager struct {
-	FakeIsReady func(context.Context, *v1alpha1.Ingress) (bool, error)
+	FakeDoProbes      func(context.Context, status.Backends) (status.ProbeState, error)
+	FakeIsProbeActive func(types.NamespacedName) (status.ProbeState, bool)
 }
 
-func (m *fakeStatusManager) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, error) {
-	return m.FakeIsReady(ctx, ing)
+func (m *fakeStatusManager) DoProbes(ctx context.Context, backends status.Backends) (status.ProbeState, error) {
+	return m.FakeDoProbes(ctx, backends)
+}
+func (m *fakeStatusManager) IsProbeActive(ing types.NamespacedName) (status.ProbeState, bool) {
+	return m.FakeIsProbeActive(ing)
 }
 
 type testConfigStore struct {

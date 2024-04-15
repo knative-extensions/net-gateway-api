@@ -668,6 +668,110 @@ func TestPartialPodCancellation(t *testing.T) {
 	}
 }
 
+func TestCancelIngressProbing(t *testing.T) {
+	// Handler keeping track of received requests and mimicking an Ingress not ready
+	requests := make(chan *http.Request, 100)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- r
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	tsURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("Failed to parse URL %q: %v", ts.URL, err)
+	}
+
+	ready := make(chan types.NamespacedName)
+	prober := NewProber(
+		zaptest.NewLogger(t).Sugar(),
+		fakeProbeTargetLister{
+			PodIPs:  sets.New(tsURL.Hostname()),
+			PodPort: tsURL.Port(),
+		},
+		func(ing types.NamespacedName) {
+			ready <- ing
+		})
+
+	done := make(chan struct{})
+	cancelled := prober.Start(done)
+	defer func() {
+		close(done)
+		<-cancelled
+	}()
+
+	backends := Backends{
+		Key:     ingressNN,
+		Version: "some-hash",
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				url.URL{Scheme: "http", Host: "foo.bar.com"},
+			),
+		},
+	}
+	state, err := prober.DoProbes(context.Background(), backends)
+	if err != nil {
+		t.Fatal("IsReady failed:", err)
+	}
+	if state.Ready {
+		t.Fatal("Probing returned ready but should be false")
+	}
+
+	select {
+	case <-requests:
+		// Wait for the first probe request
+	case <-time.After(5 * time.Second):
+		t.Error("Timed out waiting for probing to succeed.")
+	}
+
+	const domain = "blabla.net"
+
+	newBackends := Backends{
+		Key:     ingressNN,
+		Version: "second-hash",
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				url.URL{Scheme: "http", Host: domain},
+			),
+		},
+	}
+
+	// Check that probing is unsuccessful
+	select {
+	case <-ready:
+		t.Fatal("Probing succeeded while it should not have succeeded")
+	default:
+	}
+
+	state, err = prober.DoProbes(context.Background(), newBackends)
+	if err != nil {
+		t.Fatal("DoProbes failed:", err)
+	}
+	if state.Ready {
+		t.Fatal("Probing returned ready but should be false")
+	}
+
+	// Drain requests for the old version.
+	for req := range requests {
+		t.Log("req.Host:", req.Host)
+		if strings.HasPrefix(req.Host, domain) {
+			break
+		}
+	}
+
+	// Cancel Ingress probing.
+	prober.CancelIngressProbing(ingTemplate)
+
+	// Check that the requests were for the new version.
+	close(requests)
+	for req := range requests {
+		if !strings.HasPrefix(req.Host, domain) {
+			t.Fatalf("Host = %s, want: %s", req.Host, domain)
+		}
+	}
+}
+
 func TestProbeVerifier(t *testing.T) {
 	const hash = "Hi! I am hash!"
 	prober := NewProber(zaptest.NewLogger(t).Sugar(), nil, nil)

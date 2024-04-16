@@ -177,7 +177,7 @@ type NormalRule struct {
 	Name      string
 	Path      string
 	Port      int
-	Headers   map[string]string
+	Headers   []string
 	Weight    int
 }
 
@@ -219,7 +219,8 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 		},
 	}
 
-	for k, v := range p.Headers {
+	for i := 0; i < len(p.Headers); i += 2 {
+		k, v := p.Headers[i], p.Headers[i+1]
 		rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set = append(
 			rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set,
 			gatewayapi.HTTPHeader{Name: gatewayapiv1.HTTPHeaderName(k), Value: v},

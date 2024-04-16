@@ -1184,6 +1184,60 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}},
+	}, {
+		Name: "updated ingress - backend headers change",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				withBackendAppendHeaders("key", "value")),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+				withBackendAppendHeaders("key", "value"),
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Name:      "goo",
+						Namespace: "ns",
+						Hash:      "3531718c72349578ea2293f8ec1cd980d551f70295c1b0b4c10abfc0b2a248f8",
+						Headers:   []string{"key", "value"},
+						Port:      123,
+					},
+					NormalRule{
+						Name:      "goo",
+						Namespace: "ns",
+						Headers:   []string{"key", "value"},
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

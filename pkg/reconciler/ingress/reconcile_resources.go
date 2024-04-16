@@ -130,6 +130,8 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		for _, backend := range oldBackends {
 			resources.AddOldBackend(desired, *hash, backend)
 		}
+	} else if probeHash != *hash {
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else {
 		// Noop
 		if probe.Version != "" {

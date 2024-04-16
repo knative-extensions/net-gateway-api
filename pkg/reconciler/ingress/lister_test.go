@@ -465,6 +465,12 @@ func withThirdRevisionSpec(i *v1alpha1.Ingress) {
 	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "third-revision"
 }
 
+func withBackendAppendHeaders(key, val string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders[key] = val
+	}
+}
+
 func withInternalSpec(i *v1alpha1.Ingress) {
 	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
 		Hosts:      []string{"foo.svc", "foo.svc.cluster.local"},

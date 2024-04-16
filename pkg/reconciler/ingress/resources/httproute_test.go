@@ -28,6 +28,7 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -53,6 +54,51 @@ var (
 	}
 
 	testHosts = []string{"hello-example.default.example.com"}
+
+	testIngress = &v1alpha1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testIngressName,
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey: testIngressName,
+			},
+		},
+		Spec: v1alpha1.IngressSpec{
+			Rules: []v1alpha1.IngressRule{{
+				Hosts:      testHosts,
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						AppendHeaders: map[string]string{
+							"Foo": "bar",
+						},
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(123),
+							},
+							Percent: 12,
+							AppendHeaders: map[string]string{
+								"Baz":   "blah",
+								"Bleep": "bloop",
+							},
+						}, {
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "doo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(124),
+							},
+							Percent: 88,
+							AppendHeaders: map[string]string{
+								"Baz": "blurg",
+							},
+						}},
+					}},
+				},
+			}},
+		},
+	}
 )
 
 func TestMakeHTTPRoute(t *testing.T) {
@@ -507,6 +553,565 @@ func TestMakeHTTPRoute(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAddEndpointProbes(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+
+	ing := testIngress.DeepCopy()
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+
+	expected := &gatewayapi.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      LongestHost(testHosts),
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey:          testIngressName,
+				"networking.knative.dev/visibility": "",
+			},
+			Annotations:     map[string]string{},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
+		},
+		Spec: gatewayapi.HTTPRouteSpec{
+			CommonRouteSpec: gatewayapi.CommonRouteSpec{
+				ParentRefs: []gatewayapi.ParentReference{{
+					Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+					Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+					Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+					Name:      gatewayapi.ObjectName("foo"),
+				}},
+			},
+			Hostnames: []gatewayapi.Hostname{externalHost},
+			Rules: []gatewayapi.HTTPRouteRule{{
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/"),
+					},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapiv1.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](12),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Name:  "goo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blah",
+							}, {
+								Name:  "Bleep",
+								Value: "bloop",
+							}},
+						}},
+					},
+				}, {
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](88),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Name:  "doo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blurg",
+							}},
+						}},
+					}},
+				},
+			}, {
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/.well-known/knative/revision/test-ns/goo"),
+					},
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Name:  header.HashKey,
+						Value: header.HashValueOverride,
+					}},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
+							Name:  header.HashKey,
+							Value: "hash",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](100),
+						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+							Group: ptr.To[gatewayapi.Group](""),
+							Kind:  ptr.To[gatewayapi.Kind]("Service"),
+							Name:  "goo",
+							Port:  ptr.To[gatewayapi.PortNumber](123),
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blah",
+							}, {
+								Name:  "Bleep",
+								Value: "bloop",
+							}},
+						},
+					}},
+				}},
+			}, {
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/.well-known/knative/revision/test-ns/doo"),
+					},
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Name:  header.HashKey,
+						Value: header.HashValueOverride,
+					}},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
+							Name:  header.HashKey,
+							Value: "hash",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](100),
+						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+							Group: ptr.To[gatewayapi.Group](""),
+							Kind:  ptr.To[gatewayapi.Kind]("Service"),
+							Name:  "doo",
+							Port:  ptr.To[gatewayapi.PortNumber](124),
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blurg",
+							}},
+						},
+					}},
+				}},
+			}},
+		},
+	}
+
+	if diff := cmp.Diff(expected, route); diff != "" {
+		t.Fatal("Unexpected (-want, +got): ", diff)
+	}
+}
+
+func TestRemoveEndpointProbes(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+
+	ing := testIngress.DeepCopy()
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	expected := route.DeepCopy()
+
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+	RemoveEndpointProbes(route)
+
+	if diff := cmp.Diff(expected, route); diff != "" {
+		t.Fatal("Unexpected (-want, +got): ", diff)
+	}
+}
+
+func TestUpdateProbeHash(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+	ing := testIngress.DeepCopy()
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
+	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+	UpdateProbeHash(route, "second-hash")
+
+	expected := &gatewayapi.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      LongestHost(testHosts),
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey:          testIngressName,
+				"networking.knative.dev/visibility": "",
+			},
+			Annotations:     map[string]string{},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
+		},
+		Spec: gatewayapi.HTTPRouteSpec{
+			CommonRouteSpec: gatewayapi.CommonRouteSpec{
+				ParentRefs: []gatewayapi.ParentReference{{
+					Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+					Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+					Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+					Name:      gatewayapi.ObjectName("foo"),
+				}},
+			},
+			Hostnames: []gatewayapi.Hostname{externalHost},
+			Rules: []gatewayapi.HTTPRouteRule{{
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/"),
+					},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapiv1.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](12),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Name:  "goo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blah",
+							}, {
+								Name:  "Bleep",
+								Value: "bloop",
+							}},
+						}},
+					},
+				}, {
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](88),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Name:  "doo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blurg",
+							}},
+						}},
+					}},
+				},
+			}, {
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/.well-known/knative/revision/test-ns/goo"),
+					},
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Name:  header.HashKey,
+						Value: header.HashValueOverride,
+					}},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
+							Name:  header.HashKey,
+							Value: "second-hash",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](100),
+						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+							Group: ptr.To[gatewayapi.Group](""),
+							Kind:  ptr.To[gatewayapi.Kind]("Service"),
+							Name:  "goo",
+							Port:  ptr.To[gatewayapi.PortNumber](123),
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blah",
+							}, {
+								Name:  "Bleep",
+								Value: "bloop",
+							}},
+						},
+					}},
+				}},
+			}, {
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/.well-known/knative/revision/test-ns/doo"),
+					},
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Name:  header.HashKey,
+						Value: header.HashValueOverride,
+					}},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
+							Name:  header.HashKey,
+							Value: "second-hash",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](100),
+						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+							Group: ptr.To[gatewayapi.Group](""),
+							Kind:  ptr.To[gatewayapi.Kind]("Service"),
+							Name:  "doo",
+							Port:  ptr.To[gatewayapi.PortNumber](124),
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blurg",
+							}},
+						},
+					}},
+				}},
+			}},
+		},
+	}
+
+	if diff := cmp.Diff(expected, route); diff != "" {
+		t.Fatal("Unexpected (-want, +got): ", diff)
+	}
+}
+
+func TestAddOldBackend(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+	ing := testIngress.DeepCopy()
+
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	AddOldBackend(route, "hash", gatewayapi.HTTPBackendRef{
+		BackendRef: gatewayapi.BackendRef{
+			Weight: ptr.To[int32](100),
+			BackendObjectReference: gatewayapiv1.BackendObjectReference{
+				Group:     ptr.To[gatewayapi.Group](""),
+				Kind:      ptr.To[gatewayapi.Kind]("Service"),
+				Name:      "blah",
+				Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+				Port:      ptr.To[gatewayapi.PortNumber](127),
+			},
+		},
+		Filters: []gatewayapi.HTTPRouteFilter{{
+			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+				Set: []gatewayapi.HTTPHeader{{
+					Name:  "Foo",
+					Value: "bar",
+				}},
+			},
+		}},
+	})
+
+	expected := &gatewayapi.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      LongestHost(testHosts),
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey:          testIngressName,
+				"networking.knative.dev/visibility": "",
+			},
+			Annotations:     map[string]string{},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
+		},
+		Spec: gatewayapi.HTTPRouteSpec{
+			CommonRouteSpec: gatewayapi.CommonRouteSpec{
+				ParentRefs: []gatewayapi.ParentReference{{
+					Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+					Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+					Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+					Name:      gatewayapi.ObjectName("foo"),
+				}},
+			},
+			Hostnames: []gatewayapi.Hostname{externalHost},
+			Rules: []gatewayapi.HTTPRouteRule{{
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/"),
+					},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapiv1.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](12),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Name:  "goo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blah",
+							}, {
+								Name:  "Bleep",
+								Value: "bloop",
+							}},
+						}},
+					},
+				}, {
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](88),
+						BackendObjectReference: gatewayapi.BackendObjectReference{
+							Group: (*gatewayapi.Group)(ptr.To("")),
+							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Name:  "doo",
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Baz",
+								Value: "blurg",
+							}},
+						}},
+					}},
+				},
+			}, {
+				Matches: []gatewayapi.HTTPRouteMatch{{
+					Path: &gatewayapi.HTTPPathMatch{
+						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Value: ptr.To("/.well-known/knative/revision/test-ns/blah"),
+					},
+					Headers: []gatewayapi.HTTPHeaderMatch{{
+						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Name:  header.HashKey,
+						Value: header.HashValueOverride,
+					}},
+				}},
+				Filters: []gatewayapi.HTTPRouteFilter{{
+					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+						Set: []gatewayapi.HTTPHeader{{
+							Name:  header.HashKey,
+							Value: "hash",
+						}},
+					},
+				}},
+				BackendRefs: []gatewayapi.HTTPBackendRef{{
+					BackendRef: gatewayapi.BackendRef{
+						Weight: ptr.To[int32](100),
+						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+							Group:     ptr.To[gatewayapi.Group](""),
+							Kind:      ptr.To[gatewayapi.Kind]("Service"),
+							Name:      "blah",
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+							Port:      ptr.To[gatewayapi.PortNumber](127),
+						},
+					},
+					Filters: []gatewayapi.HTTPRouteFilter{{
+						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: []gatewayapi.HTTPHeader{{
+								Name:  "Foo",
+								Value: "bar",
+							}},
+						},
+					}},
+				}},
+			}},
+		},
+	}
+
+	if diff := cmp.Diff(expected, route); diff != "" {
+		t.Fatal("Unexpected (-want, +got): ", diff)
 	}
 }
 

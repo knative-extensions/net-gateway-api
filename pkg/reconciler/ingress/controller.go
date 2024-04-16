@@ -109,8 +109,6 @@ func NewController(
 			impl.EnqueueKey(types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name})
 		})
 	c.statusManager = statusProber
-	// TODO: Bring up gateway-api community to discuss about probing.
-	// related to https://github.com/knative-sandbox/net-gateway-api/issues/18
 	statusProber.Start(ctx.Done())
 
 	// Make sure trackers are deleted once the observers are removed.

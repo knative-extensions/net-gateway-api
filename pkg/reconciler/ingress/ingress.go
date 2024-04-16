@@ -111,7 +111,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproute, err := c.reconcileHTTPRoute(ctx, ing, &rule)
+		httproute, err := c.reconcileHTTPRoute(ctx, hash, ing, &rule)
 		if err != nil {
 			return err
 		}

@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -31,8 +32,95 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
 )
+
+func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
+	// Note: we use indices and references to avoid mutating copies
+	for rIdx := range r.Spec.Rules {
+		rule := &r.Spec.Rules[rIdx]
+
+		for fIdx := range rule.Filters {
+			filter := &rule.Filters[fIdx]
+
+			if filter.Type != gatewayapiv1.HTTPRouteFilterRequestHeaderModifier {
+				continue
+			}
+
+			if filter.RequestHeaderModifier == nil {
+				continue
+			}
+
+			for hIdx := range filter.RequestHeaderModifier.Set {
+				h := &filter.RequestHeaderModifier.Set[hIdx]
+				if h.Name == header.HashKey {
+					h.Value = hash
+				}
+			}
+		}
+	}
+}
+
+func AddEndpointProbes(ctx context.Context, r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
+	rule := gatewayapi.HTTPRouteRule{
+		Matches: []gatewayapi.HTTPRouteMatch{{
+			Path: &gatewayapi.HTTPPathMatch{
+				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", backend.ServiceNamespace, backend.ServiceName)),
+			},
+			Headers: []gatewayapi.HTTPHeaderMatch{{
+				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+				Name:  header.HashKey,
+				Value: header.HashValueOverride,
+			}},
+		}},
+		Filters: []gatewayapi.HTTPRouteFilter{{
+			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+				Set: []gatewayapi.HTTPHeader{{
+					Name:  header.HashKey,
+					Value: hash,
+				}},
+			},
+		}},
+		BackendRefs: []gatewayapi.HTTPBackendRef{{
+			BackendRef: gatewayapi.BackendRef{
+				Weight: ptr.To[int32](100),
+				BackendObjectReference: gatewayapiv1.BackendObjectReference{
+					Group: ptr.To[gatewayapi.Group](""),
+					Kind:  ptr.To[gatewayapi.Kind]("Service"),
+					Name:  gatewayapi.ObjectName(backend.ServiceName),
+					Port:  ptr.To[gatewayapi.PortNumber](gatewayapi.PortNumber(backend.ServicePort.IntValue())),
+				},
+			},
+		}},
+	}
+
+	if len(backend.AppendHeaders) > 0 {
+		headers := make([]gatewayapi.HTTPHeader, 0, len(backend.AppendHeaders))
+
+		for k, v := range backend.AppendHeaders {
+			headers = append(headers, gatewayapi.HTTPHeader{
+				Name:  gatewayapiv1.HTTPHeaderName(k),
+				Value: v,
+			})
+		}
+
+		slices.SortFunc(headers, compareHTTPHeader)
+
+		rule.BackendRefs[0].Filters = append(rule.BackendRefs[0].Filters,
+			gatewayapiv1.HTTPRouteFilter{
+				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+					Set: headers,
+				},
+			},
+		)
+	}
+
+	r.Spec.Rules = append(r.Spec.Rules, rule)
+}
 
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.
 func MakeHTTPRoute(

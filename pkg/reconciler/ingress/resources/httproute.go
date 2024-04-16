@@ -18,7 +18,9 @@ package resources
 
 import (
 	"context"
+	"slices"
 	"sort"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,7 +111,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			}
 
 			// Sort HTTPHeader as the order is random.
-			sort.Sort(HTTPHeaderList(headers))
+			slices.SortFunc(headers, compareHTTPHeader)
 
 			preFilters = []gatewayapi.HTTPRouteFilter{{
 				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
@@ -138,7 +140,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			}
 
 			// Sort HTTPHeader as the order is random.
-			sort.Sort(HTTPHeaderList(headers))
+			slices.SortFunc(headers, compareHTTPHeader)
 
 			name := split.ServiceName
 			backendRef := gatewayapi.HTTPBackendRef{
@@ -220,4 +222,8 @@ func (h HTTPHeaderMatchList) Less(i, j int) bool {
 
 func (h HTTPHeaderMatchList) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
+}
+
+func compareHTTPHeader(a, b gatewayapi.HTTPHeader) int {
+	return strings.Compare(string(a.Name), string(b.Name))
 }

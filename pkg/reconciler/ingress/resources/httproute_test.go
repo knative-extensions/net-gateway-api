@@ -165,12 +165,12 @@ func TestMakeHTTPRoute(t *testing.T) {
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
-												Name:  "Bleep",
-												Value: "bloop",
-											},
-											{
 												Name:  "Baz",
 												Value: "blah",
+											},
+											{
+												Name:  "Bleep",
+												Value: "bloop",
 											},
 										}}}},
 							}, {
@@ -250,12 +250,12 @@ func TestMakeHTTPRoute(t *testing.T) {
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
-												Name:  "Bleep",
-												Value: "bloop",
-											},
-											{
 												Name:  "Baz",
 												Value: "blah",
+											},
+											{
+												Name:  "Bleep",
+												Value: "bloop",
 											},
 										}}}},
 							}, {

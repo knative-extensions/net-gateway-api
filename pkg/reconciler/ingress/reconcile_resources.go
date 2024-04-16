@@ -68,7 +68,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 		return nil, err
 	}
 
-	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute)
+	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
 }
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
@@ -89,6 +89,7 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 			Name:      ing.Name,
 			Namespace: ing.Namespace,
 		}
+		original = httproute.DeepCopy()
 		recorder = controller.GetEventRecorder(ctx)
 		desired  *gatewayapi.HTTPRoute
 		err      error
@@ -101,6 +102,8 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
 	probeHash = strings.TrimPrefix(probeHash, transitionPrefix)
 
+	newBackends, oldBackends := computeBackends(httproute, rule)
+
 	if wasTransitionProbe && probeHash == *hash && probe.Ready {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else if wasEndpointProbe && probeHash == *hash && probe.Ready {
@@ -109,37 +112,48 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 		resources.UpdateProbeHash(desired, *hash)
 
-		for _, backend := range newBackends(httproute, rule) {
-			resources.UpdateEndpointProbes(desired, *hash, backend)
+		resources.RemoveEndpointProbes(httproute)
+		for _, backend := range newBackends {
+			resources.AddEndpointProbe(desired, *hash, backend)
 		}
-	} else if newBackends := newBackends(httproute, rule); len(newBackends) > 0 {
+		for _, backend := range oldBackends {
+			resources.AddOldBackend(desired, *hash, backend)
+		}
+	} else if len(newBackends) > 0 {
 		*hash = endpointPrefix + *hash
 		desired = httproute.DeepCopy()
 		resources.UpdateProbeHash(desired, *hash)
-
+		resources.RemoveEndpointProbes(desired)
 		for _, backend := range newBackends {
-			resources.UpdateEndpointProbes(desired, *hash, backend)
+			resources.AddEndpointProbe(desired, *hash, backend)
+		}
+		for _, backend := range oldBackends {
+			resources.AddOldBackend(desired, *hash, backend)
 		}
 	} else {
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		// Noop
+		if probe.Version != "" {
+			*hash = probe.Version
+		}
+		// desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		return httproute, nil
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	if !equality.Semantic.DeepEqual(httproute.Spec, desired.Spec) ||
-		!equality.Semantic.DeepEqual(httproute.Annotations, desired.Annotations) ||
-		!equality.Semantic.DeepEqual(httproute.Labels, desired.Labels) {
+	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
+		!equality.Semantic.DeepEqual(original.Annotations, desired.Annotations) ||
+		!equality.Semantic.DeepEqual(original.Labels, desired.Labels) {
 
 		// Don't modify the informers copy.
-		origin := httproute.DeepCopy()
-		origin.Spec = desired.Spec
-		origin.Annotations = desired.Annotations
-		origin.Labels = desired.Labels
+		original.Spec = desired.Spec
+		original.Annotations = desired.Annotations
+		original.Labels = desired.Labels
 
-		updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(origin.Namespace).
-			Update(ctx, origin, metav1.UpdateOptions{})
+		updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(original.Namespace).
+			Update(ctx, original, metav1.UpdateOptions{})
 
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
@@ -343,13 +357,13 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	return nil
 }
 
-func newBackends(
+func computeBackends(
 	route *gatewayapi.HTTPRoute,
 	rule *netv1alpha1.IngressRule,
-) []netv1alpha1.IngressBackendSplit {
-
+) ([]netv1alpha1.IngressBackendSplit, []gatewayapi.HTTPBackendRef) {
 	newBackends := []netv1alpha1.IngressBackendSplit{}
-	oldBackends := sets.Set[types.NamespacedName]{}
+	oldBackends := []gatewayapi.HTTPBackendRef{}
+	oldNames := sets.Set[types.NamespacedName]{}
 
 oldbackends:
 	for _, rule := range route.Spec.Rules {
@@ -372,7 +386,8 @@ oldbackends:
 				nn.Namespace = route.Namespace
 
 			}
-			oldBackends.Insert(nn)
+			oldNames.Insert(nn)
+			oldBackends = append(oldBackends, backend)
 		}
 	}
 
@@ -391,7 +406,7 @@ newbackends:
 				Namespace: split.ServiceNamespace,
 			}
 
-			if oldBackends.Has(service) {
+			if oldNames.Has(service) {
 				continue
 			}
 
@@ -402,5 +417,5 @@ newbackends:
 	slices.SortFunc(newBackends, func(a, b netv1alpha1.IngressBackendSplit) int {
 		return strings.Compare(a.ServiceName, b.ServiceName)
 	})
-	return newBackends
+	return newBackends, oldBackends
 }

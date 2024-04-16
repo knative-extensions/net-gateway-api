@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
@@ -38,12 +39,14 @@ import (
 	fakeingressclient "knative.dev/networking/pkg/client/injection/client/fake"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/networking/pkg/ingress"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 
+	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
@@ -513,6 +516,13 @@ func TestReconcileProbing(t *testing.T) {
 						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
 				},
 				StatusConditions: []metav1.Condition{{
 					Type:   string(gatewayapi.RouteConditionAccepted),
@@ -524,11 +534,14 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "steady state ingress - endpoint probing still not ready",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{
+					Ready:   false,
+					Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+				}, true
+			},
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 				return status.ProbeState{Ready: false}, nil
-			},
-			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
-				return status.ProbeState{Ready: true}, true
 			},
 		}),
 		Objects: append([]runtime.Object{
@@ -559,6 +572,13 @@ func TestReconcileProbing(t *testing.T) {
 						Namespace: "ns",
 						Name:      "second-revision",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
 						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
@@ -612,6 +632,13 @@ func TestReconcileProbing(t *testing.T) {
 						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
 				},
 				StatusConditions: []metav1.Condition{{
 					Type:   string(gatewayapi.RouteConditionAccepted),
@@ -644,6 +671,13 @@ func TestReconcileProbing(t *testing.T) {
 						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
 					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
 				},
 				StatusConditions: []metav1.Condition{{
 					Type:   string(gatewayapi.RouteConditionAccepted),
@@ -651,6 +685,230 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}},
+	}, {
+		Name: "steady state - transition probing still not ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: false, Version: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			&gatewayapi.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example.com",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
+					},
+					Labels: map[string]string{
+						networking.VisibilityLabelKey: "",
+					},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion:         "networking.internal.knative.dev/v1alpha1",
+						Kind:               "Ingress",
+						Name:               "name",
+						Controller:         ptr.To(true),
+						BlockOwnerDeletion: ptr.To(true),
+					}},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     ptr.To[gatewayapi.Group]("gateway.networking.k8s.io"),
+							Kind:      ptr.To[gatewayapi.Kind]("Gateway"),
+							Namespace: ptr.To[gatewayapi.Namespace]("istio-system"),
+							Name:      "istio-gateway",
+						}},
+					},
+					Hostnames: []gatewayapi.Hostname{"example.com"},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}, {
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+								Weight: ptr.To[int32](100),
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}, {
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+								Weight: ptr.To[int32](100),
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/.well-known/knative/revision/ns/second-revision"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}, {
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								Weight: ptr.To[int32](100),
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/.well-known/knative/revision/ns/goo"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}, {
+										Name:  "K-Serving-Revision",
+										Value: "goo",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								Weight: ptr.To[int32](100),
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "goo",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+							},
+						}},
+					}},
+				},
+				Status: gatewayapi.HTTPRouteStatus{
+					RouteStatus: gatewayapi.RouteStatus{
+						Parents: []gatewayapi.RouteParentStatus{{
+							Conditions: []metav1.Condition{{
+								Type:   string(gatewayapi.RouteConditionAccepted),
+								Status: metav1.ConditionTrue,
+							}},
+						}},
+					},
+				},
+			},
+		},
+			servicesAndEndpoints...),
 	}, {
 		Name: "transition probe complete - drop endpoint probes",
 		Key:  "ns/name",
@@ -823,6 +1081,13 @@ func TestReconcileProbing(t *testing.T) {
 						Path:      "/.well-known/knative/revision/ns/second-revision",
 						Port:      123,
 					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Port:      123,
+					},
 				},
 				StatusConditions: []metav1.Condition{{
 					Type:   string(gatewayapi.RouteConditionAccepted),
@@ -867,6 +1132,12 @@ func TestReconcileProbing(t *testing.T) {
 						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Path:      "/.well-known/knative/revision/ns/second-revision",
 					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/goo",
+					},
 				},
 				StatusConditions: []metav1.Condition{{
 					Type:   string(gatewayapi.RouteConditionAccepted),
@@ -897,6 +1168,13 @@ func TestReconcileProbing(t *testing.T) {
 						Name:      "third-revision",
 						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
 						Path:      "/.well-known/knative/revision/ns/third-revision",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+						Path:      "/.well-known/knative/revision/ns/goo",
 						Port:      123,
 					},
 				},

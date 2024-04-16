@@ -62,7 +62,7 @@ func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 	}
 }
 
-func UpdateEndpointProbes(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
+func RemoveEndpointProbes(r *gatewayapi.HTTPRoute) {
 	rules := r.Spec.Rules
 	r.Spec.Rules = make([]gatewayapi.HTTPRouteRule, 0, len(rules))
 
@@ -77,7 +77,9 @@ outer:
 			r.Spec.Rules = append(r.Spec.Rules, rule)
 		}
 	}
+}
 
+func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{
@@ -132,6 +134,47 @@ outer:
 				},
 			},
 		)
+	}
+
+	r.Spec.Rules = append(r.Spec.Rules, rule)
+}
+
+func AddOldBackend(r *gatewayapi.HTTPRoute, hash string, old gatewayapi.HTTPBackendRef) {
+	backend := *old.DeepCopy()
+	backend.Weight = ptr.To[int32](100)
+
+	// KIngress only supports AppendHeaders so there's only this filter
+	for _, filters := range backend.Filters {
+		if filters.RequestHeaderModifier != nil {
+
+			slices.SortFunc(filters.RequestHeaderModifier.Set, func(a, b gatewayapi.HTTPHeader) int {
+				return strings.Compare(string(a.Name), string(b.Name))
+			})
+		}
+	}
+
+	rule := gatewayapi.HTTPRouteRule{
+		Matches: []gatewayapi.HTTPRouteMatch{{
+			Path: &gatewayapi.HTTPPathMatch{
+				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", r.Namespace, backend.Name)),
+			},
+			Headers: []gatewayapi.HTTPHeaderMatch{{
+				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+				Name:  header.HashKey,
+				Value: header.HashValueOverride,
+			}},
+		}},
+		Filters: []gatewayapi.HTTPRouteFilter{{
+			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+				Set: []gatewayapi.HTTPHeader{{
+					Name:  header.HashKey,
+					Value: hash,
+				}},
+			},
+		}},
+		BackendRefs: []gatewayapi.HTTPBackendRef{backend},
 	}
 
 	r.Spec.Rules = append(r.Spec.Rules, rule)

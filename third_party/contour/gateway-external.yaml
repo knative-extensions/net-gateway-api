@@ -55,3 +55,15 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+  # We've observed when adding and removing a listener on port 443 this
+  # causes the GKE LB to have downtime. By adding this tls listener
+  # we keep that LB port open.
+  - name: tls
+    port: 443
+    protocol: TLS
+    tls:
+      mode: Passthrough
+    allowedRoutes:
+      namespaces:
+        from: All
+

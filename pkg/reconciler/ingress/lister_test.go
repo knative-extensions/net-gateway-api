@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,9 +30,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"knative.dev/net-gateway-api/pkg/status"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/kmeta"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
@@ -42,20 +45,26 @@ var (
 	privateName   = "knative-local-gateway"
 )
 
-func TestListProbeTargets(t *testing.T) {
-	tests := []struct {
-		name    string
-		ing     *v1alpha1.Ingress
-		objects []runtime.Object
-		want    []status.ProbeTarget
-		wantErr error
+func TestBackendsToProbeTargets(t *testing.T) {
+	cases := []struct {
+		name     string
+		backends status.Backends
+		objects  []runtime.Object
+		want     []status.ProbeTarget
+		wantErr  error
 	}{{
 		name: "single address to probe",
 		objects: []runtime.Object{
 			privateEndpointsOneAddr,
 			publicEndpointsOneAddr,
 		},
-		ing: ing(withBasicSpec, withGatewayAPIClass),
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		want: []status.ProbeTarget{
 			{
 				PodIPs:  sets.New("1.2.3.4"),
@@ -72,30 +81,54 @@ func TestListProbeTargets(t *testing.T) {
 		objects: []runtime.Object{
 			publicEndpointsOneAddr,
 		},
-		ing:     ing(withBasicSpec, withInternalSpec, withGatewayAPIClass),
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityClusterLocal: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", privateName),
 	}, {
 		name: "no external endpoint to probe",
 		objects: []runtime.Object{
-			privateEndpointsOneAddr,
+			privateEndpointsNoAddr,
 		},
-		ing:     ing(withBasicSpec, withGatewayAPIClass),
-		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", "istio-gateway"),
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
+		wantErr: fmt.Errorf("failed to get endpoints: endpoints %q not found", publicName),
 	}, {
 		name: "local endpoint without address to probe",
 		objects: []runtime.Object{
 			privateEndpointsNoAddr,
 			publicEndpointsOneAddr,
 		},
-		ing:     ing(withBasicSpec, withInternalSpec, withGatewayAPIClass),
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityClusterLocal: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		wantErr: fmt.Errorf("no gateway pods available"),
 	}, {
-		name: "external endpoint without address to probe",
+		name: "local endpoint without address to probe",
 		objects: []runtime.Object{
 			privateEndpointsOneAddr,
 			publicEndpointsNoAddr,
 		},
-		ing:     ing(withBasicSpec, withGatewayAPIClass),
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		wantErr: fmt.Errorf("no gateway pods available"),
 	}, {
 		name: "endpoint with single address to probe (https redirected)",
@@ -103,7 +136,14 @@ func TestListProbeTargets(t *testing.T) {
 			privateEndpointsOneAddr,
 			publicSslEndpointsOneAddr,
 		},
-		ing: ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
+		backends: status.Backends{
+			HTTPOption: v1alpha1.HTTPOptionRedirected,
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		want: []status.ProbeTarget{{
 			PodIPs:  sets.New("1.2.3.4"),
 			PodPort: "8443",
@@ -119,7 +159,14 @@ func TestListProbeTargets(t *testing.T) {
 			privateEndpointsMultiAddrMultiSubset,
 			publicEndpointsMultiAddrMultiSubset,
 		},
-		ing: ing(withBasicSpec, withGatewayAPIClass),
+		backends: status.Backends{
+			HTTPOption: v1alpha1.HTTPOptionRedirected,
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityClusterLocal: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
 		want: []status.ProbeTarget{
 			{
 				PodIPs:  sets.New("2.3.4.5"),
@@ -138,9 +185,76 @@ func TestListProbeTargets(t *testing.T) {
 					Path:   "/",
 				}},
 			}},
+	}, {
+		name: "complex case",
+		objects: []runtime.Object{
+			privateEndpointsMultiAddrMultiSubset,
+			publicEndpointsMultiAddrMultiSubset,
+		},
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+					url.URL{Host: "example.com", Path: "/.well-known/knative"},
+				),
+				v1alpha1.IngressVisibilityClusterLocal: sets.New(
+					url.URL{Host: "rev.default.svc.cluster.local", Path: "/"},
+					url.URL{Host: "rev.default.svc.cluster.local", Path: "/.well-known/knative"},
+				),
+			},
+		},
+		want: []status.ProbeTarget{{
+			PodIPs:  sets.New("2.3.4.6"),
+			PodPort: "1230",
+			URLs: []*url.URL{{
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "/",
+			}, {
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "/.well-known/knative",
+			}},
+		}, {
+			PodIPs:  sets.New("3.4.5.7", "4.3.2.0"),
+			PodPort: "4320",
+			URLs: []*url.URL{{
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "/",
+			}, {
+				Scheme: "http",
+				Host:   "example.com",
+				Path:   "/.well-known/knative",
+			}},
+		}, {
+			PodIPs:  sets.New("2.3.4.5"),
+			PodPort: "1234",
+			URLs: []*url.URL{{
+				Scheme: "http",
+				Host:   "rev.default.svc.cluster.local",
+				Path:   "/",
+			}, {
+				Scheme: "http",
+				Host:   "rev.default.svc.cluster.local",
+				Path:   "/.well-known/knative",
+			}},
+		}, {
+			PodIPs:  sets.New("3.4.5.6", "4.3.2.1"),
+			PodPort: "4321",
+			URLs: []*url.URL{{
+				Scheme: "http",
+				Host:   "rev.default.svc.cluster.local",
+				Path:   "/",
+			}, {
+				Scheme: "http",
+				Host:   "rev.default.svc.cluster.local",
+				Path:   "/.well-known/knative",
+			}},
+		}},
 	}}
 
-	for _, test := range tests {
+	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			tl := NewListers(test.objects)
 
@@ -151,15 +265,37 @@ func TestListProbeTargets(t *testing.T) {
 			cfg := defaultConfig.DeepCopy()
 			ctx := (&testConfigStore{config: cfg}).ToContext(context.Background())
 
-			got, gotErr := l.ListProbeTargets(ctx, test.ing)
+			got, gotErr := l.BackendsToProbeTargets(ctx, test.backends)
 			if (gotErr != nil) != (test.wantErr != nil) {
-				t.Fatalf("ListProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
+				t.Fatalf("BackendsToProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
 			} else if gotErr != nil && test.wantErr != nil && gotErr.Error() != test.wantErr.Error() {
-				t.Fatalf("ListProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
+				t.Fatalf("BackendsToProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
 			}
 
-			if !cmp.Equal(test.want, got) {
-				t.Error("ListProbeTargets (-want, +got) =", cmp.Diff(test.want, got))
+			// Ensure stable comparison
+			urlSortFunc := func(a, b *url.URL) int {
+				return strings.Compare(a.String(), b.String())
+			}
+			for _, target := range test.want {
+				slices.SortFunc(target.URLs, urlSortFunc)
+			}
+			for _, target := range got {
+				slices.SortFunc(target.URLs, urlSortFunc)
+			}
+
+			sortFunc := func(a, b status.ProbeTarget) int {
+				cmp := slices.Compare(sets.List(a.PodIPs), sets.List(b.PodIPs))
+				if cmp == 0 {
+					return strings.Compare(a.PodPort, b.PodPort)
+				}
+				return cmp
+			}
+
+			slices.SortFunc(test.want, sortFunc)
+			slices.SortFunc(got, sortFunc)
+
+			if diff := cmp.Diff(test.want, got); diff != "" {
+				t.Error("BackendsToProbeTargets(-want, +got) =", diff)
 			}
 		})
 	}
@@ -250,20 +386,20 @@ var (
 		Subsets: []corev1.EndpointSubset{{
 			Ports: []corev1.EndpointPort{{
 				Name: "asdf",
-				Port: 1234,
+				Port: 1230,
 			}},
 			Addresses: []corev1.EndpointAddress{{
-				IP: "2.3.4.5",
+				IP: "2.3.4.6",
 			}},
 		}, {
 			Ports: []corev1.EndpointPort{{
 				Name: "asdf",
-				Port: 4321,
+				Port: 4320,
 			}},
 			Addresses: []corev1.EndpointAddress{{
-				IP: "3.4.5.6",
+				IP: "3.4.5.7",
 			}, {
-				IP: "4.3.2.1",
+				IP: "4.3.2.0",
 			}},
 		}},
 	}
@@ -301,6 +437,10 @@ func withBasicSpec(i *v1alpha1.Ingress) {
 		HTTP: &v1alpha1.HTTPIngressRuleValue{
 			Paths: []v1alpha1.HTTPIngressPath{{
 				Splits: []v1alpha1.IngressBackendSplit{{
+					AppendHeaders: map[string]string{
+						"K-Serving-Revision":  "goo",
+						"K-Serving-Namespace": "ns",
+					},
 					IngressBackend: v1alpha1.IngressBackend{
 						ServiceName:      "goo",
 						ServiceNamespace: i.Namespace,
@@ -313,6 +453,24 @@ func withBasicSpec(i *v1alpha1.Ingress) {
 	})
 }
 
+func withSecondRevisionSpec(i *v1alpha1.Ingress) {
+	withBasicSpec(i)
+	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].ServiceName = "second-revision"
+	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "second-revision"
+}
+
+func withThirdRevisionSpec(i *v1alpha1.Ingress) {
+	withBasicSpec(i)
+	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].ServiceName = "third-revision"
+	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "third-revision"
+}
+
+func withBackendAppendHeaders(key, val string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders[key] = val
+	}
+}
+
 func withInternalSpec(i *v1alpha1.Ingress) {
 	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
 		Hosts:      []string{"foo.svc", "foo.svc.cluster.local"},
@@ -320,6 +478,10 @@ func withInternalSpec(i *v1alpha1.Ingress) {
 		HTTP: &v1alpha1.HTTPIngressRuleValue{
 			Paths: []v1alpha1.HTTPIngressPath{{
 				Splits: []v1alpha1.IngressBackendSplit{{
+					AppendHeaders: map[string]string{
+						"K-Serving-Revision":  "goo",
+						"K-Serving-Namespace": "ns",
+					},
 					IngressBackend: v1alpha1.IngressBackend{
 						ServiceName:      "goo",
 						ServiceNamespace: i.Namespace,

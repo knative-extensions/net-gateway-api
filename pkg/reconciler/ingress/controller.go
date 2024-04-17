@@ -23,11 +23,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"knative.dev/networking/pkg/apis/networking"
-	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressinformer "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
-	"knative.dev/networking/pkg/status"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -39,6 +37,7 @@ import (
 	httprouteinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/httproute"
 	referencegrantinformer "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/referencegrant"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	"knative.dev/net-gateway-api/pkg/status"
 )
 
 const (
@@ -105,13 +104,11 @@ func NewController(
 	statusProber := status.NewProber(
 		logger.Named("status-manager"),
 		NewProbeTargetLister(logger, endpointsInformer.Lister()),
-		func(ing *v1alpha1.Ingress) {
-			logger.Debugf("Ready callback triggered for ingress: %s/%s", ing.Namespace, ing.Name)
-			impl.EnqueueKey(types.NamespacedName{Namespace: ing.Namespace, Name: ing.Name})
+		func(ing types.NamespacedName) {
+			logger.Debugf("Ready callback triggered for ingress: %v", ing)
+			impl.EnqueueKey(ing)
 		})
 	c.statusManager = statusProber
-	// TODO: Bring up gateway-api community to discuss about probing.
-	// related to https://github.com/knative-sandbox/net-gateway-api/issues/18
 	statusProber.Start(ctx.Done())
 
 	// Make sure trackers are deleted once the observers are removed.

@@ -28,22 +28,25 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
+	"knative.dev/net-gateway-api/pkg/status"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	fakeingressclient "knative.dev/networking/pkg/client/injection/client/fake"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/networking/pkg/ingress"
-	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 
+	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
@@ -202,8 +205,11 @@ func TestReconcile(t *testing.T) {
 			httprouteLister: listers.GetHTTPRouteLister(),
 			gatewayLister:   listers.GetGatewayLister(),
 			statusManager: &fakeStatusManager{
-				FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-					return true, nil
+				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+					return status.ProbeState{Ready: true}, nil
+				},
+				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+					return status.ProbeState{Ready: true}, true
 				},
 			},
 		}
@@ -350,9 +356,14 @@ func TestReconcileTLS(t *testing.T) {
 			httprouteLister:      listers.GetHTTPRouteLister(),
 			referenceGrantLister: listers.GetReferenceGrantLister(),
 			gatewayLister:        listers.GetGatewayLister(),
-			statusManager: &fakeStatusManager{FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return true, nil
-			}},
+			statusManager: &fakeStatusManager{
+				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+					return status.ProbeState{Ready: true}, nil
+				},
+				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+					return status.ProbeState{Ready: true}, true
+				},
+			},
 		}
 		// The fake tracker's `Add` method incorrectly pluralizes "gatewaies" using UnsafeGuessKindToResource,
 		// so create this via explicit call (per note in client-go/testing/fixture.go in tracker.Add)
@@ -383,8 +394,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconciler probe returns false",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return false, nil
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
 			},
 		}),
 		Objects: append([]runtime.Object{
@@ -412,8 +423,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconcile probe returns an error",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return false, errors.New("this is the error")
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, errors.New("this is the error")
 			},
 		}),
 		WantErr: true,
@@ -443,8 +454,11 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "prober callback all endpoints ready",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsReady: func(context.Context, *v1alpha1.Ingress) (bool, error) {
-				return true, nil
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
+			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
 			},
 		}),
 		Objects: append([]runtime.Object{
@@ -454,6 +468,776 @@ func TestReconcileProbing(t *testing.T) {
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
 			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady)},
 		},
+	}, {
+		Name: "updated ingress - new backends used for endpoint probing",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "steady state ingress - endpoint probing still not ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{
+					Ready:   false,
+					Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+				}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+	}, {
+		Name: "endpoints are ready - transition to new backends",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "steady state - transition probing still not ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: false, Version: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			&gatewayapi.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example.com",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
+					},
+					Labels: map[string]string{
+						networking.VisibilityLabelKey: "",
+					},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion:         "networking.internal.knative.dev/v1alpha1",
+						Kind:               "Ingress",
+						Name:               "name",
+						Controller:         ptr.To(true),
+						BlockOwnerDeletion: ptr.To(true),
+					}},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     ptr.To[gatewayapi.Group]("gateway.networking.k8s.io"),
+							Kind:      ptr.To[gatewayapi.Kind]("Gateway"),
+							Namespace: ptr.To[gatewayapi.Namespace]("istio-system"),
+							Name:      "istio-gateway",
+						}},
+					},
+					Hostnames: []gatewayapi.Hostname{"example.com"},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}, {
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+								Weight: ptr.To[int32](100),
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}, {
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+								Weight: ptr.To[int32](100),
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/.well-known/knative/revision/ns/second-revision"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}, {
+										Name:  "K-Serving-Revision",
+										Value: "second-revision",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								Weight: ptr.To[int32](100),
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "second-revision",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+							},
+						}},
+					}, {
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Value: ptr.To("/.well-known/knative/revision/ns/goo"),
+							},
+							Headers: []gatewayapi.HTTPHeaderMatch{{
+								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Name:  header.HashKey,
+								Value: header.HashValueOverride,
+							}},
+						}},
+						Filters: []gatewayapi.HTTPRouteFilter{{
+							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+								Set: []gatewayapi.HTTPHeader{{
+									Name:  header.HashKey,
+									Value: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+								}},
+							},
+						}},
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							Filters: []gatewayapiv1.HTTPRouteFilter{{
+								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "K-Serving-Namespace",
+										Value: "ns",
+									}, {
+										Name:  "K-Serving-Revision",
+										Value: "goo",
+									}},
+								},
+							}},
+							BackendRef: gatewayapi.BackendRef{
+								Weight: ptr.To[int32](100),
+								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+									Group: ptr.To[gatewayapi.Group](""),
+									Kind:  ptr.To[gatewayapi.Kind]("Service"),
+									Name:  "goo",
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+								},
+							},
+						}},
+					}},
+				},
+				Status: gatewayapi.HTTPRouteStatus{
+					RouteStatus: gatewayapi.RouteStatus{
+						Parents: []gatewayapi.RouteParentStatus{{
+							Conditions: []metav1.Condition{{
+								Type:   string(gatewayapi.RouteConditionAccepted),
+								Status: metav1.ConditionTrue,
+							}},
+						}},
+					},
+				},
+			},
+		},
+			servicesAndEndpoints...),
+	}, {
+		Name: "transition probe complete - drop endpoint probes",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		},
+			servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "dropping endpoint probes complete - mark ingress ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+			),
+		}},
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		},
+			servicesAndEndpoints...),
+	}, {
+		Name: "endpoints are ready - wrong hash",
+		// When the endpoints are ready but the hash is incorrect we do
+		// not transition the backend
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "bad-hash"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+	}, {
+		Name: "updated ingress - while endpoint probing in progress",
+		// Here we want the existing probe to stop and then new backends added
+		// to the endpoint probes
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: false, Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withThirdRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady, makeLoadBalancerNotReady),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Path:      "/.well-known/knative/revision/ns/goo",
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		},
+			servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "third-revision",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+						Path:      "/.well-known/knative/revision/ns/third-revision",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-40e40e812e47b79d9bae1f1d0ecec5bcb481030dad90a1aa6200f3389c31d374",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "updated ingress - backend headers change",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				withBackendAppendHeaders("key", "value")),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+				withBackendAppendHeaders("key", "value"),
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Name:      "goo",
+						Namespace: "ns",
+						Hash:      "3531718c72349578ea2293f8ec1cd980d551f70295c1b0b4c10abfc0b2a248f8",
+						Headers:   []string{"key", "value"},
+						Port:      123,
+					},
+					NormalRule{
+						Name:      "goo",
+						Namespace: "ns",
+						Headers:   []string{"key", "value"},
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
@@ -472,6 +1256,10 @@ func TestReconcileProbing(t *testing.T) {
 					config: defaultConfig,
 				}})
 	}))
+}
+
+func makeLoadBalancerNotReady(i *v1alpha1.Ingress) {
+	i.Status.MarkLoadBalancerNotReady()
 }
 
 func makeItReady(i *v1alpha1.Ingress) {
@@ -519,11 +1307,16 @@ func withStatusManager(f *fakeStatusManager) context.Context {
 }
 
 type fakeStatusManager struct {
-	FakeIsReady func(context.Context, *v1alpha1.Ingress) (bool, error)
+	FakeDoProbes      func(context.Context, status.Backends) (status.ProbeState, error)
+	FakeIsProbeActive func(types.NamespacedName) (status.ProbeState, bool)
 }
 
-func (m *fakeStatusManager) IsReady(ctx context.Context, ing *v1alpha1.Ingress) (bool, error) {
-	return m.FakeIsReady(ctx, ing)
+func (m *fakeStatusManager) DoProbes(ctx context.Context, backends status.Backends) (status.ProbeState, error) {
+	return m.FakeDoProbes(ctx, backends)
+}
+
+func (m *fakeStatusManager) IsProbeActive(ing types.NamespacedName) (status.ProbeState, bool) {
+	return m.FakeIsProbeActive(ing)
 }
 
 type testConfigStore struct {

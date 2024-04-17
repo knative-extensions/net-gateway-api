@@ -16,6 +16,6 @@
 
 export GATEWAY_API_VERSION="v1.0.0"
 export ISTIO_VERSION="1.21.1"
-export ISTIO_UNSUPPORTED_E2E_TESTS="retry,httpoption,update"
+export ISTIO_UNSUPPORTED_E2E_TESTS="retry,httpoption"
 export CONTOUR_VERSION="v1.28.3"
-export CONTOUR_UNSUPPORTED_E2E_TESTS="httpoption,update"
+export CONTOUR_UNSUPPORTED_E2E_TESTS="httpoption"

@@ -19,12 +19,15 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -32,6 +35,7 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/controller"
 )
 
@@ -39,7 +43,9 @@ const listenerPrefix = "kni-"
 
 // reconcileHTTPRoute reconciles HTTPRoute.
 func (c *Reconciler) reconcileHTTPRoute(
-	ctx context.Context, ing *netv1alpha1.Ingress,
+	ctx context.Context,
+	hash *string,
+	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 ) (*gatewayapi.HTTPRoute, error) {
 	recorder := controller.GetEventRecorder(ctx)
@@ -60,33 +66,105 @@ func (c *Reconciler) reconcileHTTPRoute(
 		return httproute, nil
 	} else if err != nil {
 		return nil, err
-	} else {
-		desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
-		if err != nil {
-			return nil, err
-		}
-
-		if !equality.Semantic.DeepEqual(httproute.Spec, desired.Spec) ||
-			!equality.Semantic.DeepEqual(httproute.Annotations, desired.Annotations) ||
-			!equality.Semantic.DeepEqual(httproute.Labels, desired.Labels) {
-
-			// Don't modify the informers copy.
-			origin := httproute.DeepCopy()
-			origin.Spec = desired.Spec
-			origin.Annotations = desired.Annotations
-			origin.Labels = desired.Labels
-
-			updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(origin.Namespace).Update(
-				ctx, origin, metav1.UpdateOptions{})
-			if err != nil {
-				recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
-				return nil, fmt.Errorf("failed to update HTTPRoute: %w", err)
-			}
-			return updated, nil
-		}
 	}
 
-	return httproute, err
+	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
+}
+
+func (c *Reconciler) reconcileHTTPRouteUpdate(
+	ctx context.Context,
+	hash *string,
+	ing *netv1alpha1.Ingress,
+	rule *netv1alpha1.IngressRule,
+	httproute *gatewayapi.HTTPRoute,
+) (*gatewayapi.HTTPRoute, error) {
+
+	const (
+		endpointPrefix   = "ep-"
+		transitionPrefix = "tr-"
+	)
+
+	var (
+		probeKey = types.NamespacedName{
+			Name:      ing.Name,
+			Namespace: ing.Namespace,
+		}
+		original = httproute.DeepCopy()
+		recorder = controller.GetEventRecorder(ctx)
+		desired  *gatewayapi.HTTPRoute
+		err      error
+		probe, _ = c.statusManager.IsProbeActive(probeKey)
+
+		wasEndpointProbe   = strings.HasPrefix(probe.Version, endpointPrefix)
+		wasTransitionProbe = strings.HasPrefix(probe.Version, transitionPrefix)
+	)
+
+	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
+	probeHash = strings.TrimPrefix(probeHash, transitionPrefix)
+
+	newBackends, oldBackends := computeBackends(httproute, rule)
+
+	if wasTransitionProbe && probeHash == *hash && probe.Ready {
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+	} else if wasEndpointProbe && probeHash == *hash && probe.Ready {
+		*hash = transitionPrefix + *hash
+
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		resources.UpdateProbeHash(desired, *hash)
+
+		resources.RemoveEndpointProbes(httproute)
+		for _, backend := range newBackends {
+			resources.AddEndpointProbe(desired, *hash, backend)
+		}
+		for _, backend := range oldBackends {
+			resources.AddOldBackend(desired, *hash, backend)
+		}
+	} else if len(newBackends) > 0 {
+		*hash = endpointPrefix + *hash
+		desired = httproute.DeepCopy()
+		resources.UpdateProbeHash(desired, *hash)
+		resources.RemoveEndpointProbes(desired)
+		for _, backend := range newBackends {
+			resources.AddEndpointProbe(desired, *hash, backend)
+		}
+		for _, backend := range oldBackends {
+			resources.AddOldBackend(desired, *hash, backend)
+		}
+	} else if probeHash != *hash {
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+	} else {
+		// Noop
+		if probe.Version != "" {
+			*hash = probe.Version
+		}
+		// desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		return httproute, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
+		!equality.Semantic.DeepEqual(original.Annotations, desired.Annotations) ||
+		!equality.Semantic.DeepEqual(original.Labels, desired.Labels) {
+
+		// Don't modify the informers copy.
+		original.Spec = desired.Spec
+		original.Annotations = desired.Annotations
+		original.Labels = desired.Labels
+
+		updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(original.Namespace).
+			Update(ctx, original, metav1.UpdateOptions{})
+
+		if err != nil {
+			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
+			return nil, fmt.Errorf("failed to update HTTPRoute: %w", err)
+		}
+		return updated, nil
+	}
+
+	return httproute, nil
 }
 
 func (c *Reconciler) reconcileTLS(
@@ -279,4 +357,67 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	}
 
 	return nil
+}
+
+func computeBackends(
+	route *gatewayapi.HTTPRoute,
+	rule *netv1alpha1.IngressRule,
+) ([]netv1alpha1.IngressBackendSplit, []gatewayapi.HTTPBackendRef) {
+	newBackends := []netv1alpha1.IngressBackendSplit{}
+	oldBackends := []gatewayapi.HTTPBackendRef{}
+	oldNames := sets.Set[types.NamespacedName]{}
+
+oldbackends:
+	for _, rule := range route.Spec.Rules {
+		// We want to skip probes
+		for _, match := range rule.Matches {
+			for _, headers := range match.Headers {
+				if headers.Name == header.HashKey {
+					continue oldbackends
+				}
+			}
+		}
+
+		for _, backend := range rule.BackendRefs {
+			nn := types.NamespacedName{
+				Name: string(backend.Name),
+			}
+			if backend.Namespace != nil {
+				nn.Namespace = string(*backend.Namespace)
+			} else {
+				nn.Namespace = route.Namespace
+
+			}
+			oldNames.Insert(nn)
+			oldBackends = append(oldBackends, backend)
+		}
+	}
+
+newbackends:
+	for _, path := range rule.HTTP.Paths {
+		// We want to skip probes
+		for k := range path.Headers {
+			if k == header.HashKey {
+				continue newbackends
+			}
+		}
+
+		for _, split := range path.Splits {
+			service := types.NamespacedName{
+				Name:      split.ServiceName,
+				Namespace: split.ServiceNamespace,
+			}
+
+			if oldNames.Has(service) {
+				continue
+			}
+
+			newBackends = append(newBackends, split)
+		}
+	}
+
+	slices.SortFunc(newBackends, func(a, b netv1alpha1.IngressBackendSplit) int {
+		return strings.Compare(a.ServiceName, b.ServiceName)
+	})
+	return newBackends, oldBackends
 }

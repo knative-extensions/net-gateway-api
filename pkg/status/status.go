@@ -515,7 +515,7 @@ func (m *Prober) probeVerifier(item *workItem) prober.Verifier {
 				return false, fmt.Errorf("unexpected version: want %q, got %q", item.ingressState.version, hash)
 			}
 
-		case http.StatusNotFound, http.StatusServiceUnavailable:
+		case http.StatusNotFound, http.StatusServiceUnavailable, http.StatusInternalServerError:
 			return false, fmt.Errorf("unexpected status code: want %v, got %v", http.StatusOK, r.StatusCode)
 
 		default:

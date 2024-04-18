@@ -186,9 +186,17 @@ func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig
 		return nil, err
 	}
 
-	return []v1alpha1.LoadBalancerIngressStatus{
-		{DomainInternal: gw.Status.Addresses[0].Value},
-	}, nil
+	var lbis v1alpha1.LoadBalancerIngressStatus
+
+	switch *gw.Status.Addresses[0].Type {
+	case gatewayapi.IPAddressType:
+		lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
+	default:
+		lbis = v1alpha1.LoadBalancerIngressStatus{Domain: gw.Status.Addresses[0].Value}
+	}
+
+	return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
+
 }
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if

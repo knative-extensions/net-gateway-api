@@ -2,11 +2,9 @@ module knative.dev/net-gateway-api/test/gatewayapi
 
 go 1.22.0
 
-replace sigs.k8s.io/gateway-api => /Users/dprotasowski/work/gateway-api
-
 require (
 	k8s.io/apimachinery v0.29.3
-	sigs.k8s.io/gateway-api v1.0.1-0.20240409212030-c57c131b49f8
+	sigs.k8s.io/gateway-api v1.0.1-0.20240418002011-7f9f51098f40
 )
 
 require (
@@ -41,6 +39,7 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

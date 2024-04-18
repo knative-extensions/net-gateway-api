@@ -24,8 +24,9 @@ header "Running e2e tests"
 
 failed=0
 
-test_conformance || failed=1
+knative_conformance || failed=1
 test_ha || failed=1
+gateway_conformance || true # this is informational
 
 (( failed )) && fail_test
 

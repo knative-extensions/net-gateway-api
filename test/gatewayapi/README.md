@@ -1,7 +1,7 @@
 ## Knative Gateway API Conformance Profile
 
 
-Run the opinionated test using
+Run the opinionated profile using
 
 ```sh
 go test -args -gateway-class {your-gateway-class}

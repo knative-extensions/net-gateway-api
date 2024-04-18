@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,17 +17,14 @@ limitations under the License.
 package gatewayapi
 
 import (
-	"embed"
 	"testing"
 
 	"sigs.k8s.io/gateway-api/conformance"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 )
-
-//go:embed *
-var Manifests embed.FS
 
 // KnativeConformanceProfile is a ConformanceProfile that covers testing Gateway API features
 // that Knative require
@@ -36,33 +33,28 @@ var (
 		Name: "KNATIVE",
 		CoreFeatures: sets.New(
 			// Core HTTPRoute Features
-			suite.SupportGateway,
-			suite.SupportReferenceGrant,
-			suite.SupportHTTPRoute,
-
-			// HTTPRoute Core Features to be merged
-			// ----
-			// ServiceBackend Support https://github.com/kubernetes-sigs/gateway-api/pull/2828
-			// HTTPRoute Weights      https://github.com/kubernetes-sigs/gateway-api/pull/2814
+			features.SupportGateway,
+			features.SupportReferenceGrant,
+			features.SupportHTTPRoute,
 
 			// Needed for traffic through the activator (scale to zero, handling burst traffic)
-			suite.SupportHTTPRouteBackendRequestHeaderModification,
+			features.SupportHTTPRouteBackendRequestHeaderModification,
 
 			// HTTPRoute Experimental Features
-			suite.SupportHTTPRouteBackendProtocolH2C,
-			suite.SupportHTTPRouteBackendProtocolWebSocket,
-		),
-		ExtendedFeatures: sets.New(
+			// Required to support the different backend protocols we need
+			features.SupportHTTPRouteBackendProtocolH2C,
+			features.SupportHTTPRouteBackendProtocolWebSocket,
+
 			// This feature is required for DomainMapping
 			// HTTPRoute Extended Features
-			suite.SupportHTTPRouteHostRewrite,
+			features.SupportHTTPRouteHostRewrite,
 
 			// Optional - testing to check for support
-			suite.SupportHTTPRouteRequestTimeout,
-			suite.SupportHTTPRouteSchemeRedirect,
+			features.SupportHTTPRouteRequestTimeout,
+			features.SupportHTTPRouteSchemeRedirect,
 
-			// This _could_ be used for in cluster deployments
-			// suite.SupportGatewayInfrastructureMetadata, // https://github.com/kubernetes-sigs/gateway-api/pull/2845
+		// This _could_ be used for in cluster deployments
+		// suite.SupportGatewayInfrastructureMetadata, // https://github.com/kubernetes-sigs/gateway-api/pull/2845
 		),
 	}
 )
@@ -71,9 +63,8 @@ func init() {
 	suite.RegisterConformanceProfile(KnativeConformanceProfile)
 }
 
-func TestConformance(t *testing.T) {
+func TestGatewayConformance(t *testing.T) {
 	opts := conformance.DefaultOptions(t)
-	opts.ManifestFS = append(opts.ManifestFS, Manifests)
 	opts.ConformanceProfiles.Insert(KnativeConformanceProfile.Name)
 	conformance.RunConformanceWithOptions(t, opts)
 }

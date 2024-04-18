@@ -1,12 +1,10 @@
-#!/usr/bin/env bash
-
 # Copyright 2021 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,22 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source $(dirname $0)/e2e-common.sh
-
-# Script entry point.
-initialize "$@" --cluster-version=1.28
-
-# Run the tests
-header "Running e2e tests"
-
-failed=0
-
-knative_conformance || failed=1
-test_ha || failed=1
-test_conformance_no_gw_service || failed=1
-
-gateway_conformance || true # this is informational
-
-(( failed )) && fail_test
-
-success
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-gateway
+  namespace: knative-serving
+  labels:
+    serving.knative.dev/release: devel
+data:
+  visibility: |
+    ExternalIP:
+      class: contour
+      gateway: contour-external/knative-external
+    ClusterLocal:
+      class: contour
+      gateway: contour-internal/knative-local

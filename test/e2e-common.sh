@@ -162,6 +162,32 @@ function gateway_conformance() {
   popd
 }
 
+function test_conformance_no_gw_service() {
+  local parallel_count="12"
+  if (( KIND )); then
+    parallel_count="1"
+  fi
+
+  custom_configs_dir="${REPO_ROOT_DIR}/test/modified-config-gateway"
+  if [[ "${INGRESS}" == "contour" ]]; then
+    kubectl apply -f "${custom_configs_dir}/contour-no-service-vis" -n "${SYSTEM_NAMESPACE}"
+    echo "Waiting 30s for change to get picked up."
+    sleep 30
+  else
+    kubectl apply -f "${custom_configs_dir}/istio-no-service-vis" -n "${SYSTEM_NAMESPACE}"
+    echo "Waiting 30s for change to get picked up."
+    sleep 30
+  fi
+
+  go_test_e2e -timeout=20m -tags=e2e -parallel="${parallel_count}" ./test/conformance \
+    -enable-alpha \
+    -enable-beta \
+    -skip-tests="${UNSUPPORTED_E2E_TESTS}" \
+    -ingressClass=gateway-api.ingress.networking.knative.dev
+
+  return $?
+}
+
 function test_ha() {
   go_test_e2e -timeout=15m -failfast -parallel=1 ./test/ha \
     -spoofinterval="10ms" \

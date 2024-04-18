@@ -37,7 +37,7 @@ function parse_flags() {
       ;;
     --contour)
       readonly INGRESS=contour
-      readonly GATEWAY_OVERRIDE=envoy-knative-gateway
+      readonly GATEWAY_OVERRIDE=envoy-knative-external
       readonly GATEWAY_NAMESPACE_OVERRIDE=contour-external
       readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1

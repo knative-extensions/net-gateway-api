@@ -59,6 +59,9 @@ var (
 	privateSvc   = network.GetServiceHostname(privateName, testNamespace)
 
 	fakeStatusKey struct{}
+
+	publicGatewayAddress  = "11.22.33.44"
+	privateGatewayAddress = "55.66.77.88"
 )
 
 var (
@@ -2234,6 +2237,24 @@ func defaultListener(g *gatewayapi.Gateway) {
 		Name:     "http",
 		Port:     80,
 		Protocol: "HTTP",
+	})
+}
+
+func privateGw(g *gatewayapi.Gateway) {
+	g.Name = privateName
+}
+
+func setStatusPrivateAddress(g *gatewayapi.Gateway) {
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+		Value: privateGatewayAddress,
+	})
+}
+
+func setStatusPublicAddress(g *gatewayapi.Gateway) {
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+		Value: publicGatewayAddress,
 	})
 }
 

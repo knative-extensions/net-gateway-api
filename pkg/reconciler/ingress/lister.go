@@ -54,7 +54,6 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 
 	for visibility, urls := range backends.URLs {
 		if service := gatewayConfig.Gateways[visibility].Service; service != nil {
-
 			eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get endpoints: %w", err)
@@ -142,8 +141,6 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 	}
 	if foundTargets == 0 {
 		return nil, fmt.Errorf("no gateway pods available")
-
 	}
-
 	return targets, nil
 }

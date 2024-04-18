@@ -2136,6 +2136,60 @@ func (p ProbeIsReadyAfter) Build() func(types.NamespacedName) (status.ProbeState
 func makeLoadBalancerNotReady(i *v1alpha1.Ingress) {
 	i.Status.MarkLoadBalancerNotReady()
 }
+func TestReconcileProbingOffClusterGateway(t *testing.T) {
+	table := TableTest{
+		{
+			Name: "prober callback all endpoints ready",
+			Key:  "ns/name",
+			Ctx: withStatusManager(&fakeStatusManager{
+				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+					return status.ProbeState{Ready: true}, nil
+				},
+				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+					return status.ProbeState{Ready: true}, true
+				},
+			}),
+			Objects: append([]runtime.Object{
+				ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+				httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+				gw(defaultListener, setStatusPublicAddress),
+				gw(privateGw, defaultListener, setStatusPrivateAddress),
+			}, servicesAndEndpoints...),
+			WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+				{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
+			},
+		},
+	}
+
+	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
+		statusManager := ctx.Value(fakeStatusKey).(status.Manager)
+		r := &Reconciler{
+			gwapiclient: fakegwapiclientset.Get(ctx),
+			// Listers index properties about resources
+			httprouteLister: listers.GetHTTPRouteLister(),
+			gatewayLister:   listers.GetGatewayLister(),
+			statusManager:   statusManager,
+		}
+		return ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
+			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
+			controller.Options{
+				ConfigStore: &testConfigStore{
+					config: configNoService,
+				}})
+	}))
+}
+
+func makeItReadyOffClusterGateway(i *v1alpha1.Ingress) {
+	i.Status.InitializeConditions()
+	i.Status.MarkNetworkConfigured()
+	i.Status.MarkLoadBalancerReady(
+		[]v1alpha1.LoadBalancerIngressStatus{{
+			DomainInternal: publicGatewayAddress,
+		}},
+		[]v1alpha1.LoadBalancerIngressStatus{{
+			DomainInternal: privateGatewayAddress,
+		}})
+}
 
 func makeItReady(i *v1alpha1.Ingress) {
 	i.Status.InitializeConditions()
@@ -2361,6 +2415,20 @@ var (
 				},
 				v1alpha1.IngressVisibilityClusterLocal: {
 					Service: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
+					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
+				},
+			},
+		},
+	}
+
+	configNoService = &config.Config{
+		Network: &networkcfg.Config{},
+		Gateway: &config.Gateway{
+			Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
+				v1alpha1.IngressVisibilityExternalIP: {
+					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
+				},
+				v1alpha1.IngressVisibilityClusterLocal: {
 					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
 				},
 			},

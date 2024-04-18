@@ -37,6 +37,8 @@ metadata:
 spec:
   runtimeSettings:
     enableExternalNameService: true
+    featureFlags:
+    - "useEndpointSlices"
   contour:
     deployment:
       replicas: 1

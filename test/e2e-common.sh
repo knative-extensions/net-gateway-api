@@ -23,6 +23,7 @@ export CLUSTER_DOMAIN=${CLUSTER_DOMAIN:-cluster.local}
 export INGRESS=${INGRESS:-istio}
 export GATEWAY_OVERRIDE=${GATEWAY_OVERRIDE:-istio-ingressgateway}
 export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:-istio-system}
+export GATEWAY_CLASS=${GATEWAY_CLASS:-istio}
 export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-$ISTIO_UNSUPPORTED_E2E_TESTS}
 export KIND=${KIND:-0}
 
@@ -32,6 +33,7 @@ function parse_flags() {
       readonly INGRESS=istio
       readonly GATEWAY_OVERRIDE=istio-ingressgateway
       readonly GATEWAY_NAMESPACE_OVERRIDE=istio-system
+      readonly GATEWAY_CLASS=istio
       readonly UNSUPPORTED_E2E_TESTS="${ISTIO_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
@@ -39,6 +41,7 @@ function parse_flags() {
       readonly INGRESS=contour
       readonly GATEWAY_OVERRIDE=envoy-knative-external
       readonly GATEWAY_NAMESPACE_OVERRIDE=contour-external
+      readonly GATEWAY_CLASS=contour-external
       readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
@@ -136,7 +139,7 @@ function setup_istio() {
   fi
 }
 
-function test_conformance() {
+function knative_conformance() {
   local parallel_count="12"
   if (( KIND )); then
     parallel_count="1"
@@ -149,6 +152,14 @@ function test_conformance() {
     -ingressClass=gateway-api.ingress.networking.knative.dev
 
   return $?
+}
+
+function gateway_conformance() {
+  pushd "${REPO_ROOT_DIR}/test/gatewayapi"
+
+  go_test_e2e -timeout=30m -args -gateway-class ${GATEWAY_CLASS}
+
+  popd
 }
 
 function test_ha() {

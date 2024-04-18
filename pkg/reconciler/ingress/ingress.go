@@ -174,9 +174,9 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 // If a service is provided, it will return the address of the service.
 // Otherwise, it will return the first address in the Gateway status.
 func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig) ([]v1alpha1.LoadBalancerIngressStatus, error) {
-	if namespacedNameService := gwc.Service; namespacedNameService != nil {
+	if gwc.Service != nil {
 		return []v1alpha1.LoadBalancerIngressStatus{
-			{DomainInternal: network.GetServiceHostname(namespacedNameService.Name, namespacedNameService.Namespace)},
+			{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
 		}, nil
 	}
 	gw, err := c.gatewayLister.Gateways(gwc.Gateway.Namespace).Get(gwc.Gateway.Name)

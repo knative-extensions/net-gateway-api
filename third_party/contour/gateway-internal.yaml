@@ -37,6 +37,8 @@ metadata:
 spec:
   runtimeSettings:
     enableExternalNameService: true
+    featureFlags:
+    - "useEndpointSlices"
   envoy:
     networkPublishing:
       type: ClusterIPService

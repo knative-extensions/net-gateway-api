@@ -48,7 +48,7 @@ kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
   name: knative-local
-  namespace: contour
+  namespace: contour-internal
 spec:
   gatewayClassName: contour-internal
   listeners:

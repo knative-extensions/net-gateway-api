@@ -168,13 +168,14 @@ function test_conformance_no_gw_service() {
     parallel_count="1"
   fi
 
+  echo "Setting custom config-gateway"
   custom_configs_dir="${REPO_ROOT_DIR}/test/modified-config-gateway"
   if [[ "${INGRESS}" == "contour" ]]; then
-    kubectl apply -f "${custom_configs_dir}/contour-no-service-vis" -n "${SYSTEM_NAMESPACE}"
+    kubectl apply -f "${custom_configs_dir}/contour-no-service-vis.yaml" -n "${SYSTEM_NAMESPACE}"
     echo "Waiting 30s for change to get picked up."
     sleep 30
   else
-    kubectl apply -f "${custom_configs_dir}/istio-no-service-vis" -n "${SYSTEM_NAMESPACE}"
+    kubectl apply -f "${custom_configs_dir}/istio-no-service-vis.yaml" -n "${SYSTEM_NAMESPACE}"
     echo "Waiting 30s for change to get picked up."
     sleep 30
   fi
@@ -185,6 +186,15 @@ function test_conformance_no_gw_service() {
     -skip-tests="${UNSUPPORTED_E2E_TESTS}" \
     -ingressClass=gateway-api.ingress.networking.knative.dev
 
+  if [[ "${INGRESS}" == "contour" ]]; then
+    kubectl apply -f "${REPO_ROOT_DIR}/third_party/contour"
+    echo "Waiting 30s for change to get picked up."
+    sleep 30
+  else
+    kubectl apply -f "${custom_configs_dir}/istio-default.yaml"
+    echo "Waiting 30s for change to get picked up."
+    sleep 30
+  fi
   return $?
 }
 

@@ -26,8 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
@@ -44,7 +43,7 @@ func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 		for fIdx := range rule.Filters {
 			filter := &rule.Filters[fIdx]
 
-			if filter.Type != gatewayapiv1.HTTPRouteFilterRequestHeaderModifier {
+			if filter.Type != gatewayapi.HTTPRouteFilterRequestHeaderModifier {
 				continue
 			}
 
@@ -83,17 +82,17 @@ func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", backend.ServiceNamespace, backend.ServiceName)),
 			},
 			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+				Type:  ptr.To(gatewayapi.HeaderMatchExact),
 				Name:  header.HashKey,
 				Value: header.HashValueOverride,
 			}},
 		}},
 		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 				Set: []gatewayapi.HTTPHeader{{
 					Name:  header.HashKey,
@@ -104,7 +103,7 @@ func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.
 		BackendRefs: []gatewayapi.HTTPBackendRef{{
 			BackendRef: gatewayapi.BackendRef{
 				Weight: ptr.To[int32](100),
-				BackendObjectReference: gatewayapiv1.BackendObjectReference{
+				BackendObjectReference: gatewayapi.BackendObjectReference{
 					Group: ptr.To[gatewayapi.Group](""),
 					Kind:  ptr.To[gatewayapi.Kind]("Service"),
 					Name:  gatewayapi.ObjectName(backend.ServiceName),
@@ -119,7 +118,7 @@ func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.
 
 		for k, v := range backend.AppendHeaders {
 			headers = append(headers, gatewayapi.HTTPHeader{
-				Name:  gatewayapiv1.HTTPHeaderName(k),
+				Name:  gatewayapi.HTTPHeaderName(k),
 				Value: v,
 			})
 		}
@@ -127,8 +126,8 @@ func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.
 		slices.SortFunc(headers, compareHTTPHeader)
 
 		rule.BackendRefs[0].Filters = append(rule.BackendRefs[0].Filters,
-			gatewayapiv1.HTTPRouteFilter{
-				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			gatewayapi.HTTPRouteFilter{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: headers,
 				},
@@ -156,17 +155,17 @@ func AddOldBackend(r *gatewayapi.HTTPRoute, hash string, old gatewayapi.HTTPBack
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", r.Namespace, backend.Name)),
 			},
 			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+				Type:  ptr.To(gatewayapi.HeaderMatchExact),
 				Name:  header.HashKey,
 				Value: header.HashValueOverride,
 			}},
 		}},
 		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 				Set: []gatewayapi.HTTPHeader{{
 					Name:  header.HashKey,
@@ -250,7 +249,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			headers := []gatewayapi.HTTPHeader{}
 			for k, v := range path.AppendHeaders {
 				header := gatewayapi.HTTPHeader{
-					Name:  gatewayapiv1.HTTPHeaderName(k),
+					Name:  gatewayapi.HTTPHeaderName(k),
 					Value: v,
 				}
 				headers = append(headers, header)
@@ -260,7 +259,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			slices.SortFunc(headers, compareHTTPHeader)
 
 			preFilters = []gatewayapi.HTTPRouteFilter{{
-				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: headers,
 				}}}
@@ -268,7 +267,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 
 		if path.RewriteHost != "" {
 			preFilters = append(preFilters, gatewayapi.HTTPRouteFilter{
-				Type: gatewayapiv1.HTTPRouteFilterURLRewrite,
+				Type: gatewayapi.HTTPRouteFilterURLRewrite,
 				URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
 					Hostname: (*gatewayapi.PreciseHostname)(&path.RewriteHost),
 				},
@@ -279,7 +278,7 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			headers := []gatewayapi.HTTPHeader{}
 			for k, v := range split.AppendHeaders {
 				header := gatewayapi.HTTPHeader{
-					Name:  gatewayapiv1.HTTPHeaderName(k),
+					Name:  gatewayapi.HTTPHeaderName(k),
 					Value: v,
 				}
 				headers = append(headers, header)
@@ -294,13 +293,13 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 					BackendObjectReference: gatewayapi.BackendObjectReference{
 						Group: (*gatewayapi.Group)(ptr.To("")),
 						Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-						Port:  ptr.To(gatewayapiv1.PortNumber(split.ServicePort.IntValue())),
+						Port:  ptr.To(gatewayapi.PortNumber(split.ServicePort.IntValue())),
 						Name:  gatewayapi.ObjectName(name),
 					},
 					Weight: ptr.To(int32(split.Percent)),
 				},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: headers,
 					}},
@@ -313,15 +312,15 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			pathPrefix = path.Path
 		}
 		pathMatch := gatewayapi.HTTPPathMatch{
-			Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+			Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 			Value: ptr.To(pathPrefix),
 		}
 
 		var headerMatchList []gatewayapi.HTTPHeaderMatch
 		for k, v := range path.Headers {
 			headerMatch := gatewayapi.HTTPHeaderMatch{
-				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
-				Name:  gatewayapiv1.HTTPHeaderName(k),
+				Type:  ptr.To(gatewayapi.HeaderMatchExact),
+				Name:  gatewayapi.HTTPHeaderName(k),
 				Value: v.Exact,
 			}
 			headerMatchList = append(headerMatchList, headerMatch)

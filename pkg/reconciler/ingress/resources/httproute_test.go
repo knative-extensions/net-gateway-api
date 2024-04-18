@@ -31,8 +31,7 @@ import (
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
-	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
@@ -202,12 +201,12 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Group: (*gatewayapi.Group)(ptr.To("")),
 										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
 										Name:  gatewayapi.ObjectName("goo"),
-										Port:  ptr.To[gatewayapiv1.PortNumber](123),
+										Port:  ptr.To[gatewayapi.PortNumber](123),
 									},
 									Weight: ptr.To(int32(12)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -224,13 +223,13 @@ func TestMakeHTTPRoute(t *testing.T) {
 									BackendObjectReference: gatewayapi.BackendObjectReference{
 										Group: (*gatewayapi.Group)(ptr.To("")),
 										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-										Port:  ptr.To[gatewayapiv1.PortNumber](124),
+										Port:  ptr.To[gatewayapi.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
 									Weight: ptr.To(int32(88)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -241,7 +240,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
@@ -253,7 +252,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 										Value: ptr.To("/"),
 									},
 								},
@@ -292,7 +291,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									Weight: ptr.To(int32(12)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -309,13 +308,13 @@ func TestMakeHTTPRoute(t *testing.T) {
 									BackendObjectReference: gatewayapi.BackendObjectReference{
 										Group: (*gatewayapi.Group)(ptr.To("")),
 										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-										Port:  ptr.To[gatewayapiv1.PortNumber](124),
+										Port:  ptr.To[gatewayapi.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
 									Weight: ptr.To(int32(88)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{
 											{
@@ -326,7 +325,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 									}}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{
 										{
@@ -337,7 +336,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 								}}},
 							Matches: []gatewayapi.HTTPRouteMatch{{
 								Path: &gatewayapi.HTTPPathMatch{
-									Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+									Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 									Value: ptr.To("/"),
 								},
 							}},
@@ -417,25 +416,25 @@ func TestMakeHTTPRoute(t *testing.T) {
 									BackendObjectReference: gatewayapi.BackendObjectReference{
 										Group: (*gatewayapi.Group)(ptr.To("")),
 										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-										Port:  ptr.To[gatewayapiv1.PortNumber](123),
+										Port:  ptr.To[gatewayapi.PortNumber](123),
 										Name:  gatewayapi.ObjectName("goo"),
 									},
 									Weight: ptr.To(int32(100)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 										Value: ptr.To("/"),
 									},
 									Headers: []gatewayapi.HTTPHeaderMatch{{
-										Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
-										Name:  gatewayapiv1.HTTPHeaderName("tag"),
+										Type:  ptr.To(gatewayapi.HeaderMatchExact),
+										Name:  gatewayapi.HTTPHeaderName("tag"),
 										Value: "goo",
 									}},
 								}},
@@ -445,25 +444,25 @@ func TestMakeHTTPRoute(t *testing.T) {
 									BackendObjectReference: gatewayapi.BackendObjectReference{
 										Group: (*gatewayapi.Group)(ptr.To("")),
 										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-										Port:  ptr.To[gatewayapiv1.PortNumber](124),
+										Port:  ptr.To[gatewayapi.PortNumber](124),
 										Name:  gatewayapi.ObjectName("doo"),
 									},
 									Weight: ptr.To(int32(100)),
 								},
 								Filters: []gatewayapi.HTTPRouteFilter{{
-									Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 										Set: []gatewayapi.HTTPHeader{}}}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
-										Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 										Value: ptr.To("/doo"),
 									},
 									Headers: []gatewayapi.HTTPHeaderMatch{{
-										Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
-										Name:  gatewayapiv1.HTTPHeaderName("tag"),
+										Type:  ptr.To(gatewayapi.HeaderMatchExact),
+										Name:  gatewayapi.HTTPHeaderName("tag"),
 										Value: "doo",
 									}},
 								}},
@@ -513,7 +512,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 					Hostnames: []gatewayapi.Hostname{externalHost},
 					Rules: []gatewayapi.HTTPRouteRule{{
 						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapiv1.HTTPRouteFilterURLRewrite,
+							Type: gatewayapi.HTTPRouteFilterURLRewrite,
 							URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
 								Hostname: (*gatewayapi.PreciseHostname)(ptr.To("hello-example.example.com")),
 							},
@@ -521,7 +520,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 						BackendRefs: []gatewayapi.HTTPBackendRef{},
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 								Value: ptr.To("/"),
 							},
 						}}},
@@ -594,14 +593,14 @@ func TestAddEndpointProbes(t *testing.T) {
 			Rules: []gatewayapi.HTTPRouteRule{{
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/"),
 					},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-						Set: []gatewayapiv1.HTTPHeader{{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  "Foo",
 							Value: "bar",
 						}},
@@ -613,12 +612,12 @@ func TestAddEndpointProbes(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Port:  ptr.To(gatewayapi.PortNumber(123)),
 							Name:  "goo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -635,12 +634,12 @@ func TestAddEndpointProbes(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Port:  ptr.To(gatewayapi.PortNumber(124)),
 							Name:  "doo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -652,17 +651,17 @@ func TestAddEndpointProbes(t *testing.T) {
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/.well-known/knative/revision/test-ns/goo"),
 					},
 					Headers: []gatewayapi.HTTPHeaderMatch{{
-						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Type:  ptr.To(gatewayapi.HeaderMatchExact),
 						Name:  header.HashKey,
 						Value: header.HashValueOverride,
 					}},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
 							Name:  header.HashKey,
@@ -673,7 +672,7 @@ func TestAddEndpointProbes(t *testing.T) {
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
 					BackendRef: gatewayapi.BackendRef{
 						Weight: ptr.To[int32](100),
-						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: ptr.To[gatewayapi.Group](""),
 							Kind:  ptr.To[gatewayapi.Kind]("Service"),
 							Name:  "goo",
@@ -681,7 +680,7 @@ func TestAddEndpointProbes(t *testing.T) {
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -696,17 +695,17 @@ func TestAddEndpointProbes(t *testing.T) {
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/.well-known/knative/revision/test-ns/doo"),
 					},
 					Headers: []gatewayapi.HTTPHeaderMatch{{
-						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Type:  ptr.To(gatewayapi.HeaderMatchExact),
 						Name:  header.HashKey,
 						Value: header.HashValueOverride,
 					}},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
 							Name:  header.HashKey,
@@ -717,7 +716,7 @@ func TestAddEndpointProbes(t *testing.T) {
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
 					BackendRef: gatewayapi.BackendRef{
 						Weight: ptr.To[int32](100),
-						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: ptr.To[gatewayapi.Group](""),
 							Kind:  ptr.To[gatewayapi.Kind]("Service"),
 							Name:  "doo",
@@ -725,7 +724,7 @@ func TestAddEndpointProbes(t *testing.T) {
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -803,14 +802,14 @@ func TestUpdateProbeHash(t *testing.T) {
 			Rules: []gatewayapi.HTTPRouteRule{{
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/"),
 					},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-						Set: []gatewayapiv1.HTTPHeader{{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  "Foo",
 							Value: "bar",
 						}},
@@ -822,12 +821,12 @@ func TestUpdateProbeHash(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Port:  ptr.To(gatewayapi.PortNumber(123)),
 							Name:  "goo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -844,12 +843,12 @@ func TestUpdateProbeHash(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Port:  ptr.To(gatewayapi.PortNumber(124)),
 							Name:  "doo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -861,17 +860,17 @@ func TestUpdateProbeHash(t *testing.T) {
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/.well-known/knative/revision/test-ns/goo"),
 					},
 					Headers: []gatewayapi.HTTPHeaderMatch{{
-						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Type:  ptr.To(gatewayapi.HeaderMatchExact),
 						Name:  header.HashKey,
 						Value: header.HashValueOverride,
 					}},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
 							Name:  header.HashKey,
@@ -882,7 +881,7 @@ func TestUpdateProbeHash(t *testing.T) {
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
 					BackendRef: gatewayapi.BackendRef{
 						Weight: ptr.To[int32](100),
-						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: ptr.To[gatewayapi.Group](""),
 							Kind:  ptr.To[gatewayapi.Kind]("Service"),
 							Name:  "goo",
@@ -890,7 +889,7 @@ func TestUpdateProbeHash(t *testing.T) {
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -905,17 +904,17 @@ func TestUpdateProbeHash(t *testing.T) {
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/.well-known/knative/revision/test-ns/doo"),
 					},
 					Headers: []gatewayapi.HTTPHeaderMatch{{
-						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Type:  ptr.To(gatewayapi.HeaderMatchExact),
 						Name:  header.HashKey,
 						Value: header.HashValueOverride,
 					}},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
 							Name:  header.HashKey,
@@ -926,7 +925,7 @@ func TestUpdateProbeHash(t *testing.T) {
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
 					BackendRef: gatewayapi.BackendRef{
 						Weight: ptr.To[int32](100),
-						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: ptr.To[gatewayapi.Group](""),
 							Kind:  ptr.To[gatewayapi.Kind]("Service"),
 							Name:  "doo",
@@ -934,7 +933,7 @@ func TestUpdateProbeHash(t *testing.T) {
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -966,7 +965,7 @@ func TestAddOldBackend(t *testing.T) {
 	AddOldBackend(route, "hash", gatewayapi.HTTPBackendRef{
 		BackendRef: gatewayapi.BackendRef{
 			Weight: ptr.To[int32](100),
-			BackendObjectReference: gatewayapiv1.BackendObjectReference{
+			BackendObjectReference: gatewayapi.BackendObjectReference{
 				Group:     ptr.To[gatewayapi.Group](""),
 				Kind:      ptr.To[gatewayapi.Kind]("Service"),
 				Name:      "blah",
@@ -975,7 +974,7 @@ func TestAddOldBackend(t *testing.T) {
 			},
 		},
 		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 				Set: []gatewayapi.HTTPHeader{{
 					Name:  "Foo",
@@ -1009,14 +1008,14 @@ func TestAddOldBackend(t *testing.T) {
 			Rules: []gatewayapi.HTTPRouteRule{{
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/"),
 					},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-						Set: []gatewayapiv1.HTTPHeader{{
+						Set: []gatewayapi.HTTPHeader{{
 							Name:  "Foo",
 							Value: "bar",
 						}},
@@ -1028,12 +1027,12 @@ func TestAddOldBackend(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(123)),
+							Port:  ptr.To(gatewayapi.PortNumber(123)),
 							Name:  "goo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -1050,12 +1049,12 @@ func TestAddOldBackend(t *testing.T) {
 						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group: (*gatewayapi.Group)(ptr.To("")),
 							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapiv1.PortNumber(124)),
+							Port:  ptr.To(gatewayapi.PortNumber(124)),
 							Name:  "doo",
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Baz",
@@ -1067,17 +1066,17 @@ func TestAddOldBackend(t *testing.T) {
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
 					Path: &gatewayapi.HTTPPathMatch{
-						Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+						Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 						Value: ptr.To("/.well-known/knative/revision/test-ns/blah"),
 					},
 					Headers: []gatewayapi.HTTPHeaderMatch{{
-						Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+						Type:  ptr.To(gatewayapi.HeaderMatchExact),
 						Name:  header.HashKey,
 						Value: header.HashValueOverride,
 					}},
 				}},
 				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
 							Name:  header.HashKey,
@@ -1088,7 +1087,7 @@ func TestAddOldBackend(t *testing.T) {
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
 					BackendRef: gatewayapi.BackendRef{
 						Weight: ptr.To[int32](100),
-						BackendObjectReference: gatewayapiv1.BackendObjectReference{
+						BackendObjectReference: gatewayapi.BackendObjectReference{
 							Group:     ptr.To[gatewayapi.Group](""),
 							Kind:      ptr.To[gatewayapi.Kind]("Service"),
 							Name:      "blah",
@@ -1097,7 +1096,7 @@ func TestAddOldBackend(t *testing.T) {
 						},
 					},
 					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 							Set: []gatewayapi.HTTPHeader{{
 								Name:  "Foo",

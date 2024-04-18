@@ -33,9 +33,10 @@ import (
 	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
+	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
 const (
@@ -52,7 +53,7 @@ type Reconciler struct {
 	// Listers index properties about resources
 	httprouteLister gatewaylisters.HTTPRouteLister
 
-	referenceGrantLister gatewaylisters.ReferenceGrantLister
+	referenceGrantLister gatewaylistersv1beta1.ReferenceGrantLister
 
 	gatewayLister gatewaylisters.GatewayLister
 }

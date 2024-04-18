@@ -21,8 +21,7 @@ import (
 	"k8s.io/utils/ptr"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/http/header"
-	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type RuleBuilder interface {
@@ -119,17 +118,17 @@ func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 				Value: ptr.To(path),
 			},
 			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+				Type:  ptr.To(gatewayapi.HeaderMatchExact),
 				Name:  header.HashKey,
 				Value: header.HashValueOverride,
 			}},
 		}},
 		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 				Set: []gatewayapi.HTTPHeader{{
 					Name:  header.HashKey,
@@ -138,8 +137,8 @@ func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
 			},
 		}},
 		BackendRefs: []gatewayapi.HTTPBackendRef{{
-			Filters: []gatewayapiv1.HTTPRouteFilter{{
-				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Filters: []gatewayapi.HTTPRouteFilter{{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: []gatewayapi.HTTPHeader{{
 						Name:  "K-Serving-Namespace",
@@ -152,7 +151,7 @@ func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
 			}},
 			BackendRef: gatewayapi.BackendRef{
 				Weight: ptr.To[int32](100),
-				BackendObjectReference: gatewayapiv1.BackendObjectReference{
+				BackendObjectReference: gatewayapi.BackendObjectReference{
 					Group: ptr.To[gatewayapi.Group](""),
 					Kind:  ptr.To[gatewayapi.Kind]("Service"),
 					Name:  gatewayapi.ObjectName(p.Name),
@@ -166,7 +165,7 @@ func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
 		k, v := p.Headers[i], p.Headers[i+1]
 		rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set = append(
 			rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set,
-			gatewayapi.HTTPHeader{Name: gatewayapiv1.HTTPHeaderName(k), Value: v},
+			gatewayapi.HTTPHeader{Name: gatewayapi.HTTPHeaderName(k), Value: v},
 		)
 	}
 
@@ -190,13 +189,13 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 	rule := gatewayapi.HTTPRouteRule{
 		Matches: []gatewayapi.HTTPRouteMatch{{
 			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 				Value: ptr.To(path),
 			},
 		}},
 		BackendRefs: []gatewayapi.HTTPBackendRef{{
-			Filters: []gatewayapiv1.HTTPRouteFilter{{
-				Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+			Filters: []gatewayapi.HTTPRouteFilter{{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: []gatewayapi.HTTPHeader{{
 						Name:  "K-Serving-Namespace",
@@ -208,7 +207,7 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 				},
 			}},
 			BackendRef: gatewayapi.BackendRef{
-				BackendObjectReference: gatewayapiv1.BackendObjectReference{
+				BackendObjectReference: gatewayapi.BackendObjectReference{
 					Group: ptr.To[gatewayapi.Group](""),
 					Kind:  ptr.To[gatewayapi.Kind]("Service"),
 					Name:  gatewayapi.ObjectName(p.Name),
@@ -224,7 +223,7 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 		k, v := p.Headers[i], p.Headers[i+1]
 		rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set = append(
 			rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set,
-			gatewayapi.HTTPHeader{Name: gatewayapiv1.HTTPHeaderName(k), Value: v},
+			gatewayapi.HTTPHeader{Name: gatewayapi.HTTPHeaderName(k), Value: v},
 		)
 	}
 

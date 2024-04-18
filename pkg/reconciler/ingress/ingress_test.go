@@ -2184,10 +2184,10 @@ func makeItReadyOffClusterGateway(i *v1alpha1.Ingress) {
 	i.Status.MarkNetworkConfigured()
 	i.Status.MarkLoadBalancerReady(
 		[]v1alpha1.LoadBalancerIngressStatus{{
-			DomainInternal: publicGatewayAddress,
+			IP: publicGatewayAddress,
 		}},
 		[]v1alpha1.LoadBalancerIngressStatus{{
-			DomainInternal: privateGatewayAddress,
+			IP: privateGatewayAddress,
 		}})
 }
 

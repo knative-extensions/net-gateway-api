@@ -192,7 +192,8 @@ func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig
 	case gatewayapi.IPAddressType:
 		lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
 	default:
-		lbis = v1alpha1.LoadBalancerIngressStatus{Domain: gw.Status.Addresses[0].Value}
+		// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
+		lbis = v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value}
 	}
 
 	return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil

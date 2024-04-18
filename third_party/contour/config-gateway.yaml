@@ -23,9 +23,9 @@ data:
   visibility: |
     ExternalIP:
       class: contour
-      gateway: contour-external/knative-gateway
-      service: contour-external/envoy-knative-gateway
+      gateway: contour-external/knative-external
+      service: contour-external/envoy-knative-external
     ClusterLocal:
       class: contour
-      gateway: contour-internal/knative-local-gateway
-      service: contour-internal/envoy-knative-local-gateway
+      gateway: contour-internal/knative-local
+      service: contour-internal/envoy-knative-local

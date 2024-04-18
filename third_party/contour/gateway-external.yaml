@@ -20,19 +20,19 @@ metadata:
 kind: GatewayClass
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
-  name: contour-external-gatewayclass
+  name: contour-external
 spec:
   controllerName: projectcontour.io/gateway-controller
   parametersRef:
     kind: ContourDeployment
     group: projectcontour.io
-    name: contour-external-gatewayclass
+    name: contour-external
     namespace: contour-external
 ---
 kind: ContourDeployment
 apiVersion: projectcontour.io/v1alpha1
 metadata:
-  name: contour-external-gatewayclass
+  name: contour-external
   namespace: contour-external
 spec:
   runtimeSettings:
@@ -44,10 +44,10 @@ spec:
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
-  name: knative-gateway
+  name: knative-external
   namespace: contour-external
 spec:
-  gatewayClassName: contour-external-gatewayclass
+  gatewayClassName: contour-external
   listeners:
   - name: http
     port: 80

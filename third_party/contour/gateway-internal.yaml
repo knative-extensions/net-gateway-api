@@ -20,19 +20,19 @@ metadata:
 kind: GatewayClass
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
-  name: contour-internal-gatewayclass
+  name: contour-internal
 spec:
   controllerName: projectcontour.io/gateway-controller
   parametersRef:
     kind: ContourDeployment
     group: projectcontour.io
-    name: contour-internal-gatewayclass
+    name: contour-internal
     namespace: contour-internal
 ---
 kind: ContourDeployment
 apiVersion: projectcontour.io/v1alpha1
 metadata:
-  name: contour-internal-gatewayclass
+  name: contour-internal
   namespace: contour-internal
 spec:
   runtimeSettings:
@@ -47,10 +47,10 @@ spec:
 kind: Gateway
 apiVersion: gateway.networking.k8s.io/v1beta1
 metadata:
-  name: knative-local-gateway
-  namespace: contour-internal
+  name: knative-local
+  namespace: contour
 spec:
-  gatewayClassName: contour-internal-gatewayclass
+  gatewayClassName: contour-internal
   listeners:
   - name: http
     port: 80

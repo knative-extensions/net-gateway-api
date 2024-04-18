@@ -155,8 +155,11 @@ function knative_conformance() {
 }
 
 function gateway_conformance() {
-  go_test_e2e -timeout=30m ./test/gatewayapi -args \
-    -gateway-class ${GATEWAY_CLASS}
+  pushd "${REPO_ROOT_DIR}/test/gatewayapi"
+
+  go_test_e2e -timeout=30m -args -gateway-class ${GATEWAY_CLASS}
+
+  popd
 }
 
 function test_ha() {

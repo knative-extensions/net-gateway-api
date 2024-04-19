@@ -44,28 +44,28 @@ const listenerPrefix = "kni-"
 // reconcileHTTPRoute reconciles HTTPRoute.
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context,
-	hash *string,
+	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gatewayapi.HTTPRoute, error) {
+) (*gatewayapi.HTTPRoute, string, error) {
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
 	if apierrs.IsNotFound(err) {
 		desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
 		if err != nil {
-			return nil, err
+			return nil, hash, err
 		}
 		httproute, err = c.gwapiclient.GatewayV1beta1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
-			return nil, fmt.Errorf("failed to create HTTPRoute: %w", err)
+			return nil, hash, fmt.Errorf("failed to create HTTPRoute: %w", err)
 		}
 
 		recorder.Eventf(ing, corev1.EventTypeNormal, "Created", "Created HTTPRoute %q", httproute.GetName())
-		return httproute, nil
+		return httproute, hash, nil
 	} else if err != nil {
-		return nil, err
+		return nil, hash, err
 	}
 
 	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
@@ -73,11 +73,11 @@ func (c *Reconciler) reconcileHTTPRoute(
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
-	hash *string,
+	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 	httproute *gatewayapi.HTTPRoute,
-) (*gatewayapi.HTTPRoute, error) {
+) (*gatewayapi.HTTPRoute, string, error) {
 
 	const (
 		endpointPrefix   = "ep-"
@@ -104,45 +104,45 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 
 	newBackends, oldBackends := computeBackends(httproute, rule)
 
-	if wasTransitionProbe && probeHash == *hash && probe.Ready {
+	if wasTransitionProbe && probeHash == hash && probe.Ready {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-	} else if wasEndpointProbe && probeHash == *hash && probe.Ready {
-		*hash = transitionPrefix + *hash
+	} else if wasEndpointProbe && probeHash == hash && probe.Ready {
+		hash = transitionPrefix + hash
 
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-		resources.UpdateProbeHash(desired, *hash)
+		resources.UpdateProbeHash(desired, hash)
 
 		resources.RemoveEndpointProbes(httproute)
 		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, *hash, backend)
+			resources.AddEndpointProbe(desired, hash, backend)
 		}
 		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, *hash, backend)
+			resources.AddOldBackend(desired, hash, backend)
 		}
 	} else if len(newBackends) > 0 {
-		*hash = endpointPrefix + *hash
+		hash = endpointPrefix + hash
 		desired = httproute.DeepCopy()
-		resources.UpdateProbeHash(desired, *hash)
+		resources.UpdateProbeHash(desired, hash)
 		resources.RemoveEndpointProbes(desired)
 		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, *hash, backend)
+			resources.AddEndpointProbe(desired, hash, backend)
 		}
 		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, *hash, backend)
+			resources.AddOldBackend(desired, hash, backend)
 		}
-	} else if probeHash != *hash {
+	} else if probeHash != hash {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else {
 		// Noop
 		if probe.Version != "" {
-			*hash = probe.Version
+			hash = probe.Version
 		}
 		// desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-		return httproute, nil
+		return httproute, hash, nil
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, hash, err
 	}
 
 	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
@@ -159,12 +159,12 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
-			return nil, fmt.Errorf("failed to update HTTPRoute: %w", err)
+			return nil, hash, fmt.Errorf("failed to update HTTPRoute: %w", err)
 		}
-		return updated, nil
+		return updated, hash, nil
 	}
 
-	return httproute, nil
+	return httproute, hash, nil
 }
 
 func (c *Reconciler) reconcileTLS(

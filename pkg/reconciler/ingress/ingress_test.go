@@ -472,7 +472,7 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "updated ingress - new backends used for endpoint probing",
 		Key:  "ns/name",
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			ing(withBasicSpec, withSecondRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady),
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		Ctx: withStatusManager(&fakeStatusManager{
@@ -484,7 +484,9 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withSecondRevisionSpec,
+			Object: ing(
+				withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -545,7 +547,8 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -602,7 +605,8 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -698,7 +702,8 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -922,7 +927,8 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -998,14 +1004,16 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withSecondRevisionSpec,
+			Object: ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
 			),
 		}},
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -1051,7 +1059,8 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withSecondRevisionSpec,
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -1109,7 +1118,13 @@ func TestReconcileProbing(t *testing.T) {
 			},
 		}),
 		Objects: append([]runtime.Object{
-			ing(withThirdRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady, makeLoadBalancerNotReady),
+			ing(
+				withBasicSpec,
+				withThirdRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady),
 			HTTPRoute{
 				Name:      "example.com",
 				Namespace: "ns",
@@ -1230,6 +1245,162 @@ func TestReconcileProbing(t *testing.T) {
 						Headers:   []string{"key", "value"},
 						Port:      123,
 						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "multiple visibility - updated ingress - new backends used for endpoint probing",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(
+				withBasicSpec,
+				withInternalSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "first-hash",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+			HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "first-hash",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      124,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(
+				withBasicSpec,
+				withInternalSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, {
+			Object: HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      124,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
 					},
 				},
 				StatusConditions: []metav1.Condition{{

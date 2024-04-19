@@ -92,16 +92,16 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	ing.Status.InitializeConditions()
 
 	var (
-		hash string
-		err  error
+		ingressHash string
+		err         error
 	)
 
-	if hash, err = ingress.InsertProbe(ing); err != nil {
+	if ingressHash, err = ingress.InsertProbe(ing); err != nil {
 		return fmt.Errorf("failed to add knative probe header: %w", err)
 	}
 
 	backends := status.Backends{
-		Version: hash,
+		Version: ingressHash,
 		Key: types.NamespacedName{
 			Name:      ing.Name,
 			Namespace: ing.Namespace,
@@ -111,10 +111,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproute, err := c.reconcileHTTPRoute(ctx, &hash, ing, &rule)
+		httproute, routeHash, err := c.reconcileHTTPRoute(ctx, ingressHash, ing, &rule)
 		if err != nil {
 			return err
 		}
+
+		backends.Version = routeHash
 
 		if isHTTPRouteReady(httproute) {
 			ing.Status.MarkNetworkConfigured()
@@ -123,9 +125,6 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
 		}
 	}
-
-	// Hash might have changed depending on HTTPRoute reconciliation
-	backends.Version = hash
 
 	externalIngressTLS := ing.GetIngressTLSForVisibility(v1alpha1.IngressVisibilityExternalIP)
 	listeners := make([]*gatewayapi.Listener, 0, len(externalIngressTLS))

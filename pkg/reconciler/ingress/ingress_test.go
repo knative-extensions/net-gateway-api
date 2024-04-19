@@ -1410,6 +1410,105 @@ func TestReconcileProbing(t *testing.T) {
 			}.Build(),
 		}},
 	}, {
+		Name: "multiple visibility - steady state ingress - endpoint probing still not ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{
+					Ready:   false,
+					Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+				}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withInternalSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+			HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      124,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+	}, {
 		Name: "multiple visibility - endpoints are ready - transition to new backends",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{

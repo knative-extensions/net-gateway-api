@@ -915,7 +915,7 @@ func TestReconcileProbing(t *testing.T) {
 		},
 			servicesAndEndpoints...),
 	}, {
-		Name: "transition probe complete - drop endpoint probes",
+		Name: "transition probe complete - drop probes",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
 			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
@@ -1782,6 +1782,154 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}, servicesAndEndpoints...),
+	}, {
+		Name: "multiple visibility - transition complete - drop probes",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(
+				withBasicSpec,
+				withInternalSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+			HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      124,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      123,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, {
+			Object: HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      124,
+						Weight:    100,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

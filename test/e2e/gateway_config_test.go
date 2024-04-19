@@ -118,7 +118,7 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 
 	// restore the old configmap
 	updated.Data = original.Data
-	_, err = clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, original, v1.UpdateOptions{})
+	_, err = clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, updated, v1.UpdateOptions{})
 	if err != nil {
 		t.Fatalf("failed to restore config-gateway ConfigMap: %v", err)
 	}

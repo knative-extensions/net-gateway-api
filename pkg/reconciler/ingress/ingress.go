@@ -154,11 +154,13 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 		publicLbs, err = c.determineLoadBalancerIngressStatus(externalIPGatewayConfig)
 		if err != nil {
+			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
 
 		privateLbs, err = c.determineLoadBalancerIngressStatus(internalIPGatewayConfig)
 		if err != nil {
+			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
 
@@ -188,15 +190,19 @@ func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig
 
 	var lbis v1alpha1.LoadBalancerIngressStatus
 
-	switch *gw.Status.Addresses[0].Type {
-	case gatewayapi.IPAddressType:
-		lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
-	default:
-		// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
-		lbis = v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value}
+	if len(gw.Status.Addresses) > 0 {
+		switch *gw.Status.Addresses[0].Type {
+		case gatewayapi.IPAddressType:
+			lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
+		default:
+			// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
+			lbis = v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value}
+		}
+
+		return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
 	}
 
-	return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
+	return nil, fmt.Errorf("Gateway %s does not have an address in status", gwc.Gateway.Name) //nolint:stylecheck
 
 }
 

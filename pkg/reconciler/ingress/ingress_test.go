@@ -2157,6 +2157,37 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
 			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
 		},
+	}, {
+		Name: "gateway not ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
+			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			gw(defaultListener),
+			gw(privateGw, defaultListener),
+		}, servicesAndEndpoints...),
+		WantErr: true,
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+			//{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
+			{Object: ing(withBasicSpec, withGatewayAPIClass, withFinalizer, func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkLoadBalancerNotReady()
+				i.Status.MarkNetworkConfigured()
+				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+			}),
+			},
+		},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway istio-gateway does not have an address in status`),
+		},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

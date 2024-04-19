@@ -164,10 +164,9 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 					),
 				)
 				return fmt.Errorf("Gateway %s does not exist: %w", externalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
-			} else {
-				ing.Status.MarkLoadBalancerNotReady()
-				return err
 			}
+			ing.Status.MarkLoadBalancerNotReady()
+			return err
 		}
 
 		privateLbs, err = c.determineLoadBalancerIngressStatus(internalIPGatewayConfig)
@@ -182,10 +181,9 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 					),
 				)
 				return fmt.Errorf("Gateway %s does not exist: %w", internalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
-			} else {
-				ing.Status.MarkLoadBalancerNotReady()
-				return err
 			}
+			ing.Status.MarkLoadBalancerNotReady()
+			return err
 		}
 
 		ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)

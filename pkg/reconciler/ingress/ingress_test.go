@@ -18,7 +18,6 @@ package ingress
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -168,13 +167,8 @@ func TestReconcile(t *testing.T) {
 			Object: ing(withBasicSpec, withGatewayAPIclass, func(i *v1alpha1.Ingress) {
 				// These are the things we expect to change in status.
 				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerReady(
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: publicSvc,
-					}},
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: privateSvc,
-					}})
+				i.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
+				i.Status.MarkLoadBalancerNotReady()
 			}),
 		}},
 		WantPatches: []clientgotesting.PatchActionImpl{{
@@ -193,7 +187,7 @@ func TestReconcile(t *testing.T) {
 		Key:  "ns/name",
 		Objects: append([]runtime.Object{
 			ing(withBasicSpec, withGatewayAPIclass, makeItReady, withFinalizer),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		// no extra update
 	}}
@@ -255,13 +249,8 @@ func TestReconcileTLS(t *testing.T) {
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
 			Object: ing(withBasicSpec, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerReady(
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: publicSvc,
-					}},
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: privateSvc,
-					}})
+				i.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
+				i.Status.MarkLoadBalancerNotReady()
 			}),
 		}},
 		WantEvents: []string{
@@ -272,27 +261,15 @@ func TestReconcileTLS(t *testing.T) {
 		Name: "Already Configured",
 		Key:  "ns/name",
 		Objects: []runtime.Object{
-			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS()),
+			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(), makeItReady),
 			secret(secretName, nsName),
 			gw(defaultListener, tlsListener("example.com", nsName, secretName)),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS()), httpRouteReady),
 			rp(secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{
 			// None
 		},
-		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(), func(i *v1alpha1.Ingress) {
-				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerReady(
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: publicSvc,
-					}},
-					[]v1alpha1.LoadBalancerIngressStatus{{
-						DomainInternal: privateSvc,
-					}})
-			}),
-		}},
 		WantEvents: []string{
 			// None
 		},
@@ -421,40 +398,6 @@ func TestReconcileProbing(t *testing.T) {
 		WantEvents: []string{
 			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
-		},
-	}, {
-		Name: "first reconcile probe returns an error",
-		Key:  "ns/name",
-		Ctx: withStatusManager(&fakeStatusManager{
-			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
-				return status.ProbeState{Ready: false}, false
-			},
-			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
-				return status.ProbeState{Ready: false}, errors.New("this is the error")
-			},
-		}),
-		WantErr: true,
-		Objects: append([]runtime.Object{
-			ing(withBasicSpec, withGatewayAPIclass),
-		}, servicesAndEndpoints...),
-		WantCreates: []runtime.Object{httpRoute(t, ing(withBasicSpec, withGatewayAPIclass))},
-		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
-			Object: ing(withBasicSpec, withGatewayAPIclass, func(i *v1alpha1.Ingress) {
-				i.Status.InitializeConditions()
-				i.Status.MarkIngressNotReady(notReconciledReason, notReconciledMessage)
-			}),
-		}},
-		WantPatches: []clientgotesting.PatchActionImpl{{
-			ActionImpl: clientgotesting.ActionImpl{
-				Namespace: "ns",
-			},
-			Name:  "name",
-			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
-		}},
-		WantEvents: []string{
-			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
-			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
-			Eventf(corev1.EventTypeWarning, "InternalError", "failed to probe Ingress: this is the error"),
 		},
 	}, {
 		Name: "prober callback all endpoints ready",
@@ -2018,7 +1961,7 @@ func TestReconcileProbing(t *testing.T) {
 		}},
 	}, {
 		Name: "multiple visibility - steady state ingress - probe state flips while reconciliing",
-		// HTTPRoutes should flip states together
+		// Probes are tied to the HTTPRoute so they can have different hashes
 		Key: "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
 			FakeIsProbeActive: ProbeIsReadyAfter{
@@ -2114,6 +2057,46 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Port:      124,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "tr-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

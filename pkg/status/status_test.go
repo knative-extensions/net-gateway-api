@@ -302,8 +302,9 @@ func TestProbeLifecycle(t *testing.T) {
 	}()
 
 	backends := Backends{
-		Key:     ingressNN,
-		Version: hash,
+		CallbackKey: ingressNN,
+		Key:         ingressNN,
+		Version:     hash,
 		URLs: map[v1alpha1.IngressVisibility]URLSet{
 			v1alpha1.IngressVisibilityExternalIP: sets.New(
 				hostAURL,
@@ -787,8 +788,7 @@ func TestProbeVerifier(t *testing.T) {
 	const hash = "Hi! I am hash!"
 	prober := NewProber(zaptest.NewLogger(t).Sugar(), nil, nil)
 	verifier := prober.probeVerifier(&workItem{
-		ingressState: &ingressState{
-			key:     ingressNN,
+		routeState: &routeState{
 			version: hash,
 		},
 		podState: nil,

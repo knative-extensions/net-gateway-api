@@ -82,7 +82,7 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 		configGateway.Name = "config-gateway"
 	}
 
-	_, err = clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, configGateway, v1.UpdateOptions{})
+	updated, err := clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, configGateway, v1.UpdateOptions{})
 	if err != nil {
 		t.Fatalf("failed to update config-gateway ConfigMap: %v", err)
 	}
@@ -116,6 +116,8 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	// Verify the new service is accessible via the ingress.
 	assertIngressEventuallyWorks(ctx, t, clients, apis.HTTP(svcName+domain).URL())
 
+	// restore the old configmap
+	updated.Data = original.Data
 	_, err = clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, original, v1.UpdateOptions{})
 	if err != nil {
 		t.Fatalf("failed to restore config-gateway ConfigMap: %v", err)

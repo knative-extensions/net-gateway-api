@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note: when Contour is configured to use ClusterIP, an address does not get
+# assigned to the Gateway. Therefore, we cannot omit the service for the
+# ClusterLocal visibility
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,3 +31,4 @@ data:
     ClusterLocal:
       class: contour
       gateway: contour-internal/knative-local
+      service: contour-internal/envoy-knative-local

@@ -125,11 +125,12 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 			if len(gw.Status.Addresses) == 0 {
 				return nil, fmt.Errorf("no Addresses available in Status of Gateway %s/%s", gw.Namespace, gw.Name)
 			}
-			var pt status.ProbeTarget
-			pt = status.ProbeTarget{
+
+			pt := status.ProbeTarget{
 				PodIPs:  sets.New[string](gw.Status.Addresses[0].Value),
 				PodPort: podPort,
 			}
+
 			for url := range urls {
 				url := url
 				url.Scheme = scheme

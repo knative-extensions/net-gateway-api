@@ -2137,29 +2137,27 @@ func makeLoadBalancerNotReady(i *v1alpha1.Ingress) {
 	i.Status.MarkLoadBalancerNotReady()
 }
 func TestReconcileProbingOffClusterGateway(t *testing.T) {
-	table := TableTest{
-		{
-			Name: "prober callback all endpoints ready",
-			Key:  "ns/name",
-			Ctx: withStatusManager(&fakeStatusManager{
-				FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
-					return status.ProbeState{Ready: true}, nil
-				},
-				FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
-					return status.ProbeState{Ready: true}, true
-				},
-			}),
-			Objects: append([]runtime.Object{
-				ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
-				httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
-				gw(defaultListener, setStatusPublicAddress),
-				gw(privateGw, defaultListener, setStatusPrivateAddress),
-			}, servicesAndEndpoints...),
-			WantStatusUpdates: []clientgotesting.UpdateActionImpl{
-				{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
+	table := TableTest{{
+		Name: "prober callback all endpoints ready",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
 			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			gw(defaultListener, setStatusPublicAddress),
+			gw(privateGw, defaultListener, setStatusPrivateAddress),
+		}, servicesAndEndpoints...),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
 		},
-	}
+	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
 		statusManager := ctx.Value(fakeStatusKey).(status.Manager)

@@ -57,9 +57,10 @@ const (
 var dialContext = (&net.Dialer{Timeout: probeTimeout}).DialContext
 
 // ingressState represents the probing state of an Ingress
-type ingressState struct {
-	version string
-	key     types.NamespacedName
+type routeState struct {
+	version     string
+	key         types.NamespacedName
+	callbackKey types.NamespacedName
 
 	// pendingCount is the number of pods that haven't been successfully probed yet
 	pendingCount atomic.Int32
@@ -83,13 +84,13 @@ type cancelContext struct {
 }
 
 type workItem struct {
-	ingressState *ingressState
-	podState     *podState
-	context      context.Context
-	url          *url.URL
-	podIP        string
-	podPort      string
-	logger       *zap.SugaredLogger
+	routeState *routeState
+	podState   *podState
+	context    context.Context
+	url        *url.URL
+	podIP      string
+	podPort    string
+	logger     *zap.SugaredLogger
 }
 
 // ProbeTarget contains the URLs to probes for a set of Pod IPs serving out of the same port.
@@ -106,10 +107,11 @@ type ProbeState struct {
 }
 
 type Backends struct {
-	Key        types.NamespacedName
-	Version    string
-	URLs       map[Visibility]URLSet
-	HTTPOption v1alpha1.HTTPOption
+	CallbackKey types.NamespacedName
+	Key         types.NamespacedName
+	Version     string
+	URLs        map[Visibility]URLSet
+	HTTPOption  v1alpha1.HTTPOption
 }
 
 func (b *Backends) AddURL(v Visibility, u url.URL) {
@@ -144,10 +146,10 @@ type Manager interface {
 type Prober struct {
 	logger *zap.SugaredLogger
 
-	// mu guards ingressStates and podContexts
-	mu            sync.RWMutex
-	ingressStates map[types.NamespacedName]*ingressState
-	podContexts   map[string]cancelContext
+	// mu guards routeStates and podContexts
+	mu          sync.RWMutex
+	routeStates map[types.NamespacedName]*routeState
+	podContexts map[string]cancelContext
 
 	workQueue workqueue.RateLimitingInterface
 
@@ -164,9 +166,9 @@ func NewProber(
 	targetLister ProbeTargetLister,
 	readyCallback func(types.NamespacedName)) *Prober {
 	return &Prober{
-		logger:        logger,
-		ingressStates: make(map[types.NamespacedName]*ingressState),
-		podContexts:   make(map[string]cancelContext),
+		logger:      logger,
+		routeStates: make(map[types.NamespacedName]*routeState),
+		podContexts: make(map[string]cancelContext),
 		workQueue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.NewMaxOfRateLimiter(
 				// Per item exponential backoff
@@ -185,7 +187,7 @@ func NewProber(
 func (m *Prober) IsProbeActive(key types.NamespacedName) (ProbeState, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if ingState, ok := m.ingressStates[key]; ok {
+	if ingState, ok := m.routeStates[key]; ok {
 		return ProbeState{Version: ingState.version, Ready: ingState.pendingCount.Load() == 0}, true
 	}
 	return ProbeState{}, false
@@ -197,7 +199,7 @@ func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, e
 	if state, ok := func() (ProbeState, bool) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		if ingState, ok := m.ingressStates[backends.Key]; ok {
+		if ingState, ok := m.routeStates[backends.Key]; ok {
 			pstate := ProbeState{Version: ingState.version}
 			if ingState.version == backends.Version {
 				ingState.lastAccessed = time.Now()
@@ -207,7 +209,7 @@ func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, e
 
 			// Cancel the polling for the outdated version
 			ingState.cancel()
-			delete(m.ingressStates, backends.Key)
+			delete(m.routeStates, backends.Key)
 		}
 		return ProbeState{}, false
 	}(); ok {
@@ -223,6 +225,7 @@ func (m *Prober) DoProbes(ctx context.Context, backends Backends) (ProbeState, e
 	ready := m.probeRequest(logger,
 		backends.Version,
 		backends.Key,
+		backends.CallbackKey,
 		targets,
 	)
 
@@ -236,13 +239,15 @@ func (m *Prober) probeRequest(
 	logger *zap.SugaredLogger,
 	version string,
 	key types.NamespacedName,
+	callbackKey types.NamespacedName,
 	targets []ProbeTarget,
 
 ) bool {
 	ingCtx, cancel := context.WithCancel(context.Background())
-	ingressState := &ingressState{
+	routeState := &routeState{
 		version:      version,
 		key:          key,
+		callbackKey:  callbackKey,
 		lastAccessed: time.Now(),
 		cancel:       cancel,
 	}
@@ -252,17 +257,17 @@ func (m *Prober) probeRequest(
 		for ip := range target.PodIPs {
 			for _, url := range target.URLs {
 				workItems[ip] = append(workItems[ip], &workItem{
-					ingressState: ingressState,
-					url:          url,
-					podIP:        ip,
-					podPort:      target.PodPort,
-					logger:       logger,
+					routeState: routeState,
+					url:        url,
+					podIP:      ip,
+					podPort:    target.PodPort,
+					logger:     logger,
 				})
 			}
 		}
 	}
 
-	ingressState.pendingCount.Store(int32(len(workItems)))
+	routeState.pendingCount.Store(int32(len(workItems)))
 
 	for ip, ipWorkItems := range workItems {
 		// Get or create the context for that IP
@@ -303,22 +308,22 @@ func (m *Prober) probeRequest(
 		// Update the states when probing is cancelled
 		go func() {
 			<-podCtx.Done()
-			m.onProbingCancellation(ingressState, podState)
+			m.onProbingCancellation(routeState, podState)
 		}()
 
 		for _, wi := range ipWorkItems {
 			wi.podState = podState
 			wi.context = podCtx
 			m.workQueue.AddAfter(wi, initialDelay)
-			logger.Infof("Queuing probe for %s, IP: %s:%s (depth: %d)",
-				wi.url, wi.podIP, wi.podPort, m.workQueue.Len())
+			logger.Infof("Queuing probe for %s, IP: %s:%s (version: %s)(depth: %d)",
+				wi.url, wi.podIP, wi.podPort, wi.routeState.version, m.workQueue.Len())
 		}
 	}
 
 	func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		m.ingressStates[key] = ingressState
+		m.routeStates[key] = routeState
 	}()
 	return len(workItems) == 0
 }
@@ -368,9 +373,12 @@ func (m *Prober) CancelIngressProbing(obj interface{}) {
 func (m *Prober) CancelIngressProbingByKey(key types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if state, ok := m.ingressStates[key]; ok {
-		state.cancel()
-		delete(m.ingressStates, key)
+	for _, v := range m.routeStates {
+		if v.callbackKey == key {
+			v.cancel()
+			delete(m.routeStates, key)
+		}
+
 	}
 }
 
@@ -454,25 +462,25 @@ func (m *Prober) processWorkItem() bool {
 		item.logger.Errorf("Probing of %s failed, IP: %s:%s, ready: %t, error: %v (depth: %d)",
 			item.url, item.podIP, item.podPort, ok, err, m.workQueue.Len())
 	} else {
-		m.onProbingSuccess(item.ingressState, item.podState)
+		m.onProbingSuccess(item.routeState, item.podState)
 	}
 	return true
 }
 
-func (m *Prober) onProbingSuccess(ingressState *ingressState, podState *podState) {
+func (m *Prober) onProbingSuccess(routeState *routeState, podState *podState) {
 	// The last probe call for the Pod succeeded, the Pod is ready
 	if podState.pendingCount.Dec() == 0 {
 		// Unlock the goroutine blocked on <-podCtx.Done()
 		podState.cancel()
 
 		// This is the last pod being successfully probed, the Ingress is ready
-		if ingressState.pendingCount.Dec() == 0 {
-			m.readyCallback(ingressState.key)
+		if routeState.pendingCount.Dec() == 0 {
+			m.readyCallback(routeState.callbackKey)
 		}
 	}
 }
 
-func (m *Prober) onProbingCancellation(ingressState *ingressState, podState *podState) {
+func (m *Prober) onProbingCancellation(routeState *routeState, podState *podState) {
 	for {
 		pendingCount := podState.pendingCount.Load()
 		if pendingCount <= 0 {
@@ -483,8 +491,8 @@ func (m *Prober) onProbingCancellation(ingressState *ingressState, podState *pod
 		// Attempt to set pendingCount to 0.
 		if podState.pendingCount.CompareAndSwap(pendingCount, 0) {
 			// This is the last pod being successfully probed, the Ingress is ready
-			if ingressState.pendingCount.Dec() == 0 {
-				m.readyCallback(ingressState.key)
+			if routeState.pendingCount.Dec() == 0 {
+				m.readyCallback(routeState.callbackKey)
 			}
 			return
 		}
@@ -509,10 +517,10 @@ func (m *Prober) probeVerifier(item *workItem) prober.Verifier {
 				item.logger.Errorf("Probing of %s abandoned, IP: %s:%s: the response doesn't contain the %q header",
 					item.url, item.podIP, item.podPort, header.HashKey)
 				return true, nil
-			case item.ingressState.version:
+			case item.routeState.version:
 				return true, nil
 			default:
-				return false, fmt.Errorf("unexpected version: want %q, got %q", item.ingressState.version, hash)
+				return false, fmt.Errorf("unexpected version: want %q, got %q", item.routeState.version, hash)
 			}
 
 		case http.StatusNotFound, http.StatusServiceUnavailable:

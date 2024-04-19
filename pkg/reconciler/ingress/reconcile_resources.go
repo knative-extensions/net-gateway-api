@@ -19,6 +19,7 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -42,45 +43,83 @@ import (
 
 const listenerPrefix = "kni-"
 
-// reconcileHTTPRoute reconciles HTTPRoute.
-func (c *Reconciler) reconcileHTTPRoute(
-	ctx context.Context,
-	probe status.ProbeState,
+func probeTargets(
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-) (*gatewayapi.HTTPRoute, string, error) {
+	r *gatewayapi.HTTPRoute,
+) status.Backends {
+
+	backends := status.Backends{
+		Version: hash,
+		Key:     resources.HTTPRouteKey(ing, rule),
+		CallbackKey: types.NamespacedName{
+			Name:      ing.Name,
+			Namespace: ing.Namespace,
+		},
+	}
+
+	visibility := rule.Visibility
+	if visibility == "" {
+		visibility = netv1alpha1.IngressVisibilityExternalIP
+	}
+
+	for _, rule := range r.Spec.Rules {
+		for _, match := range rule.Matches {
+			for _, headers := range match.Headers {
+				// Skip non-probe matches
+				if headers.Name != header.HashKey {
+					continue
+				}
+
+				for _, hostname := range r.Spec.Hostnames {
+					url := url.URL{Host: string(hostname), Path: *match.Path.Value}
+					backends.AddURL(visibility, url)
+				}
+			}
+		}
+	}
+	return backends
+}
+
+// reconcileHTTPRoute reconciles HTTPRoute.
+func (c *Reconciler) reconcileHTTPRoute(
+	ctx context.Context,
+	hash string,
+	ing *netv1alpha1.Ingress,
+	rule *netv1alpha1.IngressRule,
+) (*gatewayapi.HTTPRoute, status.Backends, error) {
+
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
 	if apierrs.IsNotFound(err) {
 		desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
 		if err != nil {
-			return nil, probe.Version, err
+			return nil, status.Backends{}, err
 		}
 		httproute, err = c.gwapiclient.GatewayV1beta1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
-			return nil, probe.Version, fmt.Errorf("failed to create HTTPRoute: %w", err)
+			return nil, status.Backends{}, fmt.Errorf("failed to create HTTPRoute: %w", err)
 		}
 
 		recorder.Eventf(ing, corev1.EventTypeNormal, "Created", "Created HTTPRoute %q", httproute.GetName())
-		return httproute, probe.Version, nil
+		return httproute, probeTargets(hash, ing, rule, httproute), nil
 	} else if err != nil {
-		return nil, probe.Version, err
+		return nil, status.Backends{}, err
 	}
 
-	return c.reconcileHTTPRouteUpdate(ctx, probe, hash, ing, rule, httproute.DeepCopy())
+	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
 }
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
-	probe status.ProbeState,
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 	httproute *gatewayapi.HTTPRoute,
-) (*gatewayapi.HTTPRoute, string, error) {
+) (*gatewayapi.HTTPRoute, status.Backends, error) {
 
 	const (
 		endpointPrefix   = "ep-"
@@ -88,14 +127,20 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	)
 
 	var (
+		desired *gatewayapi.HTTPRoute
+		err     error
+
 		original = httproute.DeepCopy()
 		recorder = controller.GetEventRecorder(ctx)
 
+		probeKey = types.NamespacedName{
+			Name:      httproute.Name,
+			Namespace: httproute.Namespace,
+		}
+
+		probe, _           = c.statusManager.IsProbeActive(probeKey)
 		wasEndpointProbe   = strings.HasPrefix(probe.Version, endpointPrefix)
 		wasTransitionProbe = strings.HasPrefix(probe.Version, transitionPrefix)
-
-		desired *gatewayapi.HTTPRoute
-		err     error
 	)
 
 	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
@@ -132,16 +177,15 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	} else if probeHash != hash {
 		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else {
-		// Noop
+		// noop - preserve current probing
 		if probe.Version != "" {
 			hash = probe.Version
 		}
-		// desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-		return httproute, hash, nil
+		return httproute, probeTargets(hash, ing, rule, httproute), nil
 	}
 
 	if err != nil {
-		return nil, hash, err
+		return nil, status.Backends{}, err
 	}
 
 	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
@@ -158,12 +202,12 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
-			return nil, hash, fmt.Errorf("failed to update HTTPRoute: %w", err)
+			return nil, status.Backends{}, fmt.Errorf("failed to update HTTPRoute: %w", err)
 		}
-		return updated, hash, nil
+		return updated, probeTargets(hash, ing, rule, updated), nil
 	}
 
-	return httproute, hash, nil
+	return httproute, probeTargets(hash, ing, rule, httproute), nil
 }
 
 func (c *Reconciler) reconcileTLS(

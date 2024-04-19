@@ -94,6 +94,10 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	var (
 		ingressHash string
 		err         error
+		probeKey    = types.NamespacedName{
+			Name:      ing.Name,
+			Namespace: ing.Namespace,
+		}
 	)
 
 	if ingressHash, err = ingress.InsertProbe(ing); err != nil {
@@ -102,16 +106,15 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	backends := status.Backends{
 		Version: ingressHash,
-		Key: types.NamespacedName{
-			Name:      ing.Name,
-			Namespace: ing.Namespace,
-		},
+		Key:     probeKey,
 	}
+
+	probe, _ := c.statusManager.IsProbeActive(probeKey)
 
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproute, routeHash, err := c.reconcileHTTPRoute(ctx, ingressHash, ing, &rule)
+		httproute, routeHash, err := c.reconcileHTTPRoute(ctx, probe, ingressHash, ing, &rule)
 		if err != nil {
 			return err
 		}

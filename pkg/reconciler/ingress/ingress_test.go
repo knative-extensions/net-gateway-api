@@ -394,6 +394,9 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconciler probe returns false",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: false}, false
+			},
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 				return status.ProbeState{Ready: false}, nil
 			},
@@ -423,6 +426,9 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "first reconcile probe returns an error",
 		Key:  "ns/name",
 		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: false}, false
+			},
 			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
 				return status.ProbeState{Ready: false}, errors.New("this is the error")
 			},
@@ -2010,6 +2016,104 @@ func TestReconcileProbing(t *testing.T) {
 				makeItReady,
 			),
 		}},
+	}, {
+		Name: "multiple visibility - steady state ingress - probe state flips while reconciliing",
+		// HTTPRoutes should flip states together
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: ProbeIsReadyAfter{
+				Attempts: 1,
+				Hash:     "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+			}.Build(),
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withInternalSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+			HTTPRoute{
+				Name:         "foo.svc.cluster.local",
+				Namespace:    "ns",
+				Hostnames:    []string{"foo.svc", "foo.svc.cluster.local"},
+				ClusterLocal: true,
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      124,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-ff3cee4d49fbd4547b85c63d56e88eb866d4043951761f069d6afe14a2e61970",
+						Port:      124,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
@@ -2028,6 +2132,19 @@ func TestReconcileProbing(t *testing.T) {
 					config: defaultConfig,
 				}})
 	}))
+}
+
+type ProbeIsReadyAfter struct {
+	Attempts int
+	Hash     string
+}
+
+func (p ProbeIsReadyAfter) Build() func(types.NamespacedName) (status.ProbeState, bool) {
+	return func(types.NamespacedName) (status.ProbeState, bool) {
+		ready := p.Attempts <= 0
+		p.Attempts--
+		return status.ProbeState{Ready: ready, Version: p.Hash}, true
+	}
 }
 
 func makeLoadBalancerNotReady(i *v1alpha1.Ingress) {

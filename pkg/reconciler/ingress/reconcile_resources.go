@@ -34,6 +34,7 @@ import (
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
+	"knative.dev/net-gateway-api/pkg/status"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/controller"
@@ -44,6 +45,7 @@ const listenerPrefix = "kni-"
 // reconcileHTTPRoute reconciles HTTPRoute.
 func (c *Reconciler) reconcileHTTPRoute(
 	ctx context.Context,
+	probe status.ProbeState,
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
@@ -54,25 +56,26 @@ func (c *Reconciler) reconcileHTTPRoute(
 	if apierrs.IsNotFound(err) {
 		desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
 		if err != nil {
-			return nil, hash, err
+			return nil, probe.Version, err
 		}
 		httproute, err = c.gwapiclient.GatewayV1beta1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
-			return nil, hash, fmt.Errorf("failed to create HTTPRoute: %w", err)
+			return nil, probe.Version, fmt.Errorf("failed to create HTTPRoute: %w", err)
 		}
 
 		recorder.Eventf(ing, corev1.EventTypeNormal, "Created", "Created HTTPRoute %q", httproute.GetName())
-		return httproute, hash, nil
+		return httproute, probe.Version, nil
 	} else if err != nil {
-		return nil, hash, err
+		return nil, probe.Version, err
 	}
 
-	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
+	return c.reconcileHTTPRouteUpdate(ctx, probe, hash, ing, rule, httproute.DeepCopy())
 }
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
+	probe status.ProbeState,
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
@@ -85,18 +88,14 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	)
 
 	var (
-		probeKey = types.NamespacedName{
-			Name:      ing.Name,
-			Namespace: ing.Namespace,
-		}
 		original = httproute.DeepCopy()
 		recorder = controller.GetEventRecorder(ctx)
-		desired  *gatewayapi.HTTPRoute
-		err      error
-		probe, _ = c.statusManager.IsProbeActive(probeKey)
 
 		wasEndpointProbe   = strings.HasPrefix(probe.Version, endpointPrefix)
 		wasTransitionProbe = strings.HasPrefix(probe.Version, transitionPrefix)
+
+		desired *gatewayapi.HTTPRoute
+		err     error
 	)
 
 	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)

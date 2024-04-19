@@ -154,14 +154,38 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 		publicLbs, err = c.determineLoadBalancerIngressStatus(externalIPGatewayConfig)
 		if err != nil {
-			ing.Status.MarkLoadBalancerNotReady()
-			return err
+			if apierrs.IsNotFound(err) {
+				ing.Status.MarkLoadBalancerFailed(
+					"GatewayDoesNotExist",
+					fmt.Sprintf(
+						"could not find Gateway %s/%s",
+						externalIPGatewayConfig.Gateway.Namespace,
+						externalIPGatewayConfig.Gateway.Name,
+					),
+				)
+				return fmt.Errorf("Gateway %s does not exist: %w", externalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
+			} else {
+				ing.Status.MarkLoadBalancerNotReady()
+				return err
+			}
 		}
 
 		privateLbs, err = c.determineLoadBalancerIngressStatus(internalIPGatewayConfig)
 		if err != nil {
-			ing.Status.MarkLoadBalancerNotReady()
-			return err
+			if apierrs.IsNotFound(err) {
+				ing.Status.MarkLoadBalancerFailed(
+					"GatewayDoesNotExist",
+					fmt.Sprintf(
+						"could not find Gateway %s/%s",
+						internalIPGatewayConfig.Gateway.Namespace,
+						internalIPGatewayConfig.Gateway.Name,
+					),
+				)
+				return fmt.Errorf("Gateway %s does not exist: %w", internalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
+			} else {
+				ing.Status.MarkLoadBalancerNotReady()
+				return err
+			}
 		}
 
 		ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)
@@ -182,9 +206,7 @@ func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig
 		}, nil
 	}
 	gw, err := c.gatewayLister.Gateways(gwc.Gateway.Namespace).Get(gwc.Gateway.Name)
-	if apierrs.IsNotFound(err) {
-		return nil, fmt.Errorf("Gateway %s does not exist: %w", gwc.Gateway.Name, err) //nolint:stylecheck
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 

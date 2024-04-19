@@ -22,14 +22,18 @@ package e2e
 import (
 	"context"
 	"net/url"
+	"os"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/test"
 	"knative.dev/networking/test/conformance/ingress"
 	"knative.dev/pkg/apis"
+	pkgConfigMapTesting "knative.dev/pkg/configmap/testing"
 	pkgTest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/spoof"
 )
@@ -44,6 +48,31 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	clients := test.Setup(t)
 	ctx := context.Background()
 
+	var configGateway, original *corev1.ConfigMap
+
+	original, err := clients.KubeClient.CoreV1().ConfigMaps(test.ServingNamespace).Get(ctx, "config-gateway", v1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get original config-gateway ConfigMap: %v", err)
+	}
+
+	// set up configmap for ingress
+	if ingress, present := os.LookupEnv("INGRESS"); present {
+		switch ingress {
+		case "contour":
+			configGateway, _ = pkgConfigMapTesting.ConfigMapsFromTestFile(t, "contour-no-service-vis.yaml")
+		case "istio":
+			configGateway, _ = pkgConfigMapTesting.ConfigMapsFromTestFile(t, "istio-no-service-vis.yaml")
+		case "default":
+			t.Fatalf("value for INGRESS (%s) not supported", ingress)
+		}
+
+	}
+
+	_, err = clients.KubeClient.CoreV1().ConfigMaps(test.ServingNamespace).Update(ctx, configGateway, v1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("failed to update config-gateway ConfigMap: %v", err)
+	}
+
 	svcName, svcPort, svcCancel := ingress.CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 	defer svcCancel()
 
@@ -56,6 +85,11 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 
 	// Verify the new service is accessible via the ingress.
 	assertIngressEventuallyWorks(ctx, t, clients, apis.HTTP(svcName+domain).URL())
+
+	_, err = clients.KubeClient.CoreV1().ConfigMaps(test.ServingNamespace).Update(ctx, original, v1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("failed to restore config-gateway ConfigMap: %v", err)
+	}
 }
 
 func createIngressSpec(name string, port int) v1alpha1.IngressSpec {

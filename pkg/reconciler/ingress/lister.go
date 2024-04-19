@@ -106,15 +106,13 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 				return nil, err
 			}
 
-			// TODO: how do I know which listeners to probe?
-			// It seems like I'd need to check each rule, and find out which listener it maps to,
-			// and then add that as the target...
-			//for _, l := range gw.Spec.Listeners {
-			//}
+			// In order to avoid searching through Gateway listeners and
+			// deciding which host gets which listener port, we only support
+			// listener ports of 80 and 443 when omitting a Gateway service.
+			// However, if users wish to do more advanced listener
+			// configurations, this current implementation won't support it.
+			// See: https://github.com/knative-extensions/net-gateway-api/issues/695
 
-			// for now, we'll only support 80 or 443
-			// this way, we don't have to search for which listener to look for since
-			// Knative will add a TLS listener for each ksvc when external-domain-tls (f.k.a. autoTLS) is enabled
 			scheme := "http"
 			podPort := "80"
 			if visibility == v1alpha1.IngressVisibilityExternalIP && backends.HTTPOption == v1alpha1.HTTPOptionRedirected {

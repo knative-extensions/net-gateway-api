@@ -431,7 +431,7 @@ var (
 
 func withBasicSpec(i *v1alpha1.Ingress) {
 	i.Spec.HTTPOption = v1alpha1.HTTPOptionEnabled
-	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
+	i.Spec.Rules = []v1alpha1.IngressRule{{
 		Hosts:      []string{"example.com"},
 		Visibility: v1alpha1.IngressVisibilityExternalIP,
 		HTTP: &v1alpha1.HTTPIngressRuleValue{
@@ -450,17 +450,17 @@ func withBasicSpec(i *v1alpha1.Ingress) {
 				}},
 			}},
 		},
-	})
+	}}
 }
 
 func withSecondRevisionSpec(i *v1alpha1.Ingress) {
-	withBasicSpec(i)
-	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].ServiceName = "second-revision"
-	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "second-revision"
+	for idx := range i.Spec.Rules {
+		i.Spec.Rules[idx].HTTP.Paths[0].Splits[0].ServiceName = "second-revision"
+		i.Spec.Rules[idx].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "second-revision"
+	}
 }
 
 func withThirdRevisionSpec(i *v1alpha1.Ingress) {
-	withBasicSpec(i)
 	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].ServiceName = "third-revision"
 	i.Spec.Rules[0].HTTP.Paths[0].Splits[0].AppendHeaders["K-Serving-Revision"] = "third-revision"
 }

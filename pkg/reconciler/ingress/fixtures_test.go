@@ -36,6 +36,7 @@ type HTTPRoute struct {
 	Hostname         string
 	Rules            []RuleBuilder
 	StatusConditions []metav1.Condition
+	ClusterLocal     bool
 }
 
 func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
@@ -77,6 +78,11 @@ func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
 				}},
 			},
 		},
+	}
+
+	if r.ClusterLocal {
+		route.Labels[networking.VisibilityLabelKey] = "cluster-local"
+		route.Spec.CommonRouteSpec.ParentRefs[0].Name = gatewayapi.ObjectName(privateName)
 	}
 
 	for _, hostname := range hostnames {

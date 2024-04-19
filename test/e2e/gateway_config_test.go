@@ -90,7 +90,7 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	svcName, svcPort, svcCancel := ingress.CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 	defer svcCancel()
 
-	_, _, ingressCancel := ingress.CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
+	_, client, ingressCancel := ingress.CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts: []string{svcName + domain},
 			HTTP: &v1alpha1.HTTPIngressRuleValue{
@@ -110,11 +110,9 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	defer ingressCancel()
 
 	url := apis.HTTP(svcName + domain)
-	prober := test.RunRouteProber(t.Logf, clients, url.URL())
-	defer test.AssertProberDefault(t, prober)
 
 	// Verify the new service is accessible via the ingress.
-	assertIngressEventuallyWorks(ctx, t, clients, apis.HTTP(svcName+domain).URL())
+	ingress.RuntimeRequest(ctx, t, client, url.URL().String())
 
 	// restore the old configmap
 	updated.Data = original.Data

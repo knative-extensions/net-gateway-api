@@ -163,10 +163,7 @@ function gateway_conformance() {
 }
 
 function test_e2e() {
-  local parallel_count="12"
-  if (( KIND )); then
-    parallel_count="1"
-  fi
+  local parallel_count="1"
 
 
   go_test_e2e -timeout=20m -tags=e2e -parallel="${parallel_count}" ./test/e2e \

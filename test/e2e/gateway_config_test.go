@@ -21,7 +21,6 @@ package e2e
 
 import (
 	"context"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -38,8 +37,6 @@ import (
 	"knative.dev/networking/test/conformance/ingress"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
-	pkgTest "knative.dev/pkg/test"
-	"knative.dev/pkg/test/spoof"
 )
 
 const (
@@ -119,20 +116,6 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	_, err = clients.KubeClient.CoreV1().ConfigMaps(controlNamespace).Update(ctx, updated, v1.UpdateOptions{})
 	if err != nil {
 		t.Fatalf("failed to restore config-gateway ConfigMap: %v", err)
-	}
-}
-
-func assertIngressEventuallyWorks(ctx context.Context, t *testing.T, clients *test.Clients, url *url.URL) {
-	t.Helper()
-	if _, err := pkgTest.WaitForEndpointState(
-		ctx,
-		clients.KubeClient,
-		t.Logf,
-		url,
-		spoof.IsStatusOK,
-		"WaitForIngressToReturnSuccess",
-		test.NetworkingFlags.ResolvableDomain); err != nil {
-		t.Fatalf("The service at %s didn't return success: %v", url, err)
 	}
 }
 

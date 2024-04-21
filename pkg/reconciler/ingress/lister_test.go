@@ -301,6 +301,133 @@ func TestBackendsToProbeTargets(t *testing.T) {
 	}
 }
 
+func TestListProbeTargetsNoService(t *testing.T) {
+	tests := []struct {
+		name     string
+		ing      *v1alpha1.Ingress
+		objects  []runtime.Object
+		backends status.Backends
+		want     []status.ProbeTarget
+		wantErr  error
+	}{{
+		name: "gateway has single http default listener",
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
+		objects: []runtime.Object{
+			gw(defaultListener, setStatusPublicAddress),
+		},
+		ing: ing(withBasicSpec, withGatewayAPIClass),
+		want: []status.ProbeTarget{
+			{
+				PodIPs:  sets.New(publicGatewayAddress),
+				PodPort: "80",
+				URLs: []*url.URL{{
+					Scheme: "http",
+					Host:   "example.com",
+					Path:   "/",
+				}},
+			},
+		},
+	}, {
+		name: "gateway has tls listener (http enabled)",
+		objects: []runtime.Object{
+			// objects for secret and referenceGrant not needed in this test
+			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddress),
+		},
+		backends: status.Backends{
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
+		ing: ing(withBasicSpec, withGatewayAPIClass),
+		want: []status.ProbeTarget{
+			{
+				PodIPs:  sets.New(publicGatewayAddress),
+				PodPort: "80",
+				URLs: []*url.URL{{
+					Scheme: "http",
+					Host:   "example.com",
+					Path:   "/",
+				}},
+			},
+		},
+	}, {
+		name: "gateway has tls listener (https redirected)",
+		objects: []runtime.Object{
+			// objects for secret and referenceGrant not needed in this test
+			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddress),
+		},
+		backends: status.Backends{
+			HTTPOption: v1alpha1.HTTPOptionRedirected,
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
+		ing: ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
+		want: []status.ProbeTarget{
+			{
+				PodIPs:  sets.New(publicGatewayAddress),
+				PodPort: "443",
+				URLs: []*url.URL{{
+					Scheme: "https",
+					Host:   "example.com",
+					Path:   "/",
+				}},
+			},
+		},
+	}, {
+		name: "gateway has no addresses in status",
+		objects: []runtime.Object{
+			// objects for secret and referenceGrant not needed in this test
+			gw(defaultListener),
+		},
+		backends: status.Backends{
+			HTTPOption: v1alpha1.HTTPOptionRedirected,
+			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
+				v1alpha1.IngressVisibilityExternalIP: sets.New(
+					url.URL{Host: "example.com", Path: "/"},
+				),
+			},
+		},
+		ing:     ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
+		wantErr: fmt.Errorf("no Addresses available in Status of Gateway istio-system/istio-gateway"),
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tl := NewListers(test.objects)
+
+			l := &gatewayPodTargetLister{
+				endpointsLister: tl.GetEndpointsLister(),
+				gatewayLister:   tl.GetGatewayLister(),
+			}
+
+			cfg := configNoService.DeepCopy()
+			ctx := (&testConfigStore{config: cfg}).ToContext(context.Background())
+
+			got, gotErr := l.BackendsToProbeTargets(ctx, test.backends)
+			if (gotErr != nil) != (test.wantErr != nil) {
+				t.Fatalf("ListProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
+			} else if gotErr != nil && test.wantErr != nil && gotErr.Error() != test.wantErr.Error() {
+				t.Fatalf("ListProbeTargets() = %v, wanted %v", gotErr, test.wantErr)
+			}
+
+			if !cmp.Equal(test.want, got) {
+				t.Error("ListProbeTargets (-want, +got) =", cmp.Diff(test.want, got))
+			}
+		})
+	}
+}
+
 var (
 	privateEndpointsOneAddr = &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{

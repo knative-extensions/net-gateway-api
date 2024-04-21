@@ -27,6 +27,7 @@ import (
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	networkcfg "knative.dev/networking/pkg/config"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
+	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -58,6 +59,7 @@ func NewController(
 	referenceGrantInformer := referencegrantinformer.Get(ctx)
 	gatewayInformer := gatewayinformer.Get(ctx)
 	endpointsInformer := endpointsinformer.Get(ctx)
+	podInformer := podinformer.Get(ctx)
 
 	c := &Reconciler{
 		gwapiclient:          gwapiclient.Get(ctx),
@@ -111,9 +113,19 @@ func NewController(
 	c.statusManager = statusProber
 	statusProber.Start(ctx.Done())
 
+	// Cancel probing when an Ingress is deleted
+	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: statusProber.CancelIngressProbing,
+	})
+
 	// Make sure trackers are deleted once the observers are removed.
 	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: impl.Tracker.OnDeletedObserver,
+	})
+
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// Cancel probing when a Pod is deleted
+		DeleteFunc: statusProber.CancelPodProbing,
 	})
 
 	return impl

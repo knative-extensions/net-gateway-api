@@ -26,10 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/status"
-	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
 func NewProbeTargetLister(logger *zap.SugaredLogger, endpointsLister corev1listers.EndpointsLister, gatewayLister gatewaylisters.GatewayLister) status.ProbeTargetLister {

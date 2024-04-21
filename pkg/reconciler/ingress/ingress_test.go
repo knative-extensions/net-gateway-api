@@ -45,8 +45,8 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 
-	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayapiv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 	. "knative.dev/pkg/reconciler/testing"
@@ -351,7 +351,7 @@ func TestReconcileTLS(t *testing.T) {
 		for _, x := range tr.Objects {
 			myGw, ok := x.(*gatewayapi.Gateway)
 			if ok {
-				fakegwapiclientset.Get(ctx).GatewayV1beta1().Gateways(myGw.Namespace).Create(ctx, myGw, metav1.CreateOptions{})
+				fakegwapiclientset.Get(ctx).GatewayV1().Gateways(myGw.Namespace).Create(ctx, myGw, metav1.CreateOptions{})
 				tr.SkipNamespaceValidation = true
 				fakeCreates = append(fakeCreates, myGw)
 			}
@@ -692,17 +692,17 @@ func TestReconcileProbing(t *testing.T) {
 					Rules: []gatewayapi.HTTPRouteRule{{
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 								Value: ptr.To("/"),
 							},
 							Headers: []gatewayapi.HTTPHeaderMatch{{
-								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Type:  ptr.To(gatewayapi.HeaderMatchExact),
 								Name:  header.HashKey,
 								Value: header.HashValueOverride,
 							}},
 						}},
 						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 								Set: []gatewayapi.HTTPHeader{{
 									Name:  header.HashKey,
@@ -711,8 +711,8 @@ func TestReconcileProbing(t *testing.T) {
 							},
 						}},
 						BackendRefs: []gatewayapi.HTTPBackendRef{{
-							Filters: []gatewayapiv1.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{{
 										Name:  "K-Serving-Revision",
@@ -724,7 +724,7 @@ func TestReconcileProbing(t *testing.T) {
 								},
 							}},
 							BackendRef: gatewayapi.BackendRef{
-								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
 									Group: ptr.To[gatewayapi.Group](""),
 									Kind:  ptr.To[gatewayapi.Kind]("Service"),
 									Name:  "second-revision",
@@ -736,13 +736,13 @@ func TestReconcileProbing(t *testing.T) {
 					}, {
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 								Value: ptr.To("/"),
 							},
 						}},
 						BackendRefs: []gatewayapi.HTTPBackendRef{{
-							Filters: []gatewayapiv1.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{{
 										Name:  "K-Serving-Revision",
@@ -754,7 +754,7 @@ func TestReconcileProbing(t *testing.T) {
 								},
 							}},
 							BackendRef: gatewayapi.BackendRef{
-								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
 									Group: ptr.To[gatewayapi.Group](""),
 									Kind:  ptr.To[gatewayapi.Kind]("Service"),
 									Name:  "second-revision",
@@ -766,17 +766,17 @@ func TestReconcileProbing(t *testing.T) {
 					}, {
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 								Value: ptr.To("/.well-known/knative/revision/ns/second-revision"),
 							},
 							Headers: []gatewayapi.HTTPHeaderMatch{{
-								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Type:  ptr.To(gatewayapi.HeaderMatchExact),
 								Name:  header.HashKey,
 								Value: header.HashValueOverride,
 							}},
 						}},
 						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 								Set: []gatewayapi.HTTPHeader{{
 									Name:  header.HashKey,
@@ -785,8 +785,8 @@ func TestReconcileProbing(t *testing.T) {
 							},
 						}},
 						BackendRefs: []gatewayapi.HTTPBackendRef{{
-							Filters: []gatewayapiv1.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{{
 										Name:  "K-Serving-Namespace",
@@ -799,7 +799,7 @@ func TestReconcileProbing(t *testing.T) {
 							}},
 							BackendRef: gatewayapi.BackendRef{
 								Weight: ptr.To[int32](100),
-								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
 									Group: ptr.To[gatewayapi.Group](""),
 									Kind:  ptr.To[gatewayapi.Kind]("Service"),
 									Name:  "second-revision",
@@ -810,17 +810,17 @@ func TestReconcileProbing(t *testing.T) {
 					}, {
 						Matches: []gatewayapi.HTTPRouteMatch{{
 							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapiv1.PathMatchPathPrefix),
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
 								Value: ptr.To("/.well-known/knative/revision/ns/goo"),
 							},
 							Headers: []gatewayapi.HTTPHeaderMatch{{
-								Type:  ptr.To(gatewayapiv1.HeaderMatchExact),
+								Type:  ptr.To(gatewayapi.HeaderMatchExact),
 								Name:  header.HashKey,
 								Value: header.HashValueOverride,
 							}},
 						}},
 						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 							RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 								Set: []gatewayapi.HTTPHeader{{
 									Name:  header.HashKey,
@@ -829,8 +829,8 @@ func TestReconcileProbing(t *testing.T) {
 							},
 						}},
 						BackendRefs: []gatewayapi.HTTPBackendRef{{
-							Filters: []gatewayapiv1.HTTPRouteFilter{{
-								Type: gatewayapiv1.HTTPRouteFilterRequestHeaderModifier,
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 									Set: []gatewayapi.HTTPHeader{{
 										Name:  "K-Serving-Namespace",
@@ -843,7 +843,7 @@ func TestReconcileProbing(t *testing.T) {
 							}},
 							BackendRef: gatewayapi.BackendRef{
 								Weight: ptr.To[int32](100),
-								BackendObjectReference: gatewayapiv1.BackendObjectReference{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
 									Group: ptr.To[gatewayapi.Group](""),
 									Kind:  ptr.To[gatewayapi.Kind]("Service"),
 									Name:  "goo",
@@ -2328,15 +2328,15 @@ func privateGw(g *gatewayapi.Gateway) {
 }
 
 func setStatusPrivateAddress(g *gatewayapi.Gateway) {
-	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
-		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.IPAddressType),
 		Value: privateGatewayAddress,
 	})
 }
 
 func setStatusPublicAddress(g *gatewayapi.Gateway) {
-	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
-		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.IPAddressType),
 		Value: publicGatewayAddress,
 	})
 }
@@ -2404,9 +2404,9 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayapi.ReferenceGrant {
+func rp(to *corev1.Secret) *gatewayapiv1beta1.ReferenceGrant {
 	t := true
-	return &gatewayapi.ReferenceGrant{
+	return &gatewayapiv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,
@@ -2418,13 +2418,13 @@ func rp(to *corev1.Secret) *gatewayapi.ReferenceGrant {
 				BlockOwnerDeletion: &t,
 			}},
 		},
-		Spec: gatewayapi.ReferenceGrantSpec{
-			From: []gatewayapi.ReferenceGrantFrom{{
+		Spec: gatewayapiv1beta1.ReferenceGrantSpec{
+			From: []gatewayapiv1beta1.ReferenceGrantFrom{{
 				Group:     "gateway.networking.k8s.io",
 				Kind:      "Gateway",
 				Namespace: gatewayapi.Namespace(testNamespace),
 			}},
-			To: []gatewayapi.ReferenceGrantTo{{
+			To: []gatewayapiv1beta1.ReferenceGrantTo{{
 				Group: gatewayapi.Group(""),
 				Kind:  gatewayapi.Kind("Secret"),
 				Name:  (*gatewayapi.ObjectName)(&to.Name),

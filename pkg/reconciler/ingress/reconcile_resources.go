@@ -30,8 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
-	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapi "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
@@ -98,7 +97,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 		if err != nil {
 			return nil, status.Backends{}, err
 		}
-		httproute, err = c.gwapiclient.GatewayV1beta1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		httproute, err = c.gwapiclient.GatewayV1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create HTTPRoute: %v", err)
 			return nil, status.Backends{}, fmt.Errorf("failed to create HTTPRoute: %w", err)
@@ -197,7 +196,7 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		original.Annotations = desired.Annotations
 		original.Labels = desired.Labels
 
-		updated, err := c.gwapiclient.GatewayV1beta1().HTTPRoutes(original.Namespace).
+		updated, err := c.gwapiclient.GatewayV1().HTTPRoutes(original.Namespace).
 			Update(ctx, original, metav1.UpdateOptions{})
 
 		if err != nil {
@@ -272,8 +271,8 @@ func (c *Reconciler) reconcileTLS(
 
 	// Gateway API loves typed pointers and constants, so we need to copy the constants
 	// to something we can reference
-	mode := gatewayapiv1.TLSModeTerminate
-	selector := gatewayapiv1.NamespacesFromSelector
+	mode := gatewayapi.TLSModeTerminate
+	selector := gatewayapi.NamespacesFromSelector
 	listeners := make([]*gatewayapi.Listener, 0, len(tls.Hosts))
 	for _, h := range tls.Hosts {
 		h := h
@@ -281,7 +280,7 @@ func (c *Reconciler) reconcileTLS(
 			Name:     gatewayapi.SectionName(listenerPrefix + ing.GetUID()),
 			Hostname: (*gatewayapi.Hostname)(&h),
 			Port:     443,
-			Protocol: gatewayapiv1.HTTPSProtocolType,
+			Protocol: gatewayapi.HTTPSProtocolType,
 			TLS: &gatewayapi.GatewayTLSConfig{
 				Mode: &mode,
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
@@ -355,7 +354,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 	}
 
 	if updated {
-		_, err := c.gwapiclient.GatewayV1beta1().Gateways(update.Namespace).Update(
+		_, err := c.gwapiclient.GatewayV1().Gateways(update.Namespace).Update(
 			ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to update Gateway %s: %v", gwName, err)
@@ -392,7 +391,7 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	}
 
 	if len(update.Spec.Listeners) != numListeners {
-		_, err := c.gwapiclient.GatewayV1beta1().Gateways(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
+		_, err := c.gwapiclient.GatewayV1().Gateways(update.Namespace).Update(ctx, update, metav1.UpdateOptions{})
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayUpdateFailed", "Failed to remove Listener from Gateway %s: %v", gwName, err)
 			return fmt.Errorf("failed to update Gateway %s/%s: %w", update.Namespace, update.Name, err)

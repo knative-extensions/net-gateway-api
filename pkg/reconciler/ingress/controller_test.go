@@ -26,8 +26,8 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/system"
 
-	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/gateway/fake"
-	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/httproute/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1/gateway/fake"
+	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1/httproute/fake"
 	_ "knative.dev/net-gateway-api/pkg/client/injection/informers/apis/v1beta1/referencegrant/fake"
 	_ "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress/fake"
 	_ "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints/fake"

@@ -28,9 +28,11 @@ import (
 	networkinglisters "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/pkg/reconciler/testing"
 
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	fakegatewayapiclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/fake"
-	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
+	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
 var clientSetSchemes = []func(*runtime.Scheme) error{
@@ -92,7 +94,7 @@ func (l *Listers) GetIngressLister() networkinglisters.IngressLister {
 
 // GetHTTPRouteLister get lister for HTTPProxy resource.
 func (l *Listers) GetHTTPRouteLister() gatewaylisters.HTTPRouteLister {
-	return gatewaylisters.NewHTTPRouteLister(l.IndexerFor(&gatewayv1beta1.HTTPRoute{}))
+	return gatewaylisters.NewHTTPRouteLister(l.IndexerFor(&gatewayv1.HTTPRoute{}))
 }
 
 // GetEndpointsLister get lister for K8s Endpoints resource.
@@ -101,9 +103,9 @@ func (l *Listers) GetEndpointsLister() corev1listers.EndpointsLister {
 }
 
 func (l *Listers) GetGatewayLister() gatewaylisters.GatewayLister {
-	return gatewaylisters.NewGatewayLister(l.IndexerFor(&gatewayv1beta1.Gateway{}))
+	return gatewaylisters.NewGatewayLister(l.IndexerFor(&gatewayv1.Gateway{}))
 }
 
-func (l *Listers) GetReferenceGrantLister() gatewaylisters.ReferenceGrantLister {
-	return gatewaylisters.NewReferenceGrantLister(l.IndexerFor(&gatewayv1beta1.ReferenceGrant{}))
+func (l *Listers) GetReferenceGrantLister() gatewaylistersv1beta1.ReferenceGrantLister {
+	return gatewaylistersv1beta1.NewReferenceGrantLister(l.IndexerFor(&gatewayv1beta1.ReferenceGrant{}))
 }

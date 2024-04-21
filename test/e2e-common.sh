@@ -162,6 +162,16 @@ function gateway_conformance() {
   popd
 }
 
+function test_e2e() {
+  local parallel_count="1"
+
+
+  go_test_e2e -timeout=20m -tags=e2e -parallel="${parallel_count}" ./test/e2e \
+    -ingressClass=gateway-api.ingress.networking.knative.dev
+
+  return $?
+}
+
 function test_ha() {
   go_test_e2e -timeout=15m -failfast -parallel=1 ./test/ha \
     -spoofinterval="10ms" \

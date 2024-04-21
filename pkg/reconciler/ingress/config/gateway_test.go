@@ -33,3 +33,26 @@ func TestGateway(t *testing.T) {
 		t.Error("NewContourFromConfigMap(example) =", err)
 	}
 }
+
+var modifiedVisibilityNoService = `
+    ExternalIP:
+      class: istio
+      gateway: istio-system/knative-gateway
+    ClusterLocal:
+      class: istio
+      gateway: istio-system/knative-local-gateway
+`
+
+func TestGatewayNoService(t *testing.T) {
+	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+
+	cm.Data[visibilityConfigKey] = modifiedVisibilityNoService
+
+	if _, err := NewGatewayFromConfigMap(cm); err != nil {
+		t.Error("NewContourFromConfigMap(actual) =", err)
+	}
+
+	if _, err := NewGatewayFromConfigMap(example); err != nil {
+		t.Error("NewContourFromConfigMap(example) =", err)
+	}
+}

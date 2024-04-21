@@ -103,7 +103,7 @@ func NewController(
 
 	statusProber := status.NewProber(
 		logger.Named("status-manager"),
-		NewProbeTargetLister(logger, endpointsInformer.Lister()),
+		NewProbeTargetLister(logger, endpointsInformer.Lister(), gatewayInformer.Lister()),
 		func(ing types.NamespacedName) {
 			logger.Debugf("Ready callback triggered for ingress: %v", ing)
 			impl.EnqueueKey(ing)

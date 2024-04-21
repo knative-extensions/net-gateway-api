@@ -22,24 +22,28 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/net-gateway-api/pkg/status"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
-func NewProbeTargetLister(logger *zap.SugaredLogger, endpointsLister corev1listers.EndpointsLister) status.ProbeTargetLister {
+func NewProbeTargetLister(logger *zap.SugaredLogger, endpointsLister corev1listers.EndpointsLister, gatewayLister gatewaylisters.GatewayLister) status.ProbeTargetLister {
 	return &gatewayPodTargetLister{
 		logger:          logger,
 		endpointsLister: endpointsLister,
+		gatewayLister:   gatewayLister,
 	}
 }
 
 type gatewayPodTargetLister struct {
 	logger          *zap.SugaredLogger
 	endpointsLister corev1listers.EndpointsLister
+	gatewayLister   gatewaylisters.GatewayLister
 }
 
 func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, backends status.Backends) ([]status.ProbeTarget, error) {
@@ -49,37 +53,80 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 	targets := make([]status.ProbeTarget, 0, len(backends.URLs))
 
 	for visibility, urls := range backends.URLs {
-		service := gatewayConfig.Gateways[visibility].Service
-		eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get endpoints: %w", err)
-		}
-		for _, sub := range eps.Subsets {
+		if service := gatewayConfig.Gateways[visibility].Service; service != nil {
+			eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get endpoints: %w", err)
+			}
+			for _, sub := range eps.Subsets {
+				scheme := "http"
+				// Istio uses "http2" for the http port
+				// Contour uses "http-80" for the http port
+				matchSchemes := sets.New("http", "http2", "http-80")
+				if visibility == v1alpha1.IngressVisibilityExternalIP && backends.HTTPOption == v1alpha1.HTTPOptionRedirected {
+					scheme = "https"
+					matchSchemes = sets.New("https", "https-443")
+				}
+				pt := status.ProbeTarget{PodIPs: sets.New[string]()}
+
+				portNumber := sub.Ports[0].Port
+				for _, port := range sub.Ports {
+					if matchSchemes.Has(port.Name) {
+						// Prefer to match the name exactly
+						portNumber = port.Port
+						break
+					}
+					if port.AppProtocol != nil && matchSchemes.Has(*port.AppProtocol) {
+						portNumber = port.Port
+					}
+				}
+				pt.PodPort = strconv.Itoa(int(portNumber))
+
+				for _, address := range sub.Addresses {
+					pt.PodIPs.Insert(address.IP)
+				}
+
+				for url := range urls {
+					url := url
+					url.Scheme = scheme
+					pt.URLs = append(pt.URLs, &url)
+				}
+
+				if len(pt.URLs) > 0 {
+					foundTargets += len(pt.PodIPs)
+					targets = append(targets, pt)
+				}
+			}
+		} else {
+			gwName := gatewayConfig.Gateways[visibility].Gateway
+			gw, err := l.gatewayLister.Gateways(gwName.Namespace).Get(gwName.Name)
+			if apierrs.IsNotFound(err) {
+				return nil, fmt.Errorf("Gateway %s does not exist: %w", gwName, err) //nolint:stylecheck
+			} else if err != nil {
+				return nil, err
+			}
+
+			// In order to avoid searching through Gateway listeners and
+			// deciding which host gets which listener port, we only support
+			// listener ports of 80 and 443 when omitting a Gateway service.
+			// However, if users wish to do more advanced listener
+			// configurations, this current implementation won't support it.
+			// See: https://github.com/knative-extensions/net-gateway-api/issues/695
+
 			scheme := "http"
-			// Istio uses "http2" for the http port
-			// Contour uses "http-80" for the http port
-			matchSchemes := sets.New("http", "http2", "http-80")
+			podPort := "80"
 			if visibility == v1alpha1.IngressVisibilityExternalIP && backends.HTTPOption == v1alpha1.HTTPOptionRedirected {
 				scheme = "https"
-				matchSchemes = sets.New("https", "https-443")
+				podPort = "443"
 			}
-			pt := status.ProbeTarget{PodIPs: sets.New[string]()}
 
-			portNumber := sub.Ports[0].Port
-			for _, port := range sub.Ports {
-				if matchSchemes.Has(port.Name) {
-					// Prefer to match the name exactly
-					portNumber = port.Port
-					break
-				}
-				if port.AppProtocol != nil && matchSchemes.Has(*port.AppProtocol) {
-					portNumber = port.Port
-				}
+			if len(gw.Status.Addresses) == 0 {
+				return nil, fmt.Errorf("no Addresses available in Status of Gateway %s/%s", gw.Namespace, gw.Name)
 			}
-			pt.PodPort = strconv.Itoa(int(portNumber))
 
-			for _, address := range sub.Addresses {
-				pt.PodIPs.Insert(address.IP)
+			pt := status.ProbeTarget{
+				PodIPs:  sets.New[string](gw.Status.Addresses[0].Value),
+				PodPort: podPort,
 			}
 
 			for url := range urls {
@@ -92,6 +139,7 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 				foundTargets += len(pt.PodIPs)
 				targets = append(targets, pt)
 			}
+
 		}
 	}
 	if foundTargets == 0 {

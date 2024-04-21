@@ -39,7 +39,12 @@ data:
     #   <visibility>: |
     #     gatewayClass: GatewayClass Name
     #     gateway: the namespace/name of Gateway
-    #     service: the namespace/name of Service for the Gateway
+    #     service: (optional) the namespace/name of Service for the Gateway
+    #
+    # If a <visibility>.service is not provided,
+    # net-gateway-api will use the first address on the Gateway status
+    # for probing. This is useful when the Gateway is off cluster.
+    # See: https://github.com/knative-extensions/net-gateway-api/issues/665
     #
     # The gateway configuration for the default visibility.
     visibility: |

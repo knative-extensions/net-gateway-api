@@ -117,10 +117,15 @@ func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
 		if err != nil {
 			return nil, fmt.Errorf("visibility %q failed to parse gateway: %w", key, err)
 		}
-		service, err := parseNamespacedName(value.Service)
-		if err != nil {
-			return nil, fmt.Errorf("visibility %q failed to parse service: %w", key, err)
+
+		var service *types.NamespacedName
+		if value.Service != "" {
+			service, err = parseNamespacedName(value.Service)
+			if err != nil {
+				return nil, fmt.Errorf("visibility %q failed to parse service: %w", key, err)
+			}
 		}
+
 		entry[key] = GatewayConfig{
 			GatewayClass: value.GatewayClass,
 			Gateway:      gateway,

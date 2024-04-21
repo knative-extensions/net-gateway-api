@@ -25,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -177,6 +178,13 @@ func AddOldBackend(r *gatewayapi.HTTPRoute, hash string, old gatewayapi.HTTPBack
 	}
 
 	r.Spec.Rules = append(r.Spec.Rules, rule)
+}
+
+func HTTPRouteKey(ing *netv1alpha1.Ingress, rule *netv1alpha1.IngressRule) types.NamespacedName {
+	return types.NamespacedName{
+		Name:      LongestHost(rule.Hosts),
+		Namespace: ing.Namespace,
+	}
 }
 
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.

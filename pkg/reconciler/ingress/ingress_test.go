@@ -2328,15 +2328,15 @@ func privateGw(g *gatewayapi.Gateway) {
 }
 
 func setStatusPrivateAddress(g *gatewayapi.Gateway) {
-	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
-		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.IPAddressType),
 		Value: privateGatewayAddress,
 	})
 }
 
 func setStatusPublicAddress(g *gatewayapi.Gateway) {
-	g.Status.Addresses = append(g.Status.Addresses, gatewayapiv1.GatewayStatusAddress{
-		Type:  ptr.To[gatewayapiv1.AddressType](gatewayapiv1.IPAddressType),
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.IPAddressType),
 		Value: publicGatewayAddress,
 	})
 }

@@ -64,11 +64,19 @@ func probeTargets(
 	}
 
 	for _, rule := range r.Spec.Rules {
+	match_loop:
 		for _, match := range rule.Matches {
 			for _, headers := range match.Headers {
 				// Skip non-probe matches
 				if headers.Name != header.HashKey {
 					continue
+				}
+
+				if visibility == netv1alpha1.IngressVisibilityClusterLocal {
+					host := resources.LongestHost(r.Spec.Hostnames)
+					url := url.URL{Host: string(host), Path: *match.Path.Value}
+					backends.AddURL(visibility, url)
+					continue match_loop
 				}
 
 				for _, hostname := range r.Spec.Hostnames {

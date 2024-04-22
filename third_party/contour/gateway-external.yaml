@@ -39,6 +39,10 @@ spec:
     enableExternalNameService: true
     featureFlags:
     - "useEndpointSlices"
+  envoy:
+    workloadType: Deployment
+    deployment:
+      replicas: 2
   contour:
     deployment:
       replicas: 1

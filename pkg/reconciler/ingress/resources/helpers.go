@@ -17,7 +17,8 @@ limitations under the License.
 package resources
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 )
 
 // LongestHost returns the most specific host.
@@ -32,7 +33,7 @@ import (
 //   - hello.default
 //   - hello.default.svc
 //   - hello.default.svc.cluster.local
-func LongestHost(hosts []string) string {
-	sort.Strings(hosts)
+func LongestHost[S ~[]E, E cmp.Ordered](hosts S) E {
+	slices.Sort(hosts)
 	return hosts[len(hosts)-1]
 }

@@ -127,7 +127,7 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 			}
 
 			if len(gw.Status.Addresses) == 0 {
-				return nil, fmt.Errorf("no Addresses available in Status of Gateway %s/%s", gw.Namespace, gw.Name)
+				return nil, fmt.Errorf("no addresses available in status of Gateway %s/%s", gw.Namespace, gw.Name)
 			}
 
 			pt := status.ProbeTarget{

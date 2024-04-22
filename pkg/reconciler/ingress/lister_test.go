@@ -399,7 +399,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 			},
 		},
 		ing:     ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
-		wantErr: fmt.Errorf("no Addresses available in Status of Gateway istio-system/istio-gateway"),
+		wantErr: fmt.Errorf("no addresses available in status of Gateway istio-system/istio-gateway"),
 	}}
 
 	for _, test := range tests {

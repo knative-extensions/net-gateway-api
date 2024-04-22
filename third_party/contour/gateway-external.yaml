@@ -18,7 +18,7 @@ metadata:
   name: contour-external
 ---
 kind: GatewayClass
-apiVersion: gateway.networking.k8s.io/v1beta1
+apiVersion: gateway.networking.k8s.io/v1
 metadata:
   name: contour-external
 spec:
@@ -48,7 +48,7 @@ spec:
       replicas: 1
 ---
 kind: Gateway
-apiVersion: gateway.networking.k8s.io/v1beta1
+apiVersion: gateway.networking.k8s.io/v1
 metadata:
   name: knative-external
   namespace: contour-external

@@ -71,7 +71,7 @@ func NewController(
 	impl := ingressreconciler.NewImpl(ctx, c, gatewayAPIIngressClassName, func(impl *controller.Impl) controller.Options {
 		configsToResync := []interface{}{
 			&networkcfg.Config{},
-			&config.Gateway{},
+			&config.GatewayPlugin{},
 		}
 		resync := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {
 			impl.GlobalResync(ingressInformer.Informer())

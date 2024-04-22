@@ -31,6 +31,7 @@ import (
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
+	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
@@ -227,14 +228,21 @@ func makeHTTPRouteSpec(
 
 	rules := makeHTTPRouteRule(rule)
 
-	gatewayConfig := config.FromContext(ctx).Gateway
-	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
+	pluginConfig := config.FromContext(ctx).GatewayPlugin
+
+	var gateway config.Gateway
+
+	if rule.Visibility == v1alpha1.IngressVisibilityClusterLocal {
+		gateway = pluginConfig.LocalGateway()
+	} else {
+		gateway = pluginConfig.ExternalGateway()
+	}
 
 	gatewayRef := gatewayapi.ParentReference{
 		Group:     (*gatewayapi.Group)(&gatewayapi.GroupVersion.Group),
 		Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
-		Namespace: ptr.To(gatewayapi.Namespace(namespacedNameGateway.Namespace)),
-		Name:      gatewayapi.ObjectName(namespacedNameGateway.Name),
+		Namespace: ptr.To(gatewayapi.Namespace(gateway.Namespace)),
+		Name:      gatewayapi.ObjectName(gateway.Name),
 	}
 
 	return gatewayapi.HTTPRouteSpec{

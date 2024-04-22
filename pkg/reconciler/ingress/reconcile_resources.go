@@ -214,8 +214,7 @@ func (c *Reconciler) reconcileTLS(
 ) (
 	[]*gatewayapi.Listener, error) {
 	recorder := controller.GetEventRecorder(ctx)
-	gatewayConfig := config.FromContext(ctx).Gateway.Gateways
-	externalGw := gatewayConfig[netv1alpha1.IngressVisibilityExternalIP]
+	externalGw := config.FromContext(ctx).GatewayPlugin.ExternalGateway()
 
 	gateway := metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
@@ -223,8 +222,8 @@ func (c *Reconciler) reconcileTLS(
 			APIVersion: gatewayapi.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      externalGw.Gateway.Name,
-			Namespace: externalGw.Gateway.Namespace,
+			Name:      externalGw.Name,
+			Namespace: externalGw.Namespace,
 		},
 	}
 	secret := metav1.PartialObjectMetadata{
@@ -365,7 +364,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 	return nil
 }
 
-func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1.Ingress, gwName *types.NamespacedName) error {
+func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1.Ingress, gwName types.NamespacedName) error {
 	recorder := controller.GetEventRecorder(ctx)
 
 	gw, err := c.gatewayLister.Gateways(gwName.Namespace).Get(gwName.Name)

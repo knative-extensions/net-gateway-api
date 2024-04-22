@@ -22,8 +22,8 @@ metadata:
 data:
   visibility: |
     ExternalIP:
-      class: istio
+    - class: istio
       gateway: istio-system/knative-gateway
     ClusterLocal:
-      class: istio
+    - class: istio
       gateway: istio-system/knative-local-gateway

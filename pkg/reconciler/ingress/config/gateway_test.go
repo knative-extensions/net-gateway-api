@@ -17,42 +17,126 @@ limitations under the License.
 package config
 
 import (
+	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	. "knative.dev/pkg/configmap/testing"
 )
 
-func TestGateway(t *testing.T) {
+func TestFromConfigMap(t *testing.T) {
 	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
 
-	if _, err := NewGatewayFromConfigMap(cm); err != nil {
-		t.Error("NewContourFromConfigMap(actual) =", err)
+	if _, err := FromConfigMap(cm); err != nil {
+		t.Error("FromConfigMap(actual) =", err)
 	}
 
-	if _, err := NewGatewayFromConfigMap(example); err != nil {
-		t.Error("NewContourFromConfigMap(example) =", err)
+	if _, err := FromConfigMap(example); err != nil {
+		t.Error("FromConfigMap(example) =", err)
 	}
 }
 
-var modifiedVisibilityNoService = `
-    ExternalIP:
-      class: istio
-      gateway: istio-system/knative-gateway
-    ClusterLocal:
-      class: istio
-      gateway: istio-system/knative-local-gateway
-`
+func TestFromConfigMapErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		data map[string]string
+		want string
+	}{{
+		name: "external-gateways bad yaml",
+		data: map[string]string{
+			"external-gateways": `{`,
+		},
+		want: `Unable to parse "external-gateways"`,
+	}, {
+		name: "local-gateways bad yaml",
+		data: map[string]string{
+			"local-gateways": `{`,
+		},
+		want: `Unable to parse "local-gateways"`,
+	}, {
+		name: "external-gateways multiple entries",
+		data: map[string]string{
+			"external-gateways": `[{"class":"boo"},{"class":"boo"}]`,
+		},
+		want: `Only a single external gateway is supported`,
+	}, {
+		name: "local-gateways multiple entries",
+		data: map[string]string{
+			"local-gateways": `[{"class":"boo"},{"class":"boo"}]`,
+		},
+		want: `Only a single local gateway is supported`,
+	}, {
+		name: "missing gateway class",
+		data: map[string]string{
+			"local-gateways": `[{"gateway": "namespace/name"}]`,
+		},
+		want: `Unable to parse "local-gateways": entry [0] field "class" is required`,
+	}, {
+		name: "missing gateway name",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "namespace/"}]`,
+		},
+		want: `Unable to parse "local-gateways": failed to parse "gateway"`,
+	}, {
+		name: "missing gateway namespace",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "/name"}]`,
+		},
+		want: `Unable to parse "local-gateways": failed to parse "gateway"`,
+	}, {
+		name: "bad gateway entry",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "name"}]`,
+		},
+		want: `Unable to parse "local-gateways"`,
+	}, {
+		name: "missing service name",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"ns/"}]`,
+		},
+		want: `Unable to parse "local-gateways": failed to parse "service"`,
+	}, {
+		name: "missing service namespace",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"/name"}]`,
+		},
+		want: `Unable to parse "local-gateways": failed to parse "service"`,
+	}, {
+		name: "bad service entry",
+		data: map[string]string{
+			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"name"}]`,
+		},
+		want: `Unable to parse "local-gateways"`,
+	}}
 
-func TestGatewayNoService(t *testing.T) {
-	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, got := FromConfigMap(&corev1.ConfigMap{Data: tc.data})
 
-	cm.Data[visibilityConfigKey] = modifiedVisibilityNoService
-
-	if _, err := NewGatewayFromConfigMap(cm); err != nil {
-		t.Error("NewContourFromConfigMap(actual) =", err)
+			if got == nil {
+				t.Fatal("Expected an error to occur")
+			}
+			if !strings.HasPrefix(got.Error(), tc.want) {
+				t.Errorf("Unexpected error message %q - wanted prefix %q", got, tc.want)
+			}
+		})
 	}
 
-	if _, err := NewGatewayFromConfigMap(example); err != nil {
-		t.Error("NewContourFromConfigMap(example) =", err)
+}
+
+func TestGatewayNoService(t *testing.T) {
+	_, err := FromConfigMap(&corev1.ConfigMap{
+		Data: map[string]string{
+			"external-gateways": `
+      - class: istio
+        gateway: istio-system/knative-gateway`,
+			"local-gateways": `
+      - class: istio
+        gateway: istio-system/knative-local-gateway`,
+		},
+	})
+
+	if err != nil {
+		t.Errorf("FromConfigMap(noService) = %v", err)
 	}
 }

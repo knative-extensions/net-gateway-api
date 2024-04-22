@@ -30,29 +30,29 @@ data:
     #                              #
     ################################
 
-    # ***** WARNING *****
-    # This configuration is tentative.
-    # The structure might be changed in the future version.
-    # ********************
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
     #
-    # visibility: |
-    #   <visibility>: |
-    #     gatewayClass: GatewayClass Name
-    #     gateway: the namespace/name of Gateway
-    #     service: (optional) the namespace/name of Service for the Gateway
-    #
-    # If a <visibility>.service is not provided,
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+
+    # When configuring Gateways below if 'service' is not provided,
     # net-gateway-api will use the first address on the Gateway status
-    # for probing. This is useful when the Gateway is off cluster.
-    # See: https://github.com/knative-extensions/net-gateway-api/issues/665
+    # for probing. This is useful when the Gateway proxy is off cluster.
     #
-    # The gateway configuration for the default visibility.
-    visibility: |
-      ExternalIP:
-        class: istio
+    # See: https://github.com/knative-extensions/net-gateway-api/issues/665
+
+    # external-gateways defines the Gateway to be used for external traffic
+    external-gateways: |
+      - class: istio
         gateway: istio-system/knative-gateway
         service: istio-system/istio-ingressgateway
-      ClusterLocal:
-        class: istio
+
+    # local-gateways defines the Gateway to be used for cluster local traffic
+    local-gateways: |
+      - class: istio
         gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway

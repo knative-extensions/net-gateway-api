@@ -47,13 +47,20 @@ type gatewayPodTargetLister struct {
 }
 
 func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, backends status.Backends) ([]status.ProbeTarget, error) {
-	gatewayConfig := config.FromContext(ctx).Gateway
+	pluginConfig := config.FromContext(ctx).GatewayPlugin
 
 	foundTargets := 0
 	targets := make([]status.ProbeTarget, 0, len(backends.URLs))
 
 	for visibility, urls := range backends.URLs {
-		if service := gatewayConfig.Gateways[visibility].Service; service != nil {
+		var gateway config.Gateway
+		if visibility == v1alpha1.IngressVisibilityClusterLocal {
+			gateway = pluginConfig.LocalGateway()
+		} else {
+			gateway = pluginConfig.ExternalGateway()
+		}
+
+		if service := gateway.Service; service != nil {
 			eps, err := l.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get endpoints: %w", err)
@@ -98,10 +105,9 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 				}
 			}
 		} else {
-			gwName := gatewayConfig.Gateways[visibility].Gateway
-			gw, err := l.gatewayLister.Gateways(gwName.Namespace).Get(gwName.Name)
+			gw, err := l.gatewayLister.Gateways(gateway.Namespace).Get(gateway.Name)
 			if apierrs.IsNotFound(err) {
-				return nil, fmt.Errorf("Gateway %s does not exist: %w", gwName, err) //nolint:stylecheck
+				return nil, fmt.Errorf("Gateway %q does not exist: %w", gateway, err) //nolint:stylecheck
 			} else if err != nil {
 				return nil, err
 			}

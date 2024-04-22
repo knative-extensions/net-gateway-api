@@ -2186,7 +2186,7 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			},
 		},
 		WantEvents: []string{
-			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway istio-gateway does not have an address in status`),
+			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway "istio-system/istio-gateway" does not have an address in status`),
 		},
 	}}
 
@@ -2436,31 +2436,27 @@ func rp(to *corev1.Secret) *gatewayapiv1beta1.ReferenceGrant {
 var (
 	defaultConfig = &config.Config{
 		Network: &networkcfg.Config{},
-		Gateway: &config.Gateway{
-			Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP: {
-					Service: &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
-					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
-				},
-				v1alpha1.IngressVisibilityClusterLocal: {
-					Service: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
-					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
-				},
-			},
+		GatewayPlugin: &config.GatewayPlugin{
+			ExternalGateways: []config.Gateway{{
+				Service:        &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
+				NamespacedName: types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
+			}},
+			LocalGateways: []config.Gateway{{
+				Service:        &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
+				NamespacedName: types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
+			}},
 		},
 	}
 
 	configNoService = &config.Config{
 		Network: &networkcfg.Config{},
-		Gateway: &config.Gateway{
-			Gateways: map[v1alpha1.IngressVisibility]config.GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP: {
-					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
-				},
-				v1alpha1.IngressVisibilityClusterLocal: {
-					Gateway: &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
-				},
-			},
+		GatewayPlugin: &config.GatewayPlugin{
+			ExternalGateways: []config.Gateway{{
+				NamespacedName: types.NamespacedName{Namespace: "istio-system", Name: "istio-gateway"},
+			}},
+			LocalGateways: []config.Gateway{{
+				NamespacedName: types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"},
+			}},
 		},
 	}
 )

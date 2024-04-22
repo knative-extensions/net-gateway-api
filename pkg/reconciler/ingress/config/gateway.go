@@ -18,13 +18,12 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/configmap"
 	"sigs.k8s.io/yaml"
-
-	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -33,114 +32,128 @@ const (
 	// GatewayConfigName is the config map name for the gateway configuration.
 	GatewayConfigName = "config-gateway"
 
-	visibilityConfigKey = "visibility"
-
-	// defaultGatewayClass is the gatewayclass name for the gateway.
-	defaultGatewayClass = "istio"
+	externalGatewaysKey = "external-gateways"
+	localGatewaysKey    = "local-gateways"
 )
 
-var (
-	// defaultIstioGateway is the default gateway.
-	defaultIstioGateway = &types.NamespacedName{Namespace: "istio-system", Name: "knative-gateway"}
+func defaultExternalGateways() []Gateway {
+	return []Gateway{{
+		NamespacedName: types.NamespacedName{
+			Name:      "knative-gateway",
+			Namespace: "istio-system",
+		},
 
-	// defaultIstioLocalGateway is the default local gateway:
-	defaultIstioLocalGateway = &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"}
-
-	// defaultLocalGatewayService holds the default local gateway service.
-	defaultLocalGatewayService = &types.NamespacedName{Namespace: "istio-system", Name: "knative-local-gateway"}
-
-	// defaultGatewayService is the default gateway service.
-	defaultGatewayService = &types.NamespacedName{Namespace: "istio-system", Name: "istio-ingressgateway"}
-)
-
-type GatewayConfig struct {
-	GatewayClass string
-	Gateway      *types.NamespacedName
-	Service      *types.NamespacedName
+		Class: "istio",
+		Service: &types.NamespacedName{
+			Name:      "istio-ingressgateway",
+			Namespace: "istio-system",
+		},
+	}}
 }
 
-type visibilityValue struct {
-	GatewayClass string `json:"class,omitempty"`
-	Gateway      string `json:"gateway,omitempty"`
-	Service      string `json:"service,omitempty"`
+func defaultLocalGateways() []Gateway {
+	return []Gateway{{
+		NamespacedName: types.NamespacedName{
+			Name:      "knative-local-gateway",
+			Namespace: "istio-system",
+		},
+		Class: "istio",
+		Service: &types.NamespacedName{
+			Name:      "knative-local-gateway",
+			Namespace: "istio-system",
+		},
+	}}
 }
 
-// Gateway maps gateways to routes by matching the gateway's
-// label selectors to the route's labels.
+// GatewayPlugin specifies which Gateways are used for external/local traffic
+type GatewayPlugin struct {
+	ExternalGateways []Gateway
+	LocalGateways    []Gateway
+}
+
+func (g *GatewayPlugin) ExternalGateway() Gateway {
+	return g.ExternalGateways[0]
+}
+
+func (g *GatewayPlugin) LocalGateway() Gateway {
+	return g.LocalGateways[0]
+}
+
 type Gateway struct {
-	// Gateways map from gateway to label selector.  If a route has
-	// labels matching a particular selector, it will use the
-	// corresponding gateway.  If multiple selectors match, we choose
-	// the most specific selector.
-	Gateways map[v1alpha1.IngressVisibility]GatewayConfig
+	types.NamespacedName
+
+	Class   string
+	Service *types.NamespacedName
 }
 
-// NewGatewayFromConfigMap creates a Gateway from the supplied ConfigMap
-func NewGatewayFromConfigMap(configMap *corev1.ConfigMap) (*Gateway, error) {
-	v, ok := configMap.Data[visibilityConfigKey]
-	if !ok {
-		// These are the defaults.
-		return &Gateway{
-			Gateways: map[v1alpha1.IngressVisibility]GatewayConfig{
-				v1alpha1.IngressVisibilityExternalIP:   {GatewayClass: defaultGatewayClass, Gateway: defaultIstioGateway, Service: defaultGatewayService},
-				v1alpha1.IngressVisibilityClusterLocal: {GatewayClass: defaultGatewayClass, Gateway: defaultIstioLocalGateway, Service: defaultLocalGatewayService},
-			},
-		}, nil
-	}
+// FromConfigMap creates a GatewayPlugin config from the supplied ConfigMap
+func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
+	var (
+		err    error
+		config = &GatewayPlugin{}
+	)
 
-	visConfig := make(map[v1alpha1.IngressVisibility]visibilityValue)
-	if err := yaml.Unmarshal([]byte(v), &visConfig); err != nil {
-		return nil, err
-	}
-
-	for _, vis := range []v1alpha1.IngressVisibility{
-		v1alpha1.IngressVisibilityClusterLocal,
-		v1alpha1.IngressVisibilityExternalIP,
-	} {
-		if _, ok := visConfig[vis]; !ok {
-			return nil, fmt.Errorf("visibility %q must not be empty", vis)
-		}
-	}
-
-	entry := make(map[v1alpha1.IngressVisibility]GatewayConfig)
-	for key, value := range visConfig {
-		// Check that the visibility makes sense.
-		switch key {
-		case v1alpha1.IngressVisibilityClusterLocal, v1alpha1.IngressVisibilityExternalIP:
-		default:
-			return nil, fmt.Errorf("unrecognized visibility: %q", key)
-		}
-		if value.GatewayClass == "" {
-			return nil, fmt.Errorf("visibility %q must set gatewayclass", key)
-		}
-		gateway, err := parseNamespacedName(value.Gateway)
+	if data, ok := cm.Data[externalGatewaysKey]; ok {
+		config.ExternalGateways, err = parseGatewayConfig(data)
 		if err != nil {
-			return nil, fmt.Errorf("visibility %q failed to parse gateway: %w", key, err)
-		}
-
-		var service *types.NamespacedName
-		if value.Service != "" {
-			service, err = parseNamespacedName(value.Service)
-			if err != nil {
-				return nil, fmt.Errorf("visibility %q failed to parse service: %w", key, err)
-			}
-		}
-
-		entry[key] = GatewayConfig{
-			GatewayClass: value.GatewayClass,
-			Gateway:      gateway,
-			Service:      service,
+			return nil, fmt.Errorf("Unable to parse %q: %w", externalGatewaysKey, err)
 		}
 	}
-	return &Gateway{Gateways: entry}, nil
+
+	if data, ok := cm.Data[localGatewaysKey]; ok {
+		config.LocalGateways, err = parseGatewayConfig(data)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse %q: %w", localGatewaysKey, err)
+		}
+	}
+
+	switch len(config.ExternalGateways) {
+	case 0:
+		config.ExternalGateways = defaultExternalGateways()
+	case 1:
+	default:
+		return nil, fmt.Errorf("Only a single external gateway is supported")
+	}
+
+	switch len(config.LocalGateways) {
+	case 0:
+		config.LocalGateways = defaultLocalGateways()
+	case 1:
+	default:
+		return nil, fmt.Errorf("Only a single local gateway is supported")
+	}
+
+	return config, nil
 }
 
-func parseNamespacedName(namespacedName string) (*types.NamespacedName, error) {
-	namespace, name, err := cache.SplitMetaNamespaceKey(namespacedName)
-	if err != nil {
+func parseGatewayConfig(data string) ([]Gateway, error) {
+	var entries []map[string]string
+
+	if err := yaml.Unmarshal([]byte(data), &entries); err != nil {
 		return nil, err
-	} else if namespace == "" || name == "" {
-		return nil, fmt.Errorf("missing namespace or name in %q", namespacedName)
 	}
-	return &types.NamespacedName{Namespace: namespace, Name: name}, nil
+
+	gws := make([]Gateway, 0, len(entries))
+
+	for i, entry := range entries {
+		fmt.Println(entry)
+		gw := Gateway{}
+
+		err := configmap.Parse(entry,
+			configmap.AsString("class", &gw.Class),
+			configmap.AsNamespacedName("gateway", &gw.NamespacedName),
+			configmap.AsOptionalNamespacedName("service", &gw.Service),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(strings.TrimSpace(gw.Class)) == 0 {
+			return nil, fmt.Errorf(`entry [%d] field "class" is required`, i)
+		}
+
+		gws = append(gws, gw)
+	}
+
+	return gws, nil
 }

@@ -148,46 +148,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	// TODO: check Gateway readiness before reporting Ingress ready
 	if routesReady {
-		var publicLbs, privateLbs []v1alpha1.LoadBalancerIngressStatus
+		lbs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 
-		externalGateway := pluginConfig.ExternalGateway()
-		localGateway := pluginConfig.LocalGateway()
-
-		publicLbs, err = c.determineLoadBalancerIngressStatus(externalGateway)
 		if err != nil {
-			if apierrs.IsNotFound(err) {
-				ing.Status.MarkLoadBalancerFailed(
-					"GatewayDoesNotExist",
-					fmt.Sprintf(
-						"could not find Gateway %s/%s",
-						externalGateway.Namespace,
-						externalGateway.Name,
-					),
-				)
-				return fmt.Errorf("Gateway %s does not exist: %w", externalGateway.Name, err) //nolint:stylecheck
-			}
-			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
-
-		privateLbs, err = c.determineLoadBalancerIngressStatus(localGateway)
-		if err != nil {
-			if apierrs.IsNotFound(err) {
-				ing.Status.MarkLoadBalancerFailed(
-					"GatewayDoesNotExist",
-					fmt.Sprintf(
-						"could not find Gateway %s/%s",
-						localGateway.Namespace,
-						localGateway.Name,
-					),
-				)
-				return fmt.Errorf("Gateway %s does not exist: %w", localGateway.Name, err) //nolint:stylecheck
-			}
-			ing.Status.MarkLoadBalancerNotReady()
-			return err
-		}
-
-		ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)
+		ing.Status.MarkLoadBalancerReady(lbs[v1alpha1.IngressVisibilityExternalIP], lbs[v1alpha1.IngressVisibilityClusterLocal])
 	} else {
 		ing.Status.MarkLoadBalancerNotReady()
 	}
@@ -195,36 +161,56 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	return nil
 }
 
-// determineLoadBalancerIngressStatus will return the address for the Gateway.
-// If a service is provided, it will return the address of the service.
+// lookUpLoadBalancers will return a map of visibilites to
+// LoadBalancerIngressStatuses for the provided Gateway config. If a service is
+// available on a Gateway, it will return the address of the service.
 // Otherwise, it will return the first address in the Gateway status.
-func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
-	if gwc.Service != nil {
-		return []v1alpha1.LoadBalancerIngressStatus{
-			{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
-		}, nil
+func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) (map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus, error) {
+	gateways := map[v1alpha1.IngressVisibility][]config.Gateway{
+		v1alpha1.IngressVisibilityExternalIP:   gpc.ExternalGateways,
+		v1alpha1.IngressVisibilityClusterLocal: gpc.LocalGateways,
 	}
-	gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
-	if err != nil {
-		return nil, err
-	}
+	ips := map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus{}
+	for vis, gatewayConfigs := range gateways {
+		// TODO: when the config is updated to support label selectors, this
+		// code must change to find out which Gateway is appropriate for the
+		// given Ingress
+		gwc := gatewayConfigs[0]
+		if gwc.Service != nil {
+			ips[vis] = []v1alpha1.LoadBalancerIngressStatus{
+				{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
+			}
+		} else {
+			gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
+			if err != nil {
+				if apierrs.IsNotFound(err) {
+					ing.Status.MarkLoadBalancerFailed(
+						"GatewayDoesNotExist",
+						fmt.Sprintf(
+							"could not find Gateway %s/%s",
+							gw.Namespace,
+							gw.Name,
+						),
+					)
+					return nil, fmt.Errorf("Gateway %s does not exist: %w", gwc.Name, err) //nolint:stylecheck
+				}
+				ing.Status.MarkLoadBalancerNotReady()
+				return nil, err
+			}
 
-	var lbis v1alpha1.LoadBalancerIngressStatus
-
-	if len(gw.Status.Addresses) > 0 {
-		switch *gw.Status.Addresses[0].Type {
-		case gatewayapi.IPAddressType:
-			lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
-		default:
-			// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
-			lbis = v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value}
+			if len(gw.Status.Addresses) > 0 {
+				switch *gw.Status.Addresses[0].Type {
+				case gatewayapi.IPAddressType:
+					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{IP: gw.Status.Addresses[0].Value}}
+				default:
+					// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
+					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{DomainInternal: gw.Status.Addresses[0].Value}}
+				}
+			}
 		}
-
-		return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
 	}
 
-	return nil, fmt.Errorf("Gateway %q does not have an address in status", gwc.NamespacedName) //nolint:stylecheck
-
+	return ips, nil
 }
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if

@@ -151,6 +151,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		lbs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 
 		if err != nil {
+			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
 		ing.Status.MarkLoadBalancerReady(lbs[v1alpha1.IngressVisibilityExternalIP], lbs[v1alpha1.IngressVisibilityClusterLocal])
@@ -192,9 +193,7 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 							gw.Name,
 						),
 					)
-					return nil, fmt.Errorf("Gateway %s does not exist: %w", gwc.Name, err) //nolint:stylecheck
 				}
-				ing.Status.MarkLoadBalancerNotReady()
 				return nil, err
 			}
 
@@ -206,6 +205,8 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 					// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
 					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{DomainInternal: gw.Status.Addresses[0].Value}}
 				}
+			} else {
+				return nil, fmt.Errorf("Gateway %s/%s does not have an address in status", gwc.Namespace, gwc.Name) //nolint:stylecheck
 			}
 		}
 	}

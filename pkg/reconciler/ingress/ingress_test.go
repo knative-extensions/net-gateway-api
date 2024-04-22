@@ -2258,13 +2258,17 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 		}, servicesAndEndpoints...),
 		WantErr: true,
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
-			{Object: ing(withBasicSpec, withGatewayAPIClass, withFinalizer, func(i *v1alpha1.Ingress) {
-				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerNotReady()
-				i.Status.MarkNetworkConfigured()
-				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
-			}),
-			},
+			{Object: ing(
+				withBasicSpec,
+				withGatewayAPIClass,
+				withFinalizer,
+				func(i *v1alpha1.Ingress) {
+					i.Status.InitializeConditions()
+					i.Status.MarkLoadBalancerNotReady()
+					i.Status.MarkNetworkConfigured()
+					i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+				},
+			)},
 		},
 		WantEvents: []string{
 			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway "istio-system/istio-gateway" does not have an address in status`),

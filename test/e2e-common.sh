@@ -163,6 +163,8 @@ function gateway_conformance() {
 }
 
 function test_e2e() {
+  # TestGatewayWithNoService edits the ConfigMap, so running in parallel could cause
+  # unexpected problems when more tests are added.
   local parallel_count="1"
 
 

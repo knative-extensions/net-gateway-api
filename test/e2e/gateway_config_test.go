@@ -69,9 +69,9 @@ func TestNetGatewayAPIConfigNoService(t *testing.T) {
 	if ingress, ok := os.LookupEnv("INGRESS"); ok {
 		switch ingress {
 		case "contour":
-			configGateway = ConfigMapFromTestFile(t, testdata+"contour-no-service-vis.yaml", "visibility")
+			configGateway = ConfigMapFromTestFile(t, testdata+"contour-no-service-vis.yaml", "external-gateways", "local-gateways")
 		case "istio":
-			configGateway = ConfigMapFromTestFile(t, testdata+"istio-no-service-vis.yaml", "visibility")
+			configGateway = ConfigMapFromTestFile(t, testdata+"istio-no-service-vis.yaml", "external-gateways", "local-gateways")
 		case "default":
 			t.Fatalf("value for INGRESS (%s) not supported", ingress)
 		}

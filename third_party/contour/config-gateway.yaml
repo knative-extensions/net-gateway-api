@@ -20,12 +20,13 @@ metadata:
   labels:
     serving.knative.dev/release: devel
 data:
-  visibility: |
-    ExternalIP:
-      class: contour
+  external-gateways: |
+    - class: contour
       gateway: contour-external/knative-external
       service: contour-external/envoy-knative-external
-    ClusterLocal:
-      class: contour
+
+  # local-gateways defines the Gateway to be used for cluster local traffic
+  local-gateways: |
+    - class: contour
       gateway: contour-internal/knative-local
       service: contour-internal/envoy-knative-local

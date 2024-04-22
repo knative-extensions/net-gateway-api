@@ -20,10 +20,9 @@ metadata:
   labels:
     serving.knative.dev/release: devel
 data:
-  visibility: |
-    ExternalIP:
-      class: istio
+  external-gateways: |
+    - class: istio
       gateway: istio-system/knative-gateway
-    ClusterLocal:
-      class: istio
+  local-gateways: |
+    - class: istio
       gateway: istio-system/knative-local-gateway

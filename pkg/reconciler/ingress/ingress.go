@@ -74,14 +74,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingres
 
 // FinalizeKind implements Interface.FinalizeKind
 func (c *Reconciler) FinalizeKind(ctx context.Context, ingress *v1alpha1.Ingress) pkgreconciler.Event {
-	gatewayConfig := config.FromContext(ctx).Gateway
+	pluginConfig := config.FromContext(ctx).GatewayPlugin
 
 	// We currently only support TLS on the external IP
-	return c.clearGatewayListeners(ctx, ingress, gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
+	return c.clearGatewayListeners(ctx, ingress, pluginConfig.ExternalGateway().NamespacedName)
 }
 
 func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress) error {
-	gatewayConfig := config.FromContext(ctx).Gateway
+	pluginConfig := config.FromContext(ctx).GatewayPlugin
 
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed defaults specified.  This won't result
@@ -140,7 +140,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		// For now, we only reconcile the external visibility, because there's
 		// no way to provide TLS for internal listeners.
 		err := c.reconcileGatewayListeners(
-			ctx, listeners, ing, *gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
+			ctx, listeners, ing, pluginConfig.ExternalGateway().NamespacedName)
 		if err != nil {
 			return err
 		}
@@ -150,38 +150,38 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	if routesReady {
 		var publicLbs, privateLbs []v1alpha1.LoadBalancerIngressStatus
 
-		externalIPGatewayConfig := gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP]
-		internalIPGatewayConfig := gatewayConfig.Gateways[v1alpha1.IngressVisibilityClusterLocal]
+		externalGateway := pluginConfig.ExternalGateway()
+		localGateway := pluginConfig.LocalGateway()
 
-		publicLbs, err = c.determineLoadBalancerIngressStatus(externalIPGatewayConfig)
+		publicLbs, err = c.determineLoadBalancerIngressStatus(externalGateway)
 		if err != nil {
 			if apierrs.IsNotFound(err) {
 				ing.Status.MarkLoadBalancerFailed(
 					"GatewayDoesNotExist",
 					fmt.Sprintf(
 						"could not find Gateway %s/%s",
-						externalIPGatewayConfig.Gateway.Namespace,
-						externalIPGatewayConfig.Gateway.Name,
+						externalGateway.Namespace,
+						externalGateway.Name,
 					),
 				)
-				return fmt.Errorf("Gateway %s does not exist: %w", externalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
+				return fmt.Errorf("Gateway %s does not exist: %w", externalGateway.Name, err) //nolint:stylecheck
 			}
 			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
 
-		privateLbs, err = c.determineLoadBalancerIngressStatus(internalIPGatewayConfig)
+		privateLbs, err = c.determineLoadBalancerIngressStatus(localGateway)
 		if err != nil {
 			if apierrs.IsNotFound(err) {
 				ing.Status.MarkLoadBalancerFailed(
 					"GatewayDoesNotExist",
 					fmt.Sprintf(
 						"could not find Gateway %s/%s",
-						internalIPGatewayConfig.Gateway.Namespace,
-						internalIPGatewayConfig.Gateway.Name,
+						localGateway.Namespace,
+						localGateway.Name,
 					),
 				)
-				return fmt.Errorf("Gateway %s does not exist: %w", internalIPGatewayConfig.Gateway.Name, err) //nolint:stylecheck
+				return fmt.Errorf("Gateway %s does not exist: %w", localGateway.Name, err) //nolint:stylecheck
 			}
 			ing.Status.MarkLoadBalancerNotReady()
 			return err
@@ -198,13 +198,13 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 // determineLoadBalancerIngressStatus will return the address for the Gateway.
 // If a service is provided, it will return the address of the service.
 // Otherwise, it will return the first address in the Gateway status.
-func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig) ([]v1alpha1.LoadBalancerIngressStatus, error) {
+func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
 	if gwc.Service != nil {
 		return []v1alpha1.LoadBalancerIngressStatus{
 			{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
 		}, nil
 	}
-	gw, err := c.gatewayLister.Gateways(gwc.Gateway.Namespace).Get(gwc.Gateway.Name)
+	gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.GatewayConfig
 		return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
 	}
 
-	return nil, fmt.Errorf("Gateway %s does not have an address in status", gwc.Gateway.Name) //nolint:stylecheck
+	return nil, fmt.Errorf("Gateway %q does not have an address in status", gwc.NamespacedName) //nolint:stylecheck
 
 }
 

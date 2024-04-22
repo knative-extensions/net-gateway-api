@@ -29,8 +29,8 @@ type cfgKey struct{}
 
 // Config is the configuration for the route reconciler.
 type Config struct {
-	Network *networkcfg.Config
-	Gateway *Gateway
+	Network       *networkcfg.Config
+	GatewayPlugin *GatewayPlugin
 }
 
 // FromContext obtains a Config injected into the passed context.
@@ -77,7 +77,7 @@ func NewStore(ctx context.Context, onAfterStore ...func(name string, value inter
 			"gateway-api",
 			logger,
 			configmap.Constructors{
-				GatewayConfigName:        NewGatewayFromConfigMap,
+				GatewayConfigName:        FromConfigMap,
 				networkcfg.ConfigMapName: network.NewConfigFromConfigMap,
 			},
 			onAfterStore...,
@@ -95,8 +95,8 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 // Load creates a Config for this store.
 func (s *Store) Load() *Config {
 	config := &Config{
-		Gateway: s.UntypedLoad(GatewayConfigName).(*Gateway).DeepCopy(),
-		Network: s.UntypedLoad(networkcfg.ConfigMapName).(*networkcfg.Config).DeepCopy(),
+		GatewayPlugin: s.UntypedLoad(GatewayConfigName).(*GatewayPlugin).DeepCopy(),
+		Network:       s.UntypedLoad(networkcfg.ConfigMapName).(*networkcfg.Config).DeepCopy(),
 	}
 	return config
 }

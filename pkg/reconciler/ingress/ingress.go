@@ -163,9 +163,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 }
 
 // lookUpLoadBalancers will return a map of visibilites to
-// LoadBalancerIngressStatuses for the provided Gateway config. If a service is
-// available on a Gateway, it will return the address of the service.
-// Otherwise, it will return the first address in the Gateway status.
+// LoadBalancerIngressStatuses for the current Gateways in use.
 func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) (map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus, error) {
 	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateways)
 	if err != nil {
@@ -183,48 +181,50 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 	}, nil
 }
 
-// TODO: when the config is updated to support label selectors, this
-// code must change to find out which Gateway is appropriate for the
-// given Ingress
+// collectLBIngressStatus will return LoadBalancerIngressStatuses for the
+// provided single Gateway config. If a service is available on a Gateway, it will
+// return the address of the service.  Otherwise, it will return the first
+// address in the Gateway status.
 func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfigs []config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
 	statuses := []v1alpha1.LoadBalancerIngressStatus{}
-	if len(gatewayConfigs) == 0 {
-		return nil, fmt.Errorf("no Gateways provided")
-	}
-	for _, gwc := range gatewayConfigs {
-		if gwc.Service != nil {
-			statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
-				DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace),
-			})
-		} else {
-			gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
-			if err != nil {
-				if apierrs.IsNotFound(err) {
-					ing.Status.MarkLoadBalancerFailed(
-						"GatewayDoesNotExist",
-						fmt.Sprintf(
-							"could not find Gateway %s/%s",
-							gwc.Namespace,
-							gwc.Name,
-						),
-					)
-				}
-				return nil, err
-			}
 
-			if len(gw.Status.Addresses) > 0 {
-				switch *gw.Status.Addresses[0].Type {
-				case gatewayapi.IPAddressType:
-					statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value})
-				default:
-					// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
-					statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value})
-				}
-			} else {
-				return nil, fmt.Errorf("no address found in status of Gateway %s/%s", gwc.Namespace, gwc.Name)
+	// TODO: currently only 1 gateway is supported. When the config is updated to
+	// support multiple, this code must change to find out which Gateway is
+	// appropriate for the given Ingress
+	gwc := gatewayConfigs[0]
+	if gwc.Service != nil {
+		statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
+			DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace),
+		})
+	} else {
+		gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				ing.Status.MarkLoadBalancerFailed(
+					"GatewayDoesNotExist",
+					fmt.Sprintf(
+						"could not find Gateway %s/%s",
+						gwc.Namespace,
+						gwc.Name,
+					),
+				)
 			}
+			return nil, err
+		}
+
+		if len(gw.Status.Addresses) > 0 {
+			switch *gw.Status.Addresses[0].Type {
+			case gatewayapi.IPAddressType:
+				statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value})
+			default:
+				// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
+				statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value})
+			}
+		} else {
+			return nil, fmt.Errorf("no address found in status of Gateway %s/%s", gwc.Namespace, gwc.Name)
 		}
 	}
+
 	return statuses, nil
 }
 

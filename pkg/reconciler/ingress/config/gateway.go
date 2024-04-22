@@ -96,14 +96,14 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 	if data, ok := cm.Data[externalGatewaysKey]; ok {
 		config.ExternalGateways, err = parseGatewayConfig(data)
 		if err != nil {
-			return nil, fmt.Errorf("Unable to parse %q: %w", externalGatewaysKey, err)
+			return nil, fmt.Errorf("unable to parse %q: %w", externalGatewaysKey, err)
 		}
 	}
 
 	if data, ok := cm.Data[localGatewaysKey]; ok {
 		config.LocalGateways, err = parseGatewayConfig(data)
 		if err != nil {
-			return nil, fmt.Errorf("Unable to parse %q: %w", localGatewaysKey, err)
+			return nil, fmt.Errorf("unable to parse %q: %w", localGatewaysKey, err)
 		}
 	}
 
@@ -112,7 +112,7 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.ExternalGateways = defaultExternalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("Only a single external gateway is supported")
+		return nil, fmt.Errorf("only a single external gateway is supported")
 	}
 
 	switch len(config.LocalGateways) {
@@ -120,7 +120,7 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.LocalGateways = defaultLocalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("Only a single local gateway is supported")
+		return nil, fmt.Errorf("only a single local gateway is supported")
 	}
 
 	return config, nil
@@ -136,7 +136,6 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 	gws := make([]Gateway, 0, len(entries))
 
 	for i, entry := range entries {
-		fmt.Println(entry)
 		gw := Gateway{}
 
 		err := configmap.Parse(entry,

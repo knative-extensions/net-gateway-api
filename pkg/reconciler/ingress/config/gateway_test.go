@@ -46,67 +46,67 @@ func TestFromConfigMapErrors(t *testing.T) {
 		data: map[string]string{
 			"external-gateways": `{`,
 		},
-		want: `Unable to parse "external-gateways"`,
+		want: `unable to parse "external-gateways"`,
 	}, {
 		name: "local-gateways bad yaml",
 		data: map[string]string{
 			"local-gateways": `{`,
 		},
-		want: `Unable to parse "local-gateways"`,
+		want: `unable to parse "local-gateways"`,
 	}, {
 		name: "external-gateways multiple entries",
 		data: map[string]string{
 			"external-gateways": `[{"class":"boo"},{"class":"boo"}]`,
 		},
-		want: `Only a single external gateway is supported`,
+		want: `only a single external gateway is supported`,
 	}, {
 		name: "local-gateways multiple entries",
 		data: map[string]string{
 			"local-gateways": `[{"class":"boo"},{"class":"boo"}]`,
 		},
-		want: `Only a single local gateway is supported`,
+		want: `only a single local gateway is supported`,
 	}, {
 		name: "missing gateway class",
 		data: map[string]string{
 			"local-gateways": `[{"gateway": "namespace/name"}]`,
 		},
-		want: `Unable to parse "local-gateways": entry [0] field "class" is required`,
+		want: `unable to parse "local-gateways": entry [0] field "class" is required`,
 	}, {
 		name: "missing gateway name",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "namespace/"}]`,
 		},
-		want: `Unable to parse "local-gateways": failed to parse "gateway"`,
+		want: `unable to parse "local-gateways": failed to parse "gateway"`,
 	}, {
 		name: "missing gateway namespace",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "/name"}]`,
 		},
-		want: `Unable to parse "local-gateways": failed to parse "gateway"`,
+		want: `unable to parse "local-gateways": failed to parse "gateway"`,
 	}, {
 		name: "bad gateway entry",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "name"}]`,
 		},
-		want: `Unable to parse "local-gateways"`,
+		want: `unable to parse "local-gateways"`,
 	}, {
 		name: "missing service name",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"ns/"}]`,
 		},
-		want: `Unable to parse "local-gateways": failed to parse "service"`,
+		want: `unable to parse "local-gateways": failed to parse "service"`,
 	}, {
 		name: "missing service namespace",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"/name"}]`,
 		},
-		want: `Unable to parse "local-gateways": failed to parse "service"`,
+		want: `unable to parse "local-gateways": failed to parse "service"`,
 	}, {
 		name: "bad service entry",
 		data: map[string]string{
 			"local-gateways": `[{"class": "class", "gateway": "ns/n", "service":"name"}]`,
 		},
-		want: `Unable to parse "local-gateways"`,
+		want: `unable to parse "local-gateways"`,
 	}}
 
 	for _, tc := range cases {

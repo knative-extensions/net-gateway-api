@@ -2258,7 +2258,6 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 		}, servicesAndEndpoints...),
 		WantErr: true,
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
-			//{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
 			{Object: ing(withBasicSpec, withGatewayAPIClass, withFinalizer, func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
 				i.Status.MarkLoadBalancerNotReady()

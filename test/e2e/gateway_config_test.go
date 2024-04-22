@@ -32,7 +32,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/test"
 	"knative.dev/networking/test/conformance/ingress"
-	. "knative.dev/networking/test/defaultsystem"
+	_ "knative.dev/networking/test/defaultsystem"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/system"
 )

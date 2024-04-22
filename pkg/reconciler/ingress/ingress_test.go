@@ -62,6 +62,7 @@ var (
 	fakeStatusKey struct{}
 
 	publicGatewayAddress  = "11.22.33.44"
+	publicGatewayHostname = "off.cluster.gateway"
 	privateGatewayAddress = "55.66.77.88"
 )
 
@@ -2233,11 +2234,31 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 		Objects: append([]runtime.Object{
 			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
-			gw(defaultListener, setStatusPublicAddress),
+			gw(defaultListener, setStatusPublicAddressIP),
 			gw(privateGw, defaultListener, setStatusPrivateAddress),
 		}, servicesAndEndpoints...),
 		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
 			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGateway)},
+		},
+	}, {
+		Name: "gateway has hostname in address",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
+			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			gw(defaultListener, setStatusPublicAddressHostname),
+			gw(privateGw, defaultListener, setStatusPrivateAddress),
+		}, servicesAndEndpoints...),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+			{Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReadyOffClusterGatewayHostname)},
 		},
 	}, {
 		Name: "gateway not ready",
@@ -2271,7 +2292,39 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			)},
 		},
 		WantEvents: []string{
-			Eventf(corev1.EventTypeWarning, "InternalError", `Gateway "istio-system/istio-gateway" does not have an address in status`),
+			Eventf(corev1.EventTypeWarning, "InternalError", `no address found in status of Gateway istio-system/istio-gateway`),
+		},
+	}, {
+		Name: "gateway doesn't exist",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: true}, nil
+			},
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true}, true
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, withInitialConditions),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		WantErr: true,
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
+			{Object: ing(
+				withBasicSpec,
+				withGatewayAPIClass,
+				withFinalizer,
+				func(i *v1alpha1.Ingress) {
+					i.Status.InitializeConditions()
+					i.Status.MarkLoadBalancerNotReady()
+					i.Status.MarkNetworkConfigured()
+					i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+				},
+			)},
+		},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeWarning, "InternalError", `gateway.gateway.networking.k8s.io "istio-gateway" not found`),
 		},
 	}}
 
@@ -2299,6 +2352,18 @@ func makeItReadyOffClusterGateway(i *v1alpha1.Ingress) {
 	i.Status.MarkLoadBalancerReady(
 		[]v1alpha1.LoadBalancerIngressStatus{{
 			IP: publicGatewayAddress,
+		}},
+		[]v1alpha1.LoadBalancerIngressStatus{{
+			IP: privateGatewayAddress,
+		}})
+}
+
+func makeItReadyOffClusterGatewayHostname(i *v1alpha1.Ingress) {
+	i.Status.InitializeConditions()
+	i.Status.MarkNetworkConfigured()
+	i.Status.MarkLoadBalancerReady(
+		[]v1alpha1.LoadBalancerIngressStatus{{
+			DomainInternal: publicGatewayHostname,
 		}},
 		[]v1alpha1.LoadBalancerIngressStatus{{
 			IP: privateGatewayAddress,
@@ -2419,10 +2484,17 @@ func setStatusPrivateAddress(g *gatewayapi.Gateway) {
 	})
 }
 
-func setStatusPublicAddress(g *gatewayapi.Gateway) {
+func setStatusPublicAddressIP(g *gatewayapi.Gateway) {
 	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
 		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.IPAddressType),
 		Value: publicGatewayAddress,
+	})
+}
+
+func setStatusPublicAddressHostname(g *gatewayapi.Gateway) {
+	g.Status.Addresses = append(g.Status.Addresses, gatewayapi.GatewayStatusAddress{
+		Type:  ptr.To[gatewayapi.AddressType](gatewayapi.HostnameAddressType),
+		Value: publicGatewayHostname,
 	})
 }
 

@@ -206,7 +206,7 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{DomainInternal: gw.Status.Addresses[0].Value}}
 				}
 			} else {
-				return nil, fmt.Errorf("Gateway %s/%s does not have an address in status", gwc.Namespace, gwc.Name) //nolint:stylecheck
+				return nil, fmt.Errorf("no address found in status of Gateway %s/%s", gwc.Namespace, gwc.Name)
 			}
 		}
 	}

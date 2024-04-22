@@ -165,12 +165,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 // lookUpLoadBalancers will return a map of visibilites to
 // LoadBalancerIngressStatuses for the current Gateways in use.
 func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) (map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus, error) {
-	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateways)
+	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateway())
 	if err != nil {
 		return nil, err
 	}
 
-	internalStatuses, err := c.collectLBIngressStatus(ing, gpc.LocalGateways)
+	internalStatuses, err := c.collectLBIngressStatus(ing, gpc.LocalGateway())
 	if err != nil {
 		return nil, err
 	}
@@ -185,13 +185,12 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 // provided single Gateway config. If a service is available on a Gateway, it will
 // return the address of the service.  Otherwise, it will return the first
 // address in the Gateway status.
-func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfigs []config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
+func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
 	statuses := []v1alpha1.LoadBalancerIngressStatus{}
 
 	// TODO: currently only 1 gateway is supported. When the config is updated to
 	// support multiple, this code must change to find out which Gateway is
 	// appropriate for the given Ingress
-	gwc := gatewayConfigs[0]
 	if gwc.Service != nil {
 		statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
 			DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace),
@@ -209,7 +208,7 @@ func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfig
 					),
 				)
 			}
-			return nil, err
+			return nil, fmt.Errorf("could not find Gateway \"%s/%s\": %w", gwc.Namespace, gwc.Name, err)
 		}
 
 		if len(gw.Status.Addresses) > 0 {

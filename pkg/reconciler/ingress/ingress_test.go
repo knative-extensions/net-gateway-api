@@ -2310,21 +2310,18 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		WantErr: true,
-		WantStatusUpdates: []clientgotesting.UpdateActionImpl{
-			{Object: ing(
-				withBasicSpec,
-				withGatewayAPIClass,
-				withFinalizer,
-				func(i *v1alpha1.Ingress) {
-					i.Status.InitializeConditions()
-					i.Status.MarkLoadBalancerNotReady()
-					i.Status.MarkNetworkConfigured()
-					i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
-				},
-			)},
-		},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{Object: ing(
+			withBasicSpec,
+			withGatewayAPIClass,
+			withFinalizer,
+			func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkLoadBalancerNotReady()
+				i.Status.MarkNetworkConfigured()
+				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+			})}},
 		WantEvents: []string{
-			Eventf(corev1.EventTypeWarning, "InternalError", `gateway.gateway.networking.k8s.io "istio-gateway" not found`),
+			Eventf(corev1.EventTypeWarning, "InternalError", `could not find Gateway "istio-system/istio-gateway": gateway.gateway.networking.k8s.io "istio-gateway" not found`),
 		},
 	}}
 

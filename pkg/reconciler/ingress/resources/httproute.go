@@ -31,7 +31,6 @@ import (
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
-	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
@@ -232,7 +231,7 @@ func makeHTTPRouteSpec(
 
 	var gateway config.Gateway
 
-	if rule.Visibility == v1alpha1.IngressVisibilityClusterLocal {
+	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
 		gateway = pluginConfig.LocalGateway()
 	} else {
 		gateway = pluginConfig.ExternalGateway()

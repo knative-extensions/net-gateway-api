@@ -24,11 +24,10 @@ metadata:
   labels:
     serving.knative.dev/release: devel
 data:
-  visibility: |
-    ExternalIP:
+  external-gateways: |
     - class: contour
       gateway: contour-external/knative-external
-    ClusterLocal:
+  local-gateways: |
     - class: contour
       gateway: contour-internal/knative-local
       service: contour-internal/envoy-knative-local

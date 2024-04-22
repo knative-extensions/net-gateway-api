@@ -167,20 +167,32 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 // available on a Gateway, it will return the address of the service.
 // Otherwise, it will return the first address in the Gateway status.
 func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) (map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus, error) {
-	gateways := map[v1alpha1.IngressVisibility][]config.Gateway{
-		v1alpha1.IngressVisibilityExternalIP:   gpc.ExternalGateways,
-		v1alpha1.IngressVisibilityClusterLocal: gpc.LocalGateways,
+	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateways)
+	if err != nil {
+		return nil, err
 	}
-	ips := map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus{}
-	for vis, gatewayConfigs := range gateways {
-		// TODO: when the config is updated to support label selectors, this
-		// code must change to find out which Gateway is appropriate for the
-		// given Ingress
-		gwc := gatewayConfigs[0]
+
+	internalStatuses, err := c.collectLBIngressStatus(ing, gpc.LocalGateways)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus{
+		v1alpha1.IngressVisibilityExternalIP:   externalStatuses,
+		v1alpha1.IngressVisibilityClusterLocal: internalStatuses,
+	}, nil
+}
+
+// TODO: when the config is updated to support label selectors, this
+// code must change to find out which Gateway is appropriate for the
+// given Ingress
+func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfigs []config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
+	statuses := []v1alpha1.LoadBalancerIngressStatus{}
+	for _, gwc := range gatewayConfigs {
 		if gwc.Service != nil {
-			ips[vis] = []v1alpha1.LoadBalancerIngressStatus{
-				{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
-			}
+			statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
+				DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace),
+			})
 		} else {
 			gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
 			if err != nil {
@@ -200,18 +212,17 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 			if len(gw.Status.Addresses) > 0 {
 				switch *gw.Status.Addresses[0].Type {
 				case gatewayapi.IPAddressType:
-					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{IP: gw.Status.Addresses[0].Value}}
+					statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value})
 				default:
 					// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
-					ips[vis] = []v1alpha1.LoadBalancerIngressStatus{{DomainInternal: gw.Status.Addresses[0].Value}}
+					statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value})
 				}
 			} else {
 				return nil, fmt.Errorf("no address found in status of Gateway %s/%s", gwc.Namespace, gwc.Name)
 			}
 		}
 	}
-
-	return ips, nil
+	return statuses, nil
 }
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if

@@ -188,6 +188,9 @@ func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.Gate
 // given Ingress
 func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfigs []config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
 	statuses := []v1alpha1.LoadBalancerIngressStatus{}
+	if len(gatewayConfigs) == 0 {
+		return nil, fmt.Errorf("no Gateways provided")
+	}
 	for _, gwc := range gatewayConfigs {
 		if gwc.Service != nil {
 			statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
@@ -201,8 +204,8 @@ func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gatewayConfig
 						"GatewayDoesNotExist",
 						fmt.Sprintf(
 							"could not find Gateway %s/%s",
-							gw.Namespace,
-							gw.Name,
+							gwc.Namespace,
+							gwc.Name,
 						),
 					)
 				}

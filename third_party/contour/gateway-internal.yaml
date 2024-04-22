@@ -40,8 +40,11 @@ spec:
     featureFlags:
     - "useEndpointSlices"
   envoy:
+    workloadType: Deployment
     networkPublishing:
       type: ClusterIPService
+    deployment:
+      replicas: 2
   contour:
     deployment:
       replicas: 1

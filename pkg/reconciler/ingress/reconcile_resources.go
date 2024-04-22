@@ -170,7 +170,11 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		for _, backend := range oldBackends {
 			resources.AddOldBackend(desired, hash, backend)
 		}
+	} else if probeHash == hash {
+		// Hash is the same but probes are not ready - continue
+		return httproute, probeTargets(probe.Version, ing, rule, httproute), nil
 	} else if len(newBackends) > 0 {
+		// Ingress changed with new backends
 		hash = endpointPrefix + hash
 		desired = httproute.DeepCopy()
 		resources.UpdateProbeHash(desired, hash)
@@ -181,14 +185,9 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		for _, backend := range oldBackends {
 			resources.AddOldBackend(desired, hash, backend)
 		}
-	} else if probeHash != hash {
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	} else {
-		// noop - preserve current probing
-		if probe.Version != "" {
-			hash = probe.Version
-		}
-		return httproute, probeTargets(hash, ing, rule, httproute), nil
+		// Ingress changed with the same backends
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
 	}
 
 	if err != nil {

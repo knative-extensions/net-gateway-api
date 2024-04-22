@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -2100,6 +2101,87 @@ func TestReconcileProbing(t *testing.T) {
 				}},
 			}.Build(),
 		}},
+	}, {
+		Name: "stale informer cache",
+		// A stale httproute in the informer cache can result in probing to get stuck
+		//
+		// The following events need to happen
+		// 1. Endpoint probe (version: ep-*) succeeds for an HTTPRoute (generation 2)
+		// 2. We trigger an HTTPRoute update to move new route backends into the
+		//    main rules. API server has HTTPRoute with generation 3.
+		// 3. Start probing (version: tr-*)
+		// 4. Some event triggers reconciliation of the parent Ingress. The hash
+		//    remains the same so there are no spec changes.
+		// 5. Informer cache still has HTTPRoute (generation 2)
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{
+					Ready:   false,
+					Version: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+				}, false
+			},
+			FakeDoProbes: func(ctx context.Context, s status.Backends) (status.ProbeState, error) {
+				state := status.ProbeState{}
+				expectedHash := "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"
+
+				if s.Version != expectedHash {
+					panic(fmt.Sprintf("Expected DoProbes to be called with the same hash got: %q want: %q",
+						s.Version,
+						expectedHash,
+					))
+				}
+
+				return state, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: nil, // No updates
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

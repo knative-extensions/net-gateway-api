@@ -2315,7 +2315,7 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			withFinalizer,
 			func(i *v1alpha1.Ingress) {
 				i.Status.InitializeConditions()
-				i.Status.MarkLoadBalancerNotReady()
+				i.Status.MarkLoadBalancerFailed("GatewayDoesNotExist", "could not find Gateway istio-system/istio-gateway")
 				i.Status.MarkNetworkConfigured()
 			})}},
 	}}

@@ -158,12 +158,12 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	if routesReady {
 		externalLBs, internalLBs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 		if err != nil {
-			ing.Status.MarkLoadBalancerNotReady()
 			if _, ok := err.(*GatewayNotFoundError); ok {
 				// if we can't find a Gateway, we mark it as failed, and
 				// return no error, since there is no point in retrying
 				return nil
 			} else {
+				ing.Status.MarkLoadBalancerNotReady()
 				return err
 			}
 		}

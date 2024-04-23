@@ -38,9 +38,19 @@ import (
 )
 
 const (
-	notReconciledReason  = "ReconcileIngressFailed"
-	notReconciledMessage = "Ingress reconciliation failed"
+	notReconciledReason    = "ReconcileIngressFailed"
+	notReconciledMessage   = "Ingress reconciliation failed"
+	gatewayNotFoundMessage = "could not find Gateway"
 )
+
+type GatewayNotFoundError struct {
+	NamespacedGatewayName string
+	Err                   error
+}
+
+func (gnfe *GatewayNotFoundError) Error() string {
+	return fmt.Sprintf("%s %s: %s", gatewayNotFoundMessage, gnfe.NamespacedGatewayName, gnfe.Err.Error())
+}
 
 // Reconciler implements controller.Reconciler for Route resources.
 type Reconciler struct {
@@ -148,46 +158,19 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	// TODO: check Gateway readiness before reporting Ingress ready
 	if routesReady {
-		var publicLbs, privateLbs []v1alpha1.LoadBalancerIngressStatus
-
-		externalGateway := pluginConfig.ExternalGateway()
-		localGateway := pluginConfig.LocalGateway()
-
-		publicLbs, err = c.determineLoadBalancerIngressStatus(externalGateway)
+		externalLBs, internalLBs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 		if err != nil {
-			if apierrs.IsNotFound(err) {
-				ing.Status.MarkLoadBalancerFailed(
-					"GatewayDoesNotExist",
-					fmt.Sprintf(
-						"could not find Gateway %s/%s",
-						externalGateway.Namespace,
-						externalGateway.Name,
-					),
-				)
-				return fmt.Errorf("Gateway %s does not exist: %w", externalGateway.Name, err) //nolint:stylecheck
+			// TODO: use errors.Is instead
+			if _, ok := err.(*GatewayNotFoundError); ok { //nolint
+				// if we can't find a Gateway, we mark it as failed, and
+				// return no error, since there is no point in retrying
+				return nil
 			}
 			ing.Status.MarkLoadBalancerNotReady()
 			return err
 		}
 
-		privateLbs, err = c.determineLoadBalancerIngressStatus(localGateway)
-		if err != nil {
-			if apierrs.IsNotFound(err) {
-				ing.Status.MarkLoadBalancerFailed(
-					"GatewayDoesNotExist",
-					fmt.Sprintf(
-						"could not find Gateway %s/%s",
-						localGateway.Namespace,
-						localGateway.Name,
-					),
-				)
-				return fmt.Errorf("Gateway %s does not exist: %w", localGateway.Name, err) //nolint:stylecheck
-			}
-			ing.Status.MarkLoadBalancerNotReady()
-			return err
-		}
-
-		ing.Status.MarkLoadBalancerReady(publicLbs, privateLbs)
+		ing.Status.MarkLoadBalancerReady(externalLBs, internalLBs)
 	} else {
 		ing.Status.MarkLoadBalancerNotReady()
 	}
@@ -195,36 +178,70 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	return nil
 }
 
-// determineLoadBalancerIngressStatus will return the address for the Gateway.
-// If a service is provided, it will return the address of the service.
-// Otherwise, it will return the first address in the Gateway status.
-func (c *Reconciler) determineLoadBalancerIngressStatus(gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
-	if gwc.Service != nil {
-		return []v1alpha1.LoadBalancerIngressStatus{
-			{DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace)},
-		}, nil
-	}
-	gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
+// lookUpLoadBalancers will return a map of visibilites to
+// LoadBalancerIngressStatuses for the current Gateways in use.
+func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) ([]v1alpha1.LoadBalancerIngressStatus, []v1alpha1.LoadBalancerIngressStatus, error) {
+	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateway())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	var lbis v1alpha1.LoadBalancerIngressStatus
+	internalStatuses, err := c.collectLBIngressStatus(ing, gpc.LocalGateway())
+	if err != nil {
+		return nil, nil, err
+	}
 
-	if len(gw.Status.Addresses) > 0 {
-		switch *gw.Status.Addresses[0].Type {
-		case gatewayapi.IPAddressType:
-			lbis = v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value}
-		default:
-			// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
-			lbis = v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value}
+	return externalStatuses, internalStatuses, nil
+}
+
+// collectLBIngressStatus will return LoadBalancerIngressStatuses for the
+// provided single Gateway config. If a service is available on a Gateway, it will
+// return the address of the service. Otherwise, it will return the first
+// address in the Gateway status.
+func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
+	statuses := []v1alpha1.LoadBalancerIngressStatus{}
+
+	// TODO: currently only 1 gateway is supported. When the config is updated to
+	// support multiple, this code must change to find out which Gateway is
+	// appropriate for the given Ingress
+	if gwc.Service != nil {
+		statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{
+			DomainInternal: network.GetServiceHostname(gwc.Service.Name, gwc.Service.Namespace),
+		})
+	} else {
+		gw, err := c.gatewayLister.Gateways(gwc.Namespace).Get(gwc.Name)
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				ing.Status.MarkLoadBalancerFailed(
+					"GatewayDoesNotExist",
+					fmt.Sprintf(
+						"could not find Gateway %s/%s",
+						gwc.Namespace,
+						gwc.Name,
+					),
+				)
+				return nil, &GatewayNotFoundError{
+					NamespacedGatewayName: gwc.Namespace + "/" + gwc.Name,
+					Err:                   err,
+				}
+			}
+			return nil, fmt.Errorf("failed to get Gateway \"%s/%s\": %w", gwc.Namespace, gwc.Name, err)
 		}
 
-		return []v1alpha1.LoadBalancerIngressStatus{lbis}, nil
+		if len(gw.Status.Addresses) > 0 {
+			switch *gw.Status.Addresses[0].Type {
+			case gatewayapi.IPAddressType:
+				statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{IP: gw.Status.Addresses[0].Value})
+			default:
+				// Should this actually be under Domain? It seems like the rest of the code expects DomainInternal though...
+				statuses = append(statuses, v1alpha1.LoadBalancerIngressStatus{DomainInternal: gw.Status.Addresses[0].Value})
+			}
+		} else {
+			return nil, fmt.Errorf("no address found in status of Gateway %s/%s", gwc.Namespace, gwc.Name)
+		}
 	}
 
-	return nil, fmt.Errorf("Gateway %q does not have an address in status", gwc.NamespacedName) //nolint:stylecheck
-
+	return statuses, nil
 }
 
 // isHTTPRouteReady will check the status conditions of the ingress and return true if

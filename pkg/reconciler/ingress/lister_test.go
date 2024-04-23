@@ -319,7 +319,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 			},
 		},
 		objects: []runtime.Object{
-			gw(defaultListener, setStatusPublicAddress),
+			gw(defaultListener, setStatusPublicAddressIP),
 		},
 		ing: ing(withBasicSpec, withGatewayAPIClass),
 		want: []status.ProbeTarget{
@@ -337,7 +337,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 		name: "gateway has tls listener (http enabled)",
 		objects: []runtime.Object{
 			// objects for secret and referenceGrant not needed in this test
-			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddress),
+			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddressIP),
 		},
 		backends: status.Backends{
 			URLs: map[v1alpha1.IngressVisibility]status.URLSet{
@@ -362,7 +362,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 		name: "gateway has tls listener (https redirected)",
 		objects: []runtime.Object{
 			// objects for secret and referenceGrant not needed in this test
-			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddress),
+			gw(defaultListener, tlsListener("example.com", "ns", "secretName"), setStatusPublicAddressIP),
 		},
 		backends: status.Backends{
 			HTTPOption: v1alpha1.HTTPOptionRedirected,
@@ -399,7 +399,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 			},
 		},
 		ing:     ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
-		wantErr: fmt.Errorf("no Addresses available in Status of Gateway istio-system/istio-gateway"),
+		wantErr: fmt.Errorf("no addresses available in status of Gateway istio-system/istio-gateway"),
 	}}
 
 	for _, test := range tests {

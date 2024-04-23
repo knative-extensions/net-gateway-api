@@ -23,12 +23,16 @@ metadata:
     serving.knative.dev/release: devel
 data:
   external-gateways: |
-    - class: contour
+    - class: contour-external
       gateway: contour-external/knative-external
       service: contour-external/envoy-knative-external
+      supported-features:
+      - HTTPRouteRequestTimeout
 
   # local-gateways defines the Gateway to be used for cluster local traffic
   local-gateways: |
-    - class: contour
+    - class: contour-internal
       gateway: contour-internal/knative-local
       service: contour-internal/envoy-knative-local
+      supported-features:
+      - HTTPRouteRequestTimeout

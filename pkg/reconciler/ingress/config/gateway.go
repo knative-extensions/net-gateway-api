@@ -22,11 +22,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/configmap"
+	"sigs.k8s.io/gateway-api/pkg/features"
 	"sigs.k8s.io/yaml"
 )
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 const (
 	// GatewayConfigName is the config map name for the gateway configuration.
@@ -42,12 +42,14 @@ func defaultExternalGateways() []Gateway {
 			Name:      "knative-gateway",
 			Namespace: "istio-system",
 		},
-
 		Class: "istio",
 		Service: &types.NamespacedName{
 			Name:      "istio-ingressgateway",
 			Namespace: "istio-system",
 		},
+		SupportedFeatures: sets.New(
+			features.SupportHTTPRouteRequestTimeout,
+		),
 	}}
 }
 
@@ -62,6 +64,9 @@ func defaultLocalGateways() []Gateway {
 			Name:      "knative-local-gateway",
 			Namespace: "istio-system",
 		},
+		SupportedFeatures: sets.New(
+			features.SupportHTTPRouteRequestTimeout,
+		),
 	}}
 }
 
@@ -79,11 +84,14 @@ func (g *GatewayPlugin) LocalGateway() Gateway {
 	return g.LocalGateways[0]
 }
 
+// Note deepcopy gen is broken for sets.Set[features.SupportedFeatures]
+// So I've disabled the generator in this package for now
 type Gateway struct {
 	types.NamespacedName
 
-	Class   string
-	Service *types.NamespacedName
+	Class             string
+	Service           *types.NamespacedName
+	SupportedFeatures sets.Set[features.SupportedFeature]
 }
 
 // FromConfigMap creates a GatewayPlugin config from the supplied ConfigMap
@@ -126,27 +134,43 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 	return config, nil
 }
 
+type gatewayEntry struct {
+	Gateway           string                      `json:"gateway"`
+	Service           *string                     `json:"service"`
+	Class             string                      `json:"class"`
+	SupportedFeatures []features.SupportedFeature `json:"supported-features"`
+}
+
 func parseGatewayConfig(data string) ([]Gateway, error) {
-	var entries []map[string]string
+	var entries []gatewayEntry
 
 	if err := yaml.Unmarshal([]byte(data), &entries); err != nil {
 		return nil, err
 	}
 
 	gws := make([]Gateway, 0, len(entries))
-
 	for i, entry := range entries {
-		gw := Gateway{}
+		gw := Gateway{
+			Class:             entry.Class,
+			SupportedFeatures: sets.New(entry.SupportedFeatures...),
+		}
 
-		err := configmap.Parse(entry,
-			configmap.AsString("class", &gw.Class),
+		names := map[string]string{
+			"gateway": entry.Gateway,
+		}
+
+		if entry.Service != nil {
+			names["service"] = *entry.Service
+		}
+
+		err := configmap.Parse(names,
 			configmap.AsNamespacedName("gateway", &gw.NamespacedName),
 			configmap.AsOptionalNamespacedName("service", &gw.Service),
 		)
+
 		if err != nil {
 			return nil, err
 		}
-
 		if len(strings.TrimSpace(gw.Class)) == 0 {
 			return nil, fmt.Errorf(`entry [%d] field "class" is required`, i)
 		}

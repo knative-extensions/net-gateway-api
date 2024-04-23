@@ -56,13 +56,25 @@ func TestFromConfigMapErrors(t *testing.T) {
 	}, {
 		name: "external-gateways multiple entries",
 		data: map[string]string{
-			"external-gateways": `[{"class":"boo"},{"class":"boo"}]`,
+			"external-gateways": `[{
+					"class":"boo",
+					"gateway": "ns/n"
+				},{
+					"class":"boo",
+					"gateway": "ns/n"
+				}]`,
 		},
 		want: `only a single external gateway is supported`,
 	}, {
 		name: "local-gateways multiple entries",
 		data: map[string]string{
-			"local-gateways": `[{"class":"boo"},{"class":"boo"}]`,
+			"local-gateways": `[{
+					"class":"boo",
+					"gateway": "ns/n"
+				},{
+					"class":"boo",
+					"gateway": "ns/n"
+				}]`,
 		},
 		want: `only a single local gateway is supported`,
 	}, {

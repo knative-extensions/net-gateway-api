@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/pkg/features"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
@@ -225,8 +226,6 @@ func makeHTTPRouteSpec(
 		hostnames = append(hostnames, gatewayapi.Hostname(hostname))
 	}
 
-	rules := makeHTTPRouteRule(rule)
-
 	pluginConfig := config.FromContext(ctx).GatewayPlugin
 
 	var gateway config.Gateway
@@ -236,6 +235,8 @@ func makeHTTPRouteSpec(
 	} else {
 		gateway = pluginConfig.ExternalGateway()
 	}
+
+	rules := makeHTTPRouteRule(gateway, rule)
 
 	gatewayRef := gatewayapi.ParentReference{
 		Group:     (*gatewayapi.Group)(&gatewayapi.GroupVersion.Group),
@@ -253,10 +254,11 @@ func makeHTTPRouteSpec(
 	}
 }
 
-func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule {
+func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule {
 	rules := []gatewayapi.HTTPRouteRule{}
 
 	for _, path := range rule.HTTP.Paths {
+		path := path
 		backendRefs := make([]gatewayapi.HTTPBackendRef, 0, len(path.Splits))
 		var preFilters []gatewayapi.HTTPRouteFilter
 
@@ -351,6 +353,13 @@ func makeHTTPRouteRule(rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule
 			Filters:     preFilters,
 			Matches:     matches,
 		}
+
+		if gw.SupportedFeatures.Has(features.SupportHTTPRouteRequestTimeout) {
+			rule.Timeouts = &gatewayapi.HTTPRouteTimeouts{
+				Request: ptr.To[gatewayapi.Duration]("0s"),
+			}
+		}
+
 		rules = append(rules, rule)
 	}
 	return rules

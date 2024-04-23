@@ -18,12 +18,14 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
@@ -32,6 +34,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 const (
@@ -102,9 +105,10 @@ var (
 
 func TestMakeHTTPRoute(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		ing      *v1alpha1.Ingress
-		expected []*gatewayapi.HTTPRoute
+		name         string
+		ing          *v1alpha1.Ingress
+		expected     []*gatewayapi.HTTPRoute
+		changeConfig func(gw *config.Config)
 	}{
 		{
 			name: "single external domain with split and cluster local",
@@ -535,11 +539,78 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 				},
 			}},
+		}, {
+			name: "gateway supports HTTPRouteRequestTimeout",
+			changeConfig: func(c *config.Config) {
+				gateways := c.GatewayPlugin.ExternalGateways
+
+				for _, gateway := range gateways {
+					gateway.SupportedFeatures.Insert(features.SupportHTTPRouteRequestTimeout)
+				}
+			},
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      testHosts,
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							Path: "/",
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      LongestHost(testHosts),
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{externalHost},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						Timeouts: &gatewayapi.HTTPRouteTimeouts{
+							Request: ptr.To[gatewayapi.Duration]("0s"),
+						},
+						BackendRefs: []gatewayapi.HTTPBackendRef{},
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}}},
+					},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+							Name:      gatewayapi.ObjectName("foo"),
+						}},
+					},
+				},
+			}},
 		}} {
 		t.Run(tc.name, func(t *testing.T) {
 			for i, rule := range tc.ing.Spec.Rules {
 				rule := rule
-				tcs := &testConfigStore{config: testConfig}
+				cfg := testConfig.DeepCopy()
+				if tc.changeConfig != nil {
+					tc.changeConfig(cfg)
+
+					fmt.Printf("%#v", cfg.GatewayPlugin.ExternalGateways)
+				}
+				tcs := &testConfigStore{config: cfg}
 				ctx := tcs.ToContext(context.Background())
 
 				route, err := MakeHTTPRoute(ctx, tc.ing, &rule)
@@ -1125,12 +1196,14 @@ func (t *testConfigStore) ToContext(ctx context.Context) context.Context {
 var testConfig = &config.Config{
 	GatewayPlugin: &config.GatewayPlugin{
 		ExternalGateways: []config.Gateway{{
-			NamespacedName: types.NamespacedName{Namespace: "test-ns", Name: "foo"},
-			Class:          testGatewayClass,
+			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo"},
+			Class:             testGatewayClass,
+			SupportedFeatures: sets.New[features.SupportedFeature](),
 		}},
 		LocalGateways: []config.Gateway{{
-			NamespacedName: types.NamespacedName{Namespace: "test-ns", Name: "foo-local"},
-			Class:          testGatewayClass,
+			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo-local"},
+			Class:             testGatewayClass,
+			SupportedFeatures: sets.New[features.SupportedFeature](),
 		}},
 	},
 }

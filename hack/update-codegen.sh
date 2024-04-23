@@ -36,14 +36,16 @@ EXTERNAL_INFORMER_PKG="sigs.k8s.io/gateway-api/pkg/client/informers/externalvers
   "apis:v1beta1,v1" \
   --go-header-file "${boilerplate}"
 
+# Deepcopy is broken for fields that use generics - so we generate the code
+# ignore failures and then clean it up ourselves with sed until k8s upstream
+# fixes the issue
 group "Deepcopy Gen"
 go run k8s.io/code-generator/cmd/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file "${boilerplate}" \
   --input-dirs knative.dev/net-gateway-api/pkg/reconciler/ingress/config
 
-group "Update deps post-codegen"
-
+# group "Update deps post-codegen"
 # Make sure our dependencies are up-to-date
 "${REPO_ROOT_DIR}"/hack/update-deps.sh
 group "Update tested version docs"

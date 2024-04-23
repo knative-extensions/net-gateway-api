@@ -23,6 +23,10 @@ data:
   external-gateways: |
     - class: istio
       gateway: istio-system/knative-gateway
+      supported-features:
+      - HTTPRouteRequestTimeout
   local-gateways: |
     - class: istio
       gateway: istio-system/knative-local-gateway
+      supported-features:
+      - HTTPRouteRequestTimeout

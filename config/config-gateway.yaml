@@ -50,9 +50,13 @@ data:
       - class: istio
         gateway: istio-system/knative-gateway
         service: istio-system/istio-ingressgateway
+        supported-features:
+        - HTTPRouteRequestTimeout
 
     # local-gateways defines the Gateway to be used for cluster local traffic
     local-gateways: |
       - class: istio
         gateway: istio-system/knative-local-gateway
         service: istio-system/knative-local-gateway
+        supported-features:
+        - HTTPRouteRequestTimeout

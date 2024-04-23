@@ -1,5 +1,5 @@
 # Knative net-gateway-api
-**[This component is ALPHA](https://github.com/knative/community/tree/main/mechanics/MATURITY-LEVELS.md)**
+**[This component is Beta](https://github.com/knative/community/tree/main/mechanics/MATURITY-LEVELS.md)**
 
 [![GoDoc](https://godoc.org/knative-sandbox.dev/net-gateway-api?status.svg)](https://godoc.org/knative.dev/net-gateway-api)
 [![Go Report Card](https://goreportcard.com/badge/knative-sandbox/net-gateway-api)](https://goreportcard.com/report/knative-sandbox/net-gateway-api)

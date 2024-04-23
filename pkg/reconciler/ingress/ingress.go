@@ -42,6 +42,14 @@ const (
 	notReconciledMessage = "Ingress reconciliation failed"
 )
 
+type GatewayNotFoundError struct {
+	Err error
+}
+
+func (gnfe *GatewayNotFoundError) Error() string {
+	return gnfe.Err.Error()
+}
+
 // Reconciler implements controller.Reconciler for Route resources.
 type Reconciler struct {
 	statusManager status.Manager
@@ -148,13 +156,19 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	// TODO: check Gateway readiness before reporting Ingress ready
 	if routesReady {
-		lbs, err := c.lookUpLoadBalancers(ing, pluginConfig)
-
+		externalLBs, internalLBs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 		if err != nil {
 			ing.Status.MarkLoadBalancerNotReady()
-			return err
+			if _, ok := err.(*GatewayNotFoundError); ok {
+				// if we can't find a Gateway, we mark it as failed, and
+				// return no error, since there is no point in retrying
+				return nil
+			} else {
+				return err
+			}
 		}
-		ing.Status.MarkLoadBalancerReady(lbs[v1alpha1.IngressVisibilityExternalIP], lbs[v1alpha1.IngressVisibilityClusterLocal])
+
+		ing.Status.MarkLoadBalancerReady(externalLBs, internalLBs)
 	} else {
 		ing.Status.MarkLoadBalancerNotReady()
 	}
@@ -164,26 +178,23 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 // lookUpLoadBalancers will return a map of visibilites to
 // LoadBalancerIngressStatuses for the current Gateways in use.
-func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) (map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus, error) {
+func (c *Reconciler) lookUpLoadBalancers(ing *v1alpha1.Ingress, gpc *config.GatewayPlugin) ([]v1alpha1.LoadBalancerIngressStatus, []v1alpha1.LoadBalancerIngressStatus, error) {
 	externalStatuses, err := c.collectLBIngressStatus(ing, gpc.ExternalGateway())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	internalStatuses, err := c.collectLBIngressStatus(ing, gpc.LocalGateway())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return map[v1alpha1.IngressVisibility][]v1alpha1.LoadBalancerIngressStatus{
-		v1alpha1.IngressVisibilityExternalIP:   externalStatuses,
-		v1alpha1.IngressVisibilityClusterLocal: internalStatuses,
-	}, nil
+	return externalStatuses, internalStatuses, nil
 }
 
 // collectLBIngressStatus will return LoadBalancerIngressStatuses for the
 // provided single Gateway config. If a service is available on a Gateway, it will
-// return the address of the service.  Otherwise, it will return the first
+// return the address of the service. Otherwise, it will return the first
 // address in the Gateway status.
 func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gwc config.Gateway) ([]v1alpha1.LoadBalancerIngressStatus, error) {
 	statuses := []v1alpha1.LoadBalancerIngressStatus{}
@@ -207,8 +218,9 @@ func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gwc config.Ga
 						gwc.Name,
 					),
 				)
+				return nil, &GatewayNotFoundError{Err: err}
 			}
-			return nil, fmt.Errorf("could not find Gateway \"%s/%s\": %w", gwc.Namespace, gwc.Name, err)
+			return nil, fmt.Errorf("failed to get Gateway \"%s/%s\": %w", gwc.Namespace, gwc.Name, err)
 		}
 
 		if len(gw.Status.Addresses) > 0 {

@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	k8s.io/apimachinery v0.29.3
-	sigs.k8s.io/gateway-api v1.0.1-0.20240418002011-7f9f51098f40
+	sigs.k8s.io/gateway-api v1.0.1-0.20240422224228-29e68bffffb9
 )
 
 require (
@@ -39,7 +39,7 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

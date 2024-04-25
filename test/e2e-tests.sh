@@ -28,7 +28,7 @@ knative_conformance || failed=1
 test_ha || failed=1
 test_e2e || failed=1
 
-if [[ "${JOB_NAME:-unknown}" == *"nightly"* ]]; then
+if [[ "${JOB_NAME:-unknown}" == *"continuous"* ]]; then
   gateway_conformance || true # this is informational
 fi
 

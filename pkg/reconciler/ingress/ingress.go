@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -38,19 +39,11 @@ import (
 )
 
 const (
-	notReconciledReason    = "ReconcileIngressFailed"
-	notReconciledMessage   = "Ingress reconciliation failed"
-	gatewayNotFoundMessage = "could not find Gateway"
+	notReconciledReason  = "ReconcileIngressFailed"
+	notReconciledMessage = "Ingress reconciliation failed"
 )
 
-type GatewayNotFoundError struct {
-	NamespacedGatewayName string
-	Err                   error
-}
-
-func (gnfe *GatewayNotFoundError) Error() string {
-	return fmt.Sprintf("%s %s: %s", gatewayNotFoundMessage, gnfe.NamespacedGatewayName, gnfe.Err.Error())
-}
+var ErrGatewayNotFound = errors.New("could not find Gateway")
 
 // Reconciler implements controller.Reconciler for Route resources.
 type Reconciler struct {
@@ -160,8 +153,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	if routesReady {
 		externalLBs, internalLBs, err := c.lookUpLoadBalancers(ing, pluginConfig)
 		if err != nil {
-			// TODO: use errors.Is instead
-			if _, ok := err.(*GatewayNotFoundError); ok { //nolint
+			if ok := errors.Is(err, ErrGatewayNotFound); ok {
 				// if we can't find a Gateway, we mark it as failed, and
 				// return no error, since there is no point in retrying
 				return nil
@@ -220,10 +212,7 @@ func (c *Reconciler) collectLBIngressStatus(ing *v1alpha1.Ingress, gwc config.Ga
 						gwc.Name,
 					),
 				)
-				return nil, &GatewayNotFoundError{
-					NamespacedGatewayName: gwc.Namespace + "/" + gwc.Name,
-					Err:                   err,
-				}
+				return nil, fmt.Errorf("error getting Gateway %s/%s: %w", gwc.Namespace, gwc.Name, ErrGatewayNotFound)
 			}
 			return nil, fmt.Errorf("failed to get Gateway \"%s/%s\": %w", gwc.Namespace, gwc.Name, err)
 		}

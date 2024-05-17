@@ -54,6 +54,10 @@ const (
 	// of allocating pre-determined addresses, rather than dynamically having
 	// addresses allocated for it.
 	SupportGatewayStaticAddresses SupportedFeature = "GatewayStaticAddresses"
+
+	// SupportGatewayHTTPListenerIsolation option indicates support for the isolation
+	// of HTTP listeners.
+	SupportGatewayHTTPListenerIsolation SupportedFeature = "GatewayHTTPListenerIsolation"
 )
 
 // GatewayExtendedFeatures are extra generic features that implementations may
@@ -61,6 +65,7 @@ const (
 var GatewayExtendedFeatures = sets.New(
 	SupportGatewayPort8080,
 	SupportGatewayStaticAddresses,
+	SupportGatewayHTTPListenerIsolation,
 )
 
 // -----------------------------------------------------------------------------
@@ -222,12 +227,23 @@ var UDPRouteFeatures = sets.New(
 const (
 	// This option indicates general support for service mesh
 	SupportMesh SupportedFeature = "Mesh"
+	// This option indicates support for matching Service traffic specifically by Cluster IP rather than other mechanisms.
+	SupportMeshClusterIPMatching SupportedFeature = "MeshClusterIPMatching"
+	// This option indicates support for "consumer" routes, where a namespace creates a route for a service in another namespace.
+	SupportMeshConsumerRoute SupportedFeature = "MeshConsumerRoute"
 )
 
 // MeshCoreFeatures includes all the supported features for the service mesh at
 // a Core level of support.
 var MeshCoreFeatures = sets.New(
 	SupportMesh,
+)
+
+// MeshExtendedFeatures includes all the supported features for the service mesh at
+// an Extended level of support.
+var MeshExtendedFeatures = sets.New(
+	SupportMeshClusterIPMatching,
+	SupportMeshConsumerRoute,
 )
 
 // -----------------------------------------------------------------------------
@@ -262,4 +278,5 @@ var AllFeatures = sets.New[SupportedFeature]().
 	Insert(HTTPRouteExperimentalFeatures.UnsortedList()...).
 	Insert(TLSRouteCoreFeatures.UnsortedList()...).
 	Insert(MeshCoreFeatures.UnsortedList()...).
+	Insert(MeshExtendedFeatures.UnsortedList()...).
 	Insert(GRPCRouteCoreFeatures.UnsortedList()...)

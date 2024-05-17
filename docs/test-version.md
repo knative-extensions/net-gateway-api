@@ -9,7 +9,7 @@ The following Gateway API version and Ingress were tested as part of the release
 
 | Tested Gateway API       |
 | ------------------------ |
-| v1.0.0 |
+| v1.1.0 |
 
 ### Tested Ingress
 

@@ -26,6 +26,13 @@ export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:-istio-system}
 export GATEWAY_CLASS=${GATEWAY_CLASS:-istio}
 export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-$ISTIO_UNSUPPORTED_E2E_TESTS}
 export KIND=${KIND:-0}
+export CONTOUR_FILES=(
+  "examples/contour/01-crds.yaml"
+  "examples/gateway-provisioner/00-common.yaml"
+  "examples/gateway-provisioner/01-roles.yaml"
+  "examples/gateway-provisioner/02-rolebindings.yaml"
+  "examples/gateway-provisioner/03-gateway-provisioner.yaml"
+)
 
 function parse_flags() {
   case "$1" in
@@ -105,7 +112,10 @@ function teardown_networking() {
   kubectl delete -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml"
 
   if [[ "$INGRESS" == "contour" ]]; then
-    kubectl delete -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"
+    for file in ${CONTOUR_FILES[@]}; do
+      kubectl delete -f \
+        "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/${file}"
+    done
   else
     istioctl uninstall -y --purge
     kubectl delete namespace istio-system
@@ -114,7 +124,10 @@ function teardown_networking() {
 
 function setup_contour() {
   # Version is selected is in $REPO_ROOT/hack/test-env.sh
-  kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml" && \
+  for file in ${CONTOUR_FILES[@]}; do
+    kubectl apply -f \
+      "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/${file}"
+  done
   kubectl wait deploy --for=condition=Available --timeout=60s -n projectcontour contour-gateway-provisioner && \
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/contour"
 

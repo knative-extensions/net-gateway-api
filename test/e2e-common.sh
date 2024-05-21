@@ -26,6 +26,7 @@ export GATEWAY_NAMESPACE_OVERRIDE=${GATEWAY_NAMESPACE_OVERRIDE:-istio-system}
 export GATEWAY_CLASS=${GATEWAY_CLASS:-istio}
 export UNSUPPORTED_E2E_TESTS=${UNSUPPORTED_E2E_TESTS:-$ISTIO_UNSUPPORTED_E2E_TESTS}
 export KIND=${KIND:-0}
+export GATEWAY_TESTS_ONLY=${GATEWAY_TESTS_ONLY:-0}
 
 function parse_flags() {
   case "$1" in
@@ -49,6 +50,9 @@ function parse_flags() {
       readonly KIND=1
       return 1
       ;;
+    --gateway-tests-only)
+      readonly GATEWAY_TESTS_ONLY=1
+      return 1
   esac
   return 0
 }

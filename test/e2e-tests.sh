@@ -24,11 +24,13 @@ header "Running e2e tests"
 
 failed=0
 
-knative_conformance || failed=1
-test_ha || failed=1
-test_e2e || failed=1
+if [[ "$GATEWAY_TESTS_ONLY" -eq "0" ]]; then
+  knative_conformance || failed=1
+  test_ha || failed=1
+  test_e2e || failed=1
+fi
 
-if [[ "${JOB_NAME:-unknown}" == *"continuous"* ]]; then
+if [[ "${JOB_NAME:-unknown}" == *"continuous"* ]] || (( GATEWAY_TESTS_ONLY )); then
   gateway_conformance || true # this is informational
 fi
 

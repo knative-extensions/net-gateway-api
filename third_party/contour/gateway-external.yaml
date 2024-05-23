@@ -51,7 +51,7 @@ spec:
     deployment:
       replicas: 2
   contour:
-    disabledFeatures: [grpcroutes]
+    disabledFeatures: [grpcroutes, backendtlspolicies]
     deployment:
       replicas: 1
 ---

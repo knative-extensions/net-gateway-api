@@ -14,7 +14,6 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: ClusterIP
         patch:
           value:
             metadata:

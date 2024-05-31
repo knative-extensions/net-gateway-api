@@ -136,6 +136,7 @@ function teardown_networking() {
 
 function setup_envoy_gateway() {
   kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
+  kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
 }
 
 function teardown_envoy_gateway() {

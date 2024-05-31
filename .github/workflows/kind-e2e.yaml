@@ -16,6 +16,7 @@ jobs:
         ingress:
         - istio
         - contour
+        - envoy-gateway
 
     env:
       KO_DOCKER_REPO: kind.local

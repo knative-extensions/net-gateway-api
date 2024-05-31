@@ -55,6 +55,8 @@ func TestGatewayWithNoService(t *testing.T) {
 			configGateway = ConfigMapFromTestFile(t, "testdata/contour-no-service-vis.yaml")
 		case "istio":
 			configGateway = ConfigMapFromTestFile(t, "testdata/istio-no-service-vis.yaml")
+		case "envoy-gateway":
+			configGateway = ConfigMapFromTestFile(t, "testdata/envoy-gateway-no-service-vis.yaml")
 		case "default":
 			t.Fatalf("value for INGRESS (%s) not supported", ingress)
 		}

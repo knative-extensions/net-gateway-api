@@ -56,7 +56,7 @@ function parse_flags() {
     --envoy-gateway)
       readonly INGRESS=envoy-gateway
       readonly GATEWAY_OVERRIDE=
-      readonly GATEWAY_NAMESPACE_OVERRIDE=
+      readonly GATEWAY_NAMESPACE_OVERRIDE=envoy-gateway-system
       readonly GATEWAY_CLASS=eg-external
       readonly UNSUPPORTED_E2E_TESTS="${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}"
       return 1

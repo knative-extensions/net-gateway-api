@@ -21,4 +21,4 @@ export CONTOUR_VERSION="v1.29.0"
 export CONTOUR_UNSUPPORTED_E2E_TESTS="httpoption"
 
 export ENVOY_GATEWAY_VERSION="latest"
-export ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS="httpoption"
+export ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS="httpoption,host-rewrite"

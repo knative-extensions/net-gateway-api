@@ -14,10 +14,7 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        patch:
-          value:
-            metadata:
-              name: knative-external
+        name: knative-external
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass

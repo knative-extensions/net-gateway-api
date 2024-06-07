@@ -15,10 +15,7 @@ spec:
     kubernetes:
       envoyService:
         type: ClusterIP
-        patch:
-          value:
-            metadata:
-              name: knative-internal
+        name: knative-internal
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass

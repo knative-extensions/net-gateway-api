@@ -53,6 +53,14 @@ function parse_flags() {
       readonly UNSUPPORTED_E2E_TESTS="${CONTOUR_UNSUPPORTED_E2E_TESTS}"
       return 1
       ;;
+    --envoy-gateway)
+      readonly INGRESS=envoy-gateway
+      readonly GATEWAY_OVERRIDE=knative-external
+      readonly GATEWAY_NAMESPACE_OVERRIDE=envoy-gateway-system
+      readonly GATEWAY_CLASS=eg-external
+      readonly UNSUPPORTED_E2E_TESTS="${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}"
+      return 1
+      ;;
     --kind)
       readonly KIND=1
       return 1
@@ -106,6 +114,8 @@ function setup_networking() {
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour
+  elif [[ "${INGRESS}" == "envoy-gateway" ]]; then
+    setup_envoy_gateway
   else
     setup_istio
   fi
@@ -116,14 +126,21 @@ function teardown_networking() {
   kubectl delete -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml"
 
   if [[ "$INGRESS" == "contour" ]]; then
-    for file in ${CONTOUR_FILES[@]}; do
-      kubectl delete -f \
-        "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/${file}"
-    done
+    teardown_contour
+  elif [[ "${INGRESS}" == "envoy-gateway" ]]; then
+    teardown_envoy_gateway
   else
-    istioctl uninstall -y --purge
-    kubectl delete namespace istio-system
+    teardown_istio
   fi
+}
+
+function setup_envoy_gateway() {
+  kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
+  kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
+}
+
+function teardown_envoy_gateway() {
+  kubectl delete -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
 }
 
 function setup_contour() {
@@ -140,6 +157,18 @@ function setup_contour() {
     echo "failed to setup contour" >&2
     return $ret
   fi
+}
+
+function teardown_contour() {
+  for file in ${CONTOUR_FILES[@]}; do
+    kubectl delete -f \
+      "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/${file}"
+  done
+}
+
+function teardown_istio() {
+  istioctl uninstall -y --purge
+  kubectl delete namespace istio-system
 }
 
 function setup_istio() {

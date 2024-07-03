@@ -21,4 +21,5 @@ export CONTOUR_VERSION="v1.29.1"
 export CONTOUR_UNSUPPORTED_E2E_TESTS=""
 
 export ENVOY_GATEWAY_VERSION="latest"
-export ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS="host-rewrite"
+# hostoption does not work because of a bug in envoy-gateway: https://github.com/envoyproxy/gateway/issues/2149
+export ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS="httpoption,host-rewrite"

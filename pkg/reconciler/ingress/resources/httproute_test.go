@@ -1193,6 +1193,36 @@ func TestMakeRedirectHTTPRoute(t *testing.T) {
 		expected []*gatewayapi.HTTPRoute
 	}{
 		{
+			name: "cluster local domain only",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{
+					Rules: []v1alpha1.IngressRule{
+						{
+							Hosts:      testLocalHosts,
+							Visibility: v1alpha1.IngressVisibilityClusterLocal,
+							HTTP: &v1alpha1.HTTPIngressRuleValue{
+								Paths: []v1alpha1.HTTPIngressPath{{
+									Splits: []v1alpha1.IngressBackendSplit{{
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "goo",
+											ServicePort: intstr.FromInt(123),
+										},
+										Percent: 100,
+									}},
+								}},
+							},
+						},
+					}},
+			},
+			expected: []*gatewayapi.HTTPRoute{},
+		}, {
 			name: "single external domain and cluster local",
 			ing: &v1alpha1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{

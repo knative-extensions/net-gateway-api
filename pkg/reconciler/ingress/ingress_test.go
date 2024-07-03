@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 
 	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
@@ -197,7 +196,7 @@ func TestReconcile(t *testing.T) {
 		// no extra update
 	}}
 
-	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, cmw configmap.Watcher) controller.Reconciler {
+	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, _ configmap.Watcher) controller.Reconciler {
 		r := &Reconciler{
 			gwapiclient: fakegwapiclientset.Get(ctx),
 			// Listers index properties about resources
@@ -368,7 +367,7 @@ func TestReconcileTLS(t *testing.T) {
 		},
 	}}
 
-	table.Test(t, GatewayFactory(func(ctx context.Context, listers *gwtesting.Listers, cmw configmap.Watcher, tr *ktesting.TableRow) controller.Reconciler {
+	table.Test(t, GatewayFactory(func(ctx context.Context, listers *gwtesting.Listers, _ configmap.Watcher, tr *ktesting.TableRow) controller.Reconciler {
 		r := &Reconciler{
 			gwapiclient:          fakegwapiclientset.Get(ctx),
 			httprouteLister:      listers.GetHTTPRouteLister(),
@@ -2158,7 +2157,7 @@ func TestReconcileProbing(t *testing.T) {
 					Version: "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 				}, false
 			},
-			FakeDoProbes: func(ctx context.Context, s status.Backends) (status.ProbeState, error) {
+			FakeDoProbes: func(_ context.Context, s status.Backends) (status.ProbeState, error) {
 				state := status.ProbeState{}
 				expectedHash := "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2"
 
@@ -2221,7 +2220,7 @@ func TestReconcileProbing(t *testing.T) {
 		WantUpdates: nil, // No updates
 	}}
 
-	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, cmw configmap.Watcher) controller.Reconciler {
+	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, _ configmap.Watcher) controller.Reconciler {
 		statusManager := ctx.Value(fakeStatusKey).(status.Manager)
 		r := &Reconciler{
 			gwapiclient: fakegwapiclientset.Get(ctx),
@@ -2356,7 +2355,7 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			})}},
 	}}
 
-	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, cmw configmap.Watcher) controller.Reconciler {
+	table.Test(t, gwtesting.MakeFactory(func(ctx context.Context, listers *gwtesting.Listers, _ configmap.Watcher) controller.Reconciler {
 		statusManager := ctx.Value(fakeStatusKey).(status.Manager)
 		r := &Reconciler{
 			gwapiclient: fakegwapiclientset.Get(ctx),
@@ -2551,10 +2550,10 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			Port:     443,
 			Protocol: "HTTPS",
 			TLS: &gatewayapi.GatewayTLSConfig{
-				Mode: (*gatewayapi.TLSModeType)(pointer.String("Terminate")),
+				Mode: (*gatewayapi.TLSModeType)(ptr.To("Terminate")),
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
-					Group:     (*gatewayapi.Group)(pointer.String("")),
-					Kind:      (*gatewayapi.Kind)(pointer.String("Secret")),
+					Group:     (*gatewayapi.Group)(ptr.To("")),
+					Kind:      (*gatewayapi.Kind)(ptr.To("Secret")),
 					Name:      gatewayapi.ObjectName(secretName),
 					Namespace: (*gatewayapi.Namespace)(&nsName),
 				}},
@@ -2562,7 +2561,7 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			},
 			AllowedRoutes: &gatewayapi.AllowedRoutes{
 				Namespaces: &gatewayapi.RouteNamespaces{
-					From: (*gatewayapi.FromNamespaces)(pointer.String("Selector")),
+					From: (*gatewayapi.FromNamespaces)(ptr.To("Selector")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"kubernetes.io/metadata.name": nsName,

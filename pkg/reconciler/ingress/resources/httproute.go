@@ -461,7 +461,7 @@ func matchesFromRulePath(path netv1alpha1.HTTPIngressPath) []gatewayapi.HTTPRout
 		Value: ptr.To(pathPrefix),
 	}
 
-	var headerMatchList []gatewayapi.HTTPHeaderMatch
+	var headerMatchList []gatewayapi.HTTPHeaderMatch //nolint:all
 	for k, v := range path.Headers {
 		headerMatch := gatewayapi.HTTPHeaderMatch{
 			Type:  ptr.To(gatewayapi.HeaderMatchExact),

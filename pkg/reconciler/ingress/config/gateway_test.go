@@ -21,11 +21,11 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	. "knative.dev/pkg/configmap/testing"
+	ktesting "knative.dev/pkg/configmap/testing"
 )
 
 func TestFromConfigMap(t *testing.T) {
-	cm, example := ConfigMapsFromTestFile(t, GatewayConfigName)
+	cm, example := ktesting.ConfigMapsFromTestFile(t, GatewayConfigName)
 
 	if _, err := FromConfigMap(cm); err != nil {
 		t.Error("FromConfigMap(actual) =", err)

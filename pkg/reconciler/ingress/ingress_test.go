@@ -365,6 +365,67 @@ func TestReconcileTLS(t *testing.T) {
 			ktesting.Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 			ktesting.Eventf(corev1.EventTypeNormal, "Created", "Created redirect HTTPRoute \"example.com-redirect\""),
 		},
+	}, {
+		Name: "Cluster local TLS ingress with httpOption redirected",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withInternalSpec, withGatewayAPIClass, withHTTPOptionRedirected, withTLS()),
+			secret(secretName, nsName),
+			gw(defaultListener),
+		}, servicesAndEndpoints...),
+		WantCreates: []runtime.Object{
+			httpRoute(t, ing(withInternalSpec, withGatewayAPIClass, withHTTPOptionRedirected, withTLS())),
+		},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withInternalSpec, withGatewayAPIClass, withHTTPOptionRedirected, withTLS(), func(i *v1alpha1.Ingress) {
+				// These are the things we expect to change in status.
+				i.Status.InitializeConditions()
+				i.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
+				i.Status.MarkLoadBalancerNotReady()
+			}),
+		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantEvents: []string{
+			ktesting.Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			ktesting.Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"foo.svc.cluster.local\""),
+		},
+	}, {
+		Name: "No TLS ingress with httpOption redirected",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIClass, withHTTPOptionRedirected),
+			secret(secretName, nsName),
+			gw(defaultListener),
+		}, servicesAndEndpoints...),
+		WantCreates: []runtime.Object{
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withHTTPOptionRedirected), withSectionName("kni-")),
+		},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIClass, withHTTPOptionRedirected, func(i *v1alpha1.Ingress) {
+				// These are the things we expect to change in status.
+				i.Status.InitializeConditions()
+				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+			}),
+		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantEvents: []string{
+			ktesting.Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			ktesting.Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
+			ktesting.Eventf(corev1.EventTypeWarning, "InternalError", "no TLS configuration provided in `spec.tls`. Failed to create HTTPRoute for HTTPS redirection"),
+		},
+		WantErr: true,
 	}}
 
 	table.Test(t, GatewayFactory(func(ctx context.Context, listers *gwtesting.Listers, _ configmap.Watcher, tr *ktesting.TableRow) controller.Reconciler {

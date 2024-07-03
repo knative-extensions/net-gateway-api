@@ -627,6 +627,287 @@ func TestMakeHTTPRoute(t *testing.T) {
 	}
 }
 
+func TestMakeHTTPRouteWithSectionName(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		ing          *v1alpha1.Ingress
+		expected     []*gatewayapi.HTTPRoute
+		changeConfig func(gw *config.Config)
+	}{
+		{
+			name: "single external domain with split and cluster local",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{
+					Rules: []v1alpha1.IngressRule{
+						{
+							Hosts:      testHosts,
+							Visibility: v1alpha1.IngressVisibilityExternalIP,
+							HTTP: &v1alpha1.HTTPIngressRuleValue{
+								Paths: []v1alpha1.HTTPIngressPath{{
+									AppendHeaders: map[string]string{
+										"Foo": "bar",
+									},
+									Splits: []v1alpha1.IngressBackendSplit{{
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "goo",
+											ServicePort: intstr.FromInt(123),
+										},
+										Percent: 12,
+										AppendHeaders: map[string]string{
+											"Baz":   "blah",
+											"Bleep": "bloop",
+										},
+									}, {
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "doo",
+											ServicePort: intstr.FromInt(124),
+										},
+										Percent: 88,
+										AppendHeaders: map[string]string{
+											"Baz": "blurg",
+										},
+									}},
+								}},
+							},
+						}, {
+							Hosts:      testLocalHosts,
+							Visibility: v1alpha1.IngressVisibilityClusterLocal,
+							HTTP: &v1alpha1.HTTPIngressRuleValue{
+								Paths: []v1alpha1.HTTPIngressPath{{
+									AppendHeaders: map[string]string{
+										"Foo": "bar",
+									},
+									Splits: []v1alpha1.IngressBackendSplit{{
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "goo",
+											ServicePort: intstr.FromInt(123),
+										},
+										Percent: 12,
+										AppendHeaders: map[string]string{
+											"Bleep": "bloop",
+											"Baz":   "blah",
+										},
+									}, {
+										IngressBackend: v1alpha1.IngressBackend{
+											ServiceName: "doo",
+											ServicePort: intstr.FromInt(124),
+										},
+										Percent: 88,
+										AppendHeaders: map[string]string{
+											"Baz": "blurg",
+										},
+									}},
+								}},
+							},
+						},
+					}},
+			},
+			expected: []*gatewayapi.HTTPRoute{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      LongestHost(testHosts),
+						Namespace: testNamespace,
+						Labels: map[string]string{
+							networking.IngressLabelKey:          testIngressName,
+							"networking.knative.dev/visibility": "",
+						},
+						Annotations: map[string]string{},
+					},
+					Spec: gatewayapi.HTTPRouteSpec{
+						Hostnames: []gatewayapi.Hostname{externalHost},
+						Rules: []gatewayapi.HTTPRouteRule{{
+							BackendRefs: []gatewayapi.HTTPBackendRef{{
+								BackendRef: gatewayapi.BackendRef{
+									BackendObjectReference: gatewayapi.BackendObjectReference{
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Name:  gatewayapi.ObjectName("goo"),
+										Port:  ptr.To[gatewayapi.PortNumber](123),
+									},
+									Weight: ptr.To(int32(12)),
+								},
+								Filters: []gatewayapi.HTTPRouteFilter{{
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+										Set: []gatewayapi.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blah",
+											},
+											{
+												Name:  "Bleep",
+												Value: "bloop",
+											},
+										}}}},
+							}, {
+								BackendRef: gatewayapi.BackendRef{
+									BackendObjectReference: gatewayapi.BackendObjectReference{
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapi.PortNumber](124),
+										Name:  gatewayapi.ObjectName("doo"),
+									},
+									Weight: ptr.To(int32(88)),
+								},
+								Filters: []gatewayapi.HTTPRouteFilter{{
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+										Set: []gatewayapi.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blurg",
+											},
+										},
+									}}},
+							}},
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{
+										{
+											Name:  "Foo",
+											Value: "bar",
+										},
+									},
+								}}},
+							Matches: []gatewayapi.HTTPRouteMatch{
+								{
+									Path: &gatewayapi.HTTPPathMatch{
+										Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+						}},
+						CommonRouteSpec: gatewayapi.CommonRouteSpec{
+							ParentRefs: []gatewayapi.ParentReference{{
+								Group:       (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+								Kind:        (*gatewayapi.Kind)(ptr.To("Gateway")),
+								Namespace:   ptr.To[gatewayapi.Namespace]("test-ns"),
+								Name:        gatewayapi.ObjectName("foo"),
+								SectionName: ptr.To[gatewayapi.SectionName]("http"),
+							}},
+						},
+					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      LongestHost(testLocalHosts),
+						Namespace: testNamespace,
+						Labels: map[string]string{
+							networking.IngressLabelKey:          testIngressName,
+							"networking.knative.dev/visibility": "cluster-local",
+						},
+						Annotations: map[string]string{},
+					},
+					Spec: gatewayapi.HTTPRouteSpec{
+						Hostnames: []gatewayapi.Hostname{localHostShortest, localHostShort, localHostFull},
+						Rules: []gatewayapi.HTTPRouteRule{{
+							BackendRefs: []gatewayapi.HTTPBackendRef{{
+								BackendRef: gatewayapi.BackendRef{
+									BackendObjectReference: gatewayapi.BackendObjectReference{
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapi.PortNumber](123),
+										Name:  gatewayapi.ObjectName("goo"),
+									},
+									Weight: ptr.To(int32(12)),
+								},
+								Filters: []gatewayapi.HTTPRouteFilter{{
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+										Set: []gatewayapi.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blah",
+											},
+											{
+												Name:  "Bleep",
+												Value: "bloop",
+											},
+										}}}},
+							}, {
+								BackendRef: gatewayapi.BackendRef{
+									BackendObjectReference: gatewayapi.BackendObjectReference{
+										Group: (*gatewayapi.Group)(ptr.To("")),
+										Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+										Port:  ptr.To[gatewayapi.PortNumber](124),
+										Name:  gatewayapi.ObjectName("doo"),
+									},
+									Weight: ptr.To(int32(88)),
+								},
+								Filters: []gatewayapi.HTTPRouteFilter{{
+									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+										Set: []gatewayapi.HTTPHeader{
+											{
+												Name:  "Baz",
+												Value: "blurg",
+											},
+										},
+									}}},
+							}},
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{
+										{
+											Name:  "Foo",
+											Value: "bar",
+										},
+									},
+								}}},
+							Matches: []gatewayapi.HTTPRouteMatch{{
+								Path: &gatewayapi.HTTPPathMatch{
+									Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+									Value: ptr.To("/"),
+								},
+							}},
+						}},
+						CommonRouteSpec: gatewayapi.CommonRouteSpec{
+							ParentRefs: []gatewayapi.ParentReference{{
+								Group:       (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+								Kind:        (*gatewayapi.Kind)(ptr.To("Gateway")),
+								Namespace:   ptr.To[gatewayapi.Namespace]("test-ns"),
+								Name:        gatewayapi.ObjectName("foo-local"),
+								SectionName: ptr.To[gatewayapi.SectionName]("http"),
+							}},
+						},
+					},
+				},
+			},
+		}} {
+		t.Run(tc.name, func(t *testing.T) {
+			for i, rule := range tc.ing.Spec.Rules {
+				rule := rule
+				cfg := testConfig.DeepCopy()
+				if tc.changeConfig != nil {
+					tc.changeConfig(cfg)
+
+					fmt.Printf("%#v", cfg.GatewayPlugin.ExternalGateways)
+				}
+				tcs := &testConfigStore{config: cfg}
+				ctx := tcs.ToContext(context.Background())
+
+				route, err := MakeHTTPRoute(ctx, tc.ing, &rule, ptr.To[gatewayapi.SectionName]("http"))
+				if err != nil {
+					t.Fatal("MakeHTTPRoute failed:", err)
+				}
+				tc.expected[i].OwnerReferences = []metav1.OwnerReference{*kmeta.NewControllerRef(tc.ing)}
+				if diff := cmp.Diff(tc.expected[i], route); diff != "" {
+					t.Error("Unexpected HTTPRoute (-want +got):", diff)
+				}
+			}
+		})
+	}
+}
+
 func TestAddEndpointProbes(t *testing.T) {
 	tcs := &testConfigStore{config: testConfig}
 	ctx := tcs.ToContext(context.Background())

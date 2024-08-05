@@ -22,7 +22,7 @@ require (
 	k8s.io/utils v0.0.0-20240423183400-0849a56e8f22
 	knative.dev/hack v0.0.0-20240801232131-441a19fc9ead
 	knative.dev/networking v0.0.0-20240802083044-f1702380495f
-	knative.dev/pkg v0.0.0-20240802082807-433889b44ec7
+	knative.dev/pkg v0.0.0-20240805063731-c88d5dad9653
 	sigs.k8s.io/gateway-api v1.1.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -77,7 +77,7 @@ require (
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect

@@ -26,6 +26,7 @@ data:
     - class: contour-external
       gateway: contour-external/knative-external
       service: contour-external/envoy-knative-external
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout
 
@@ -34,5 +35,6 @@ data:
     - class: contour-internal
       gateway: contour-internal/knative-local
       service: contour-internal/envoy-knative-local
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout

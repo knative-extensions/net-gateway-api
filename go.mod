@@ -13,7 +13,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/time v0.6.0
+	golang.org/x/time v0.7.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.30.3

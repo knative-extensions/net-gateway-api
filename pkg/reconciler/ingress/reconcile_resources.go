@@ -89,19 +89,26 @@ func probeTargets(
 	return backends
 }
 
-// reconcileHTTPRoute reconciles HTTPRoute.
-func (c *Reconciler) reconcileHTTPRoute(
+// reconcileWorkloadRoute reconciles the workloads HTTPRoute.
+func (c *Reconciler) reconcileWorkloadRoute(
 	ctx context.Context,
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 ) (*gatewayapi.HTTPRoute, status.Backends, error) {
-
 	recorder := controller.GetEventRecorder(ctx)
+
+	// If http > https redirect is enabled, this route must only be bound to the TLS listener on the gateway.
+	// For now, we only generate the TLS Listener on the external traffic gateway
+	// because there's no way to provide TLS for internal listeners.
+	var sectionName *gatewayapi.SectionName
+	if ing.Spec.HTTPOption == netv1alpha1.HTTPOptionRedirected && rule.Visibility == netv1alpha1.IngressVisibilityExternalIP {
+		sectionName = ptr.To(gatewayapi.SectionName(listenerPrefix + ing.GetUID()))
+	}
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
 	if apierrs.IsNotFound(err) {
-		desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
+		desired, err := resources.MakeHTTPRoute(ctx, ing, rule, sectionName)
 		if err != nil {
 			return nil, status.Backends{}, err
 		}
@@ -117,7 +124,7 @@ func (c *Reconciler) reconcileHTTPRoute(
 		return nil, status.Backends{}, err
 	}
 
-	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
+	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, sectionName, httproute.DeepCopy())
 }
 
 func (c *Reconciler) reconcileHTTPRouteUpdate(
@@ -125,8 +132,8 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	hash string,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
-	httproute *gatewayapi.HTTPRoute,
-) (*gatewayapi.HTTPRoute, status.Backends, error) {
+	sectionName *gatewayapi.SectionName,
+	httproute *gatewayapi.HTTPRoute) (*gatewayapi.HTTPRoute, status.Backends, error) {
 
 	const (
 		endpointPrefix   = "ep-"
@@ -156,11 +163,11 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	newBackends, oldBackends := computeBackends(httproute, rule)
 
 	if wasTransitionProbe && probeHash == hash && probe.Ready {
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule, sectionName)
 	} else if wasEndpointProbe && probeHash == hash && probe.Ready {
 		hash = transitionPrefix + hash
 
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule, sectionName)
 		resources.UpdateProbeHash(desired, hash)
 
 		resources.RemoveEndpointProbes(httproute)
@@ -187,7 +194,7 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 		}
 	} else {
 		// Ingress changed with the same backends
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired, err = resources.MakeHTTPRoute(ctx, ing, rule, sectionName)
 	}
 
 	if err != nil {
@@ -214,6 +221,60 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	}
 
 	return httproute, probeTargets(hash, ing, rule, httproute), nil
+}
+
+func (c *Reconciler) reconcileRedirectHTTPRoute(ctx context.Context,
+	ing *netv1alpha1.Ingress,
+	rule *netv1alpha1.IngressRule) (*gatewayapi.HTTPRoute, error) {
+
+	// Don't create a redirect route for cluster-local visibility
+	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
+		return nil, nil
+	}
+
+	if ing.Spec.TLS == nil || len(ing.Spec.TLS) == 0 {
+		return nil, fmt.Errorf("no TLS configuration provided in `spec.tls`. Failed to create HTTPRoute for HTTPS redirection")
+	}
+
+	recorder := controller.GetEventRecorder(ctx)
+
+	desired, err := resources.MakeRedirectHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		return nil, err
+	}
+
+	redirectRoute, err := c.httprouteLister.HTTPRoutes(desired.Namespace).Get(desired.Name)
+	if apierrs.IsNotFound(err) {
+		redirectRoute, err = c.gwapiclient.GatewayV1().HTTPRoutes(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
+		if err != nil {
+			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create redirect HTTPRoute: %v", err)
+			return nil, fmt.Errorf("failed to create redirect HTTPRoute: %w", err)
+		}
+		recorder.Eventf(ing, corev1.EventTypeNormal, "Created", "Created redirect HTTPRoute %q", redirectRoute.GetName())
+
+	} else if err != nil {
+		return nil, err
+	}
+
+	if !equality.Semantic.DeepEqual(redirectRoute.Spec, desired.Spec) ||
+		!equality.Semantic.DeepEqual(redirectRoute.Annotations, desired.Annotations) ||
+		!equality.Semantic.DeepEqual(redirectRoute.Labels, desired.Labels) {
+
+		// Don't modify the informers copy.
+		origin := redirectRoute.DeepCopy()
+		origin.Spec = desired.Spec
+		origin.Annotations = desired.Annotations
+		origin.Labels = desired.Labels
+
+		updated, err := c.gwapiclient.GatewayV1().HTTPRoutes(origin.Namespace).Update(ctx, origin, metav1.UpdateOptions{})
+		if err != nil {
+			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update redirect HTTPRoute: %v", err)
+			return nil, fmt.Errorf("failed to update redirect HTTPRoute: %w", err)
+		}
+		return updated, nil
+	}
+
+	return redirectRoute, nil
 }
 
 func (c *Reconciler) reconcileTLS(

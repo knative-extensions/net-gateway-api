@@ -27,11 +27,13 @@ data:
   external-gateways: |
     - class: contour-external
       gateway: contour-external/knative-external
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout
   local-gateways: |
     - class: contour-internal
       gateway: contour-internal/knative-local
       service: contour-internal/envoy-knative-local
+      http-listener-name: http
       supported-features:
       - HTTPRouteRequestTimeout

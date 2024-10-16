@@ -23,7 +23,7 @@ spec:
   - type: Hostname
     value: knative-local-gateway
   listeners:
-  - name: default
+  - name: http
     port: 80
     protocol: HTTP
     allowedRoutes:

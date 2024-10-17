@@ -27,7 +27,7 @@ import (
 
 // Grant the resource "to" access to the resource "from"
 func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1beta1.ReferenceGrant {
-	name := to.Name
+	name := ing.Name + "-" + to.Name
 	if len(name)+len(from.Namespace) > 62 {
 		name = name[:62-len(from.Namespace)]
 	}

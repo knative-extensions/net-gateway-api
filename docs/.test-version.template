@@ -17,3 +17,4 @@ The following Gateway API version and Ingress were tested as part of the release
 | ------- | ----------------------- | ------------------------------ |
 | Istio   | v"${ISTIO_VERSION}"     | "${ISTIO_UNSUPPORTED_E2E_TESTS}"   |
 | Contour | "${CONTOUR_VERSION}"    | "${CONTOUR_UNSUPPORTED_E2E_TESTS}" |
+| Envoy Gateway | "${ENVOY_GATEWAY_VERSION}"    | "${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}" |

@@ -153,7 +153,7 @@ type Prober struct {
 	routeStates map[types.NamespacedName]*routeState
 	podContexts map[string]cancelContext
 
-	workQueue workqueue.RateLimitingInterface
+	workQueue workqueue.TypedRateLimitingInterface[any]
 
 	targetLister ProbeTargetLister
 
@@ -172,14 +172,14 @@ func NewProber(
 		logger:      logger,
 		routeStates: make(map[types.NamespacedName]*routeState),
 		podContexts: make(map[string]cancelContext),
-		workQueue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.NewMaxOfRateLimiter(
+		workQueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.NewTypedMaxOfRateLimiter(
 				// Per item exponential backoff
-				workqueue.NewItemExponentialFailureRateLimiter(50*time.Millisecond, 30*time.Second),
+				workqueue.NewTypedItemExponentialFailureRateLimiter[any](50*time.Millisecond, 30*time.Second),
 				// Global rate limiter
-				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(50), 100)},
+				&workqueue.TypedBucketRateLimiter[any]{Limiter: rate.NewLimiter(rate.Limit(50), 100)},
 			),
-			"ProbingQueue"),
+			workqueue.TypedRateLimitingQueueConfig[any]{Name: "ProbingQueue"}),
 		targetLister:     targetLister,
 		readyCallback:    readyCallback,
 		probeConcurrency: probeConcurrency,

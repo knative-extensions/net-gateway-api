@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -120,7 +121,7 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.ExternalGateways = defaultExternalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("only a single external gateway is supported")
+		return nil, errors.New("only a single external gateway is supported")
 	}
 
 	switch len(config.LocalGateways) {
@@ -128,7 +129,7 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.LocalGateways = defaultLocalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("only a single local gateway is supported")
+		return nil, errors.New("only a single local gateway is supported")
 	}
 
 	return config, nil
@@ -167,7 +168,6 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 			configmap.AsNamespacedName("gateway", &gw.NamespacedName),
 			configmap.AsOptionalNamespacedName("service", &gw.Service),
 		)
-
 		if err != nil {
 			return nil, err
 		}

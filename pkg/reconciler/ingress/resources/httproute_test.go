@@ -183,7 +183,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 								}},
 							},
 						},
-					}},
+					},
+				},
 			},
 			expected: []*gatewayapi.HTTPRoute{
 				{
@@ -221,7 +222,9 @@ func TestMakeHTTPRoute(t *testing.T) {
 												Name:  "Bleep",
 												Value: "bloop",
 											},
-										}}}},
+										},
+									},
+								}},
 							}, {
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
@@ -241,7 +244,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 												Value: "blurg",
 											},
 										},
-									}}},
+									},
+								}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
 								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
@@ -252,7 +256,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 											Value: "bar",
 										},
 									},
-								}}},
+								},
+							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
 									Path: &gatewayapi.HTTPPathMatch{
@@ -306,7 +311,9 @@ func TestMakeHTTPRoute(t *testing.T) {
 												Name:  "Bleep",
 												Value: "bloop",
 											},
-										}}}},
+										},
+									},
+								}},
 							}, {
 								BackendRef: gatewayapi.BackendRef{
 									BackendObjectReference: gatewayapi.BackendObjectReference{
@@ -326,7 +333,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 												Value: "blurg",
 											},
 										},
-									}}},
+									},
+								}},
 							}},
 							Filters: []gatewayapi.HTTPRouteFilter{{
 								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
@@ -337,7 +345,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 											Value: "bar",
 										},
 									},
-								}}},
+								},
+							}},
 							Matches: []gatewayapi.HTTPRouteMatch{{
 								Path: &gatewayapi.HTTPPathMatch{
 									Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
@@ -428,7 +437,9 @@ func TestMakeHTTPRoute(t *testing.T) {
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-										Set: []gatewayapi.HTTPHeader{}}}},
+										Set: []gatewayapi.HTTPHeader{},
+									},
+								}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
@@ -441,7 +452,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Name:  gatewayapi.HTTPHeaderName("tag"),
 										Value: "goo",
 									}},
-								}},
+								},
+							},
 						}, {
 							BackendRefs: []gatewayapi.HTTPBackendRef{{
 								BackendRef: gatewayapi.BackendRef{
@@ -456,7 +468,9 @@ func TestMakeHTTPRoute(t *testing.T) {
 								Filters: []gatewayapi.HTTPRouteFilter{{
 									Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 									RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-										Set: []gatewayapi.HTTPHeader{}}}},
+										Set: []gatewayapi.HTTPHeader{},
+									},
+								}},
 							}},
 							Matches: []gatewayapi.HTTPRouteMatch{
 								{
@@ -469,7 +483,8 @@ func TestMakeHTTPRoute(t *testing.T) {
 										Name:  gatewayapi.HTTPHeaderName("tag"),
 										Value: "doo",
 									}},
-								}},
+								},
+							},
 						},
 					},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
@@ -514,20 +529,22 @@ func TestMakeHTTPRoute(t *testing.T) {
 				},
 				Spec: gatewayapi.HTTPRouteSpec{
 					Hostnames: []gatewayapi.Hostname{externalHost},
-					Rules: []gatewayapi.HTTPRouteRule{{
-						Filters: []gatewayapi.HTTPRouteFilter{{
-							Type: gatewayapi.HTTPRouteFilterURLRewrite,
-							URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
-								Hostname: (*gatewayapi.PreciseHostname)(ptr.To("hello-example.example.com")),
-							},
-						}},
-						BackendRefs: []gatewayapi.HTTPBackendRef{},
-						Matches: []gatewayapi.HTTPRouteMatch{{
-							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
-								Value: ptr.To("/"),
-							},
-						}}},
+					Rules: []gatewayapi.HTTPRouteRule{
+						{
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterURLRewrite,
+								URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+									Hostname: (*gatewayapi.PreciseHostname)(ptr.To("hello-example.example.com")),
+								},
+							}},
+							BackendRefs: []gatewayapi.HTTPBackendRef{},
+							Matches: []gatewayapi.HTTPRouteMatch{{
+								Path: &gatewayapi.HTTPPathMatch{
+									Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+									Value: ptr.To("/"),
+								},
+							}},
+						},
 					},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
 						ParentRefs: []gatewayapi.ParentReference{{
@@ -578,17 +595,19 @@ func TestMakeHTTPRoute(t *testing.T) {
 				},
 				Spec: gatewayapi.HTTPRouteSpec{
 					Hostnames: []gatewayapi.Hostname{externalHost},
-					Rules: []gatewayapi.HTTPRouteRule{{
-						Timeouts: &gatewayapi.HTTPRouteTimeouts{
-							Request: ptr.To[gatewayapi.Duration]("0s"),
-						},
-						BackendRefs: []gatewayapi.HTTPBackendRef{},
-						Matches: []gatewayapi.HTTPRouteMatch{{
-							Path: &gatewayapi.HTTPPathMatch{
-								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
-								Value: ptr.To("/"),
+					Rules: []gatewayapi.HTTPRouteRule{
+						{
+							Timeouts: &gatewayapi.HTTPRouteTimeouts{
+								Request: ptr.To[gatewayapi.Duration]("0s"),
 							},
-						}}},
+							BackendRefs: []gatewayapi.HTTPBackendRef{},
+							Matches: []gatewayapi.HTTPRouteMatch{{
+								Path: &gatewayapi.HTTPPathMatch{
+									Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+									Value: ptr.To("/"),
+								},
+							}},
+						},
 					},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
 						ParentRefs: []gatewayapi.ParentReference{{
@@ -600,10 +619,10 @@ func TestMakeHTTPRoute(t *testing.T) {
 					},
 				},
 			}},
-		}} {
+		},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for i, rule := range tc.ing.Spec.Rules {
-				rule := rule
 				cfg := testConfig.DeepCopy()
 				if tc.changeConfig != nil {
 					tc.changeConfig(cfg)
@@ -677,47 +696,53 @@ func TestAddEndpointProbes(t *testing.T) {
 						}},
 					},
 				}},
-				BackendRefs: []gatewayapi.HTTPBackendRef{{
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](12),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(123)),
-							Name:  "goo",
+				BackendRefs: []gatewayapi.HTTPBackendRef{
+					{
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](12),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(123)),
+								Name:  "goo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blah",
+									}, {
+										Name:  "Bleep",
+										Value: "bloop",
+									}},
+								},
+							},
+						},
+					}, {
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](88),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(124)),
+								Name:  "doo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blurg",
+									}},
+								},
+							},
 						},
 					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blah",
-							}, {
-								Name:  "Bleep",
-								Value: "bloop",
-							}},
-						}},
-					},
-				}, {
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](88),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(124)),
-							Name:  "doo",
-						},
-					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blurg",
-							}},
-						}},
-					}},
 				},
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
@@ -886,47 +911,53 @@ func TestUpdateProbeHash(t *testing.T) {
 						}},
 					},
 				}},
-				BackendRefs: []gatewayapi.HTTPBackendRef{{
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](12),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(123)),
-							Name:  "goo",
+				BackendRefs: []gatewayapi.HTTPBackendRef{
+					{
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](12),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(123)),
+								Name:  "goo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blah",
+									}, {
+										Name:  "Bleep",
+										Value: "bloop",
+									}},
+								},
+							},
+						},
+					}, {
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](88),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(124)),
+								Name:  "doo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blurg",
+									}},
+								},
+							},
 						},
 					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blah",
-							}, {
-								Name:  "Bleep",
-								Value: "bloop",
-							}},
-						}},
-					},
-				}, {
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](88),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(124)),
-							Name:  "doo",
-						},
-					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blurg",
-							}},
-						}},
-					}},
 				},
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{
@@ -1092,47 +1123,53 @@ func TestAddOldBackend(t *testing.T) {
 						}},
 					},
 				}},
-				BackendRefs: []gatewayapi.HTTPBackendRef{{
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](12),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(123)),
-							Name:  "goo",
+				BackendRefs: []gatewayapi.HTTPBackendRef{
+					{
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](12),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(123)),
+								Name:  "goo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blah",
+									}, {
+										Name:  "Bleep",
+										Value: "bloop",
+									}},
+								},
+							},
+						},
+					}, {
+						BackendRef: gatewayapi.BackendRef{
+							Weight: ptr.To[int32](88),
+							BackendObjectReference: gatewayapi.BackendObjectReference{
+								Group: (*gatewayapi.Group)(ptr.To("")),
+								Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+								Port:  ptr.To(gatewayapi.PortNumber(124)),
+								Name:  "doo",
+							},
+						},
+						Filters: []gatewayapi.HTTPRouteFilter{
+							{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{{
+										Name:  "Baz",
+										Value: "blurg",
+									}},
+								},
+							},
 						},
 					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blah",
-							}, {
-								Name:  "Bleep",
-								Value: "bloop",
-							}},
-						}},
-					},
-				}, {
-					BackendRef: gatewayapi.BackendRef{
-						Weight: ptr.To[int32](88),
-						BackendObjectReference: gatewayapi.BackendObjectReference{
-							Group: (*gatewayapi.Group)(ptr.To("")),
-							Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-							Port:  ptr.To(gatewayapi.PortNumber(124)),
-							Name:  "doo",
-						},
-					},
-					Filters: []gatewayapi.HTTPRouteFilter{{
-						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-							Set: []gatewayapi.HTTPHeader{{
-								Name:  "Baz",
-								Value: "blurg",
-							}},
-						}},
-					}},
 				},
 			}, {
 				Matches: []gatewayapi.HTTPRouteMatch{{

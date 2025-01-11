@@ -221,8 +221,7 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 				},
 				Weight: ptr.To[int32](int32(p.Weight)),
 			},
-		},
-		},
+		}},
 	}
 
 	for i := 0; i < len(p.Headers); i += 2 {

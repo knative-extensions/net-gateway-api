@@ -59,9 +59,7 @@ type Reconciler struct {
 	gatewayLister gatewaylisters.GatewayLister
 }
 
-var (
-	_ ingressreconciler.Interface = (*Reconciler)(nil)
-)
+var _ ingressreconciler.Interface = (*Reconciler)(nil)
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (c *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingress) pkgreconciler.Event {
@@ -105,8 +103,6 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	routesReady := true
 
 	for _, rule := range ing.Spec.Rules {
-		rule := rule
-
 		httproute, probeTargets, err := c.reconcileHTTPRoute(ctx, ingressHash, ing, &rule)
 		if err != nil {
 			return err
@@ -130,8 +126,6 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	externalIngressTLS := ing.GetIngressTLSForVisibility(v1alpha1.IngressVisibilityExternalIP)
 	listeners := make([]*gatewayapi.Listener, 0, len(externalIngressTLS))
 	for _, tls := range externalIngressTLS {
-		tls := tls
-
 		l, err := c.reconcileTLS(ctx, &tls, ing)
 		if err != nil {
 			return err

@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -94,7 +95,6 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 				}
 
 				for url := range urls {
-					url := url
 					url.Scheme = scheme
 					pt.URLs = append(pt.URLs, &url)
 				}
@@ -136,7 +136,6 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 			}
 
 			for url := range urls {
-				url := url
 				url.Scheme = scheme
 				pt.URLs = append(pt.URLs, &url)
 			}
@@ -145,11 +144,10 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 				foundTargets += len(pt.PodIPs)
 				targets = append(targets, pt)
 			}
-
 		}
 	}
 	if foundTargets == 0 {
-		return nil, fmt.Errorf("no gateway pods available")
+		return nil, errors.New("no gateway pods available")
 	}
 	return targets, nil
 }

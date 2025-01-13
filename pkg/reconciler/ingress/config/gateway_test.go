@@ -133,7 +133,6 @@ func TestFromConfigMapErrors(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGatewayNoService(t *testing.T) {
@@ -147,7 +146,6 @@ func TestGatewayNoService(t *testing.T) {
         gateway: istio-system/knative-local-gateway`,
 		},
 	})
-
 	if err != nil {
 		t.Errorf("FromConfigMap(noService) = %v", err)
 	}

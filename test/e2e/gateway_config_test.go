@@ -105,7 +105,6 @@ func TestGatewayWithNoService(t *testing.T) {
 
 	// Verify the new service is accessible via the ingress.
 	ingress.RuntimeRequest(ctx, t, client, url.URL().String())
-
 }
 
 // ConfigMapFromTestFile creates a corev1.ConfigMap resources from the config

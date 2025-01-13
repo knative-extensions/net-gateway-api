@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 
 	fakegwapiclientset "knative.dev/net-gateway-api/pkg/client/injection/client/fake"
@@ -53,13 +52,15 @@ import (
 	. "knative.dev/pkg/reconciler/testing"
 )
 
+type fakestatus struct{}
+
 var (
 	publicSvcIP  = "1.2.3.4"
 	privateSvcIP = "5.6.7.8"
 	publicSvc    = network.GetServiceHostname(publicName, testNamespace)
 	privateSvc   = network.GetServiceHostname(privateName, testNamespace)
 
-	fakeStatusKey struct{}
+	fakeStatusKey fakestatus
 
 	publicGatewayAddress  = "11.22.33.44"
 	publicGatewayHostname = "off.cluster.gateway"
@@ -218,7 +219,8 @@ func TestReconcile(t *testing.T) {
 			controller.Options{
 				ConfigStore: &testConfigStore{
 					config: defaultConfig,
-				}})
+				},
+			})
 
 		return ingr
 	}))
@@ -365,7 +367,8 @@ func TestReconcileTLS(t *testing.T) {
 			controller.Options{
 				ConfigStore: &testConfigStore{
 					config: defaultConfig,
-				}})
+				},
+			})
 
 		return ingr
 	}))
@@ -2199,7 +2202,8 @@ func TestReconcileProbing(t *testing.T) {
 			controller.Options{
 				ConfigStore: &testConfigStore{
 					config: defaultConfig,
-				}})
+				},
+			})
 	}))
 }
 
@@ -2219,6 +2223,7 @@ func (p ProbeIsReadyAfter) Build() func(types.NamespacedName) (status.ProbeState
 func makeLoadBalancerNotReady(i *v1alpha1.Ingress) {
 	i.Status.MarkLoadBalancerNotReady()
 }
+
 func TestReconcileProbingOffClusterGateway(t *testing.T) {
 	table := TableTest{{
 		Name: "prober callback all endpoints ready",
@@ -2334,7 +2339,8 @@ func TestReconcileProbingOffClusterGateway(t *testing.T) {
 			controller.Options{
 				ConfigStore: &testConfigStore{
 					config: configNoService,
-				}})
+				},
+			})
 	}))
 }
 
@@ -2498,10 +2504,10 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			Port:     443,
 			Protocol: "HTTPS",
 			TLS: &gatewayapi.GatewayTLSConfig{
-				Mode: (*gatewayapi.TLSModeType)(pointer.String("Terminate")),
+				Mode: (*gatewayapi.TLSModeType)(ptr.To("Terminate")),
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
-					Group:     (*gatewayapi.Group)(pointer.String("")),
-					Kind:      (*gatewayapi.Kind)(pointer.String("Secret")),
+					Group:     ptr.To[gatewayapi.Group](""),
+					Kind:      ptr.To[gatewayapi.Kind]("Secret"),
 					Name:      gatewayapi.ObjectName(secretName),
 					Namespace: (*gatewayapi.Namespace)(&nsName),
 				}},
@@ -2509,7 +2515,7 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			},
 			AllowedRoutes: &gatewayapi.AllowedRoutes{
 				Namespaces: &gatewayapi.RouteNamespaces{
-					From: (*gatewayapi.FromNamespaces)(pointer.String("Selector")),
+					From: (*gatewayapi.FromNamespaces)(ptr.To("Selector")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"kubernetes.io/metadata.name": nsName,
@@ -2525,6 +2531,7 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 var withInitialConditions = func(i *v1alpha1.Ingress) {
 	i.Status.InitializeConditions()
 }
+
 var withFinalizer = func(i *v1alpha1.Ingress) {
 	i.Finalizers = append(i.Finalizers, "ingresses.networking.internal.knative.dev")
 }

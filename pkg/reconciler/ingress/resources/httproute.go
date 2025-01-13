@@ -109,7 +109,8 @@ func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.
 					Group: ptr.To[gatewayapi.Group](""),
 					Kind:  ptr.To[gatewayapi.Kind]("Service"),
 					Name:  gatewayapi.ObjectName(backend.ServiceName),
-					Port:  ptr.To[gatewayapi.PortNumber](gatewayapi.PortNumber(backend.ServicePort.IntValue())),
+					//nolint:gosec // port numbers are bounded
+					Port: ptr.To(gatewayapi.PortNumber(backend.ServicePort.IntValue())),
 				},
 			},
 		}},
@@ -147,7 +148,6 @@ func AddOldBackend(r *gatewayapi.HTTPRoute, hash string, old gatewayapi.HTTPBack
 	// KIngress only supports AppendHeaders so there's only this filter
 	for _, filters := range backend.Filters {
 		if filters.RequestHeaderModifier != nil {
-
 			slices.SortFunc(filters.RequestHeaderModifier.Set, func(a, b gatewayapi.HTTPHeader) int {
 				return strings.Compare(string(a.Name), string(b.Name))
 			})
@@ -194,7 +194,6 @@ func MakeHTTPRoute(
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 ) (*gatewayapi.HTTPRoute, error) {
-
 	visibility := ""
 	if rule.Visibility == netv1alpha1.IngressVisibilityClusterLocal {
 		visibility = "cluster-local"
@@ -220,7 +219,6 @@ func makeHTTPRouteSpec(
 	ctx context.Context,
 	rule *netv1alpha1.IngressRule,
 ) gatewayapi.HTTPRouteSpec {
-
 	hostnames := make([]gatewayapi.Hostname, 0, len(rule.Hosts))
 	for _, hostname := range rule.Hosts {
 		hostnames = append(hostnames, gatewayapi.Hostname(hostname))
@@ -258,7 +256,6 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 	rules := []gatewayapi.HTTPRouteRule{}
 
 	for _, path := range rule.HTTP.Paths {
-		path := path
 		backendRefs := make([]gatewayapi.HTTPBackendRef, 0, len(path.Splits))
 		var preFilters []gatewayapi.HTTPRouteFilter
 
@@ -279,7 +276,8 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 					Set: headers,
-				}}}
+				},
+			}}
 		}
 
 		if path.RewriteHost != "" {
@@ -308,19 +306,23 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 			backendRef := gatewayapi.HTTPBackendRef{
 				BackendRef: gatewayapi.BackendRef{
 					BackendObjectReference: gatewayapi.BackendObjectReference{
+						Name:  gatewayapi.ObjectName(name),
 						Group: (*gatewayapi.Group)(ptr.To("")),
 						Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
-						Port:  ptr.To(gatewayapi.PortNumber(split.ServicePort.IntValue())),
-						Name:  gatewayapi.ObjectName(name),
+						//nolint:gosec // port numbers are bounded
+						Port: ptr.To(gatewayapi.PortNumber(split.ServicePort.IntValue())),
 					},
-					Weight: ptr.To(int32(split.Percent)),
+					Weight: ptr.To(int32(split.Percent)), //nolint:gosec // percent is bounded [0,100]
 				},
-				Filters: []gatewayapi.HTTPRouteFilter{{
-					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-						Set: headers,
-					}},
-				}}
+				Filters: []gatewayapi.HTTPRouteFilter{
+					{
+						Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+						RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+							Set: headers,
+						},
+					},
+				},
+			}
 			backendRefs = append(backendRefs, backendRef)
 		}
 

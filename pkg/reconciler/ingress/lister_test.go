@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -115,7 +116,7 @@ func TestBackendsToProbeTargets(t *testing.T) {
 				),
 			},
 		},
-		wantErr: fmt.Errorf("no gateway pods available"),
+		wantErr: errors.New("no gateway pods available"),
 	}, {
 		name: "local endpoint without address to probe",
 		objects: []runtime.Object{
@@ -129,7 +130,7 @@ func TestBackendsToProbeTargets(t *testing.T) {
 				),
 			},
 		},
-		wantErr: fmt.Errorf("no gateway pods available"),
+		wantErr: errors.New("no gateway pods available"),
 	}, {
 		name: "endpoint with single address to probe (https redirected)",
 		objects: []runtime.Object{
@@ -184,7 +185,8 @@ func TestBackendsToProbeTargets(t *testing.T) {
 					Host:   "example.com",
 					Path:   "/",
 				}},
-			}},
+			},
+		},
 	}, {
 		name: "complex case",
 		objects: []runtime.Object{
@@ -399,7 +401,7 @@ func TestListProbeTargetsNoService(t *testing.T) {
 			},
 		},
 		ing:     ing(withBasicSpec, withGatewayAPIClass, withHTTPOption(v1alpha1.HTTPOptionRedirected)),
-		wantErr: fmt.Errorf("no addresses available in status of Gateway istio-system/istio-gateway"),
+		wantErr: errors.New("no addresses available in status of Gateway istio-system/istio-gateway"),
 	}}
 
 	for _, test := range tests {

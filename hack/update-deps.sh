@@ -21,6 +21,8 @@ set -o pipefail
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 source ${REPO_ROOT_DIR}/hack/test-env.sh
 
+go get "sigs.k8s.io/gateway-api@${GATEWAY_API_VERSION}"
+
 go_update_deps "$@"
 
 group "Update Gateway API CRDs to version ${GATEWAY_API_VERSION}"

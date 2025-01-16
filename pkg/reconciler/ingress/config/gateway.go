@@ -92,7 +92,7 @@ type Gateway struct {
 
 	Class             string
 	Service           *types.NamespacedName
-	SupportedFeatures sets.Set[features.SupportedFeature]
+	SupportedFeatures sets.Set[features.FeatureName]
 }
 
 // FromConfigMap creates a GatewayPlugin config from the supplied ConfigMap
@@ -136,10 +136,10 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 }
 
 type gatewayEntry struct {
-	Gateway           string                      `json:"gateway"`
-	Service           *string                     `json:"service"`
-	Class             string                      `json:"class"`
-	SupportedFeatures []features.SupportedFeature `json:"supported-features"`
+	Gateway           string                 `json:"gateway"`
+	Service           *string                `json:"service"`
+	Class             string                 `json:"class"`
+	SupportedFeatures []features.FeatureName `json:"supported-features"`
 }
 
 func parseGatewayConfig(data string) ([]Gateway, error) {

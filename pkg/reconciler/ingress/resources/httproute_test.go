@@ -1235,12 +1235,12 @@ var testConfig = &config.Config{
 		ExternalGateways: []config.Gateway{{
 			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo"},
 			Class:             testGatewayClass,
-			SupportedFeatures: sets.New[features.SupportedFeature](),
+			SupportedFeatures: sets.New[features.FeatureName](),
 		}},
 		LocalGateways: []config.Gateway{{
 			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo-local"},
 			Class:             testGatewayClass,
-			SupportedFeatures: sets.New[features.SupportedFeature](),
+			SupportedFeatures: sets.New[features.FeatureName](),
 		}},
 	},
 }

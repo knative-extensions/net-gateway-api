@@ -65,7 +65,7 @@ func (in *Gateway) DeepCopyInto(out *Gateway) {
 	}
 	if in.SupportedFeatures != nil {
 		in, out := &in.SupportedFeatures, &out.SupportedFeatures
-		*out = make(sets.Set[features.SupportedFeature], len(*in))
+		*out = make(sets.Set[features.FeatureName], len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}

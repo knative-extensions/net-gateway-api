@@ -41,9 +41,9 @@ EXTERNAL_INFORMER_PKG="sigs.k8s.io/gateway-api/pkg/client/informers/externalvers
 # fixes the issue
 group "Deepcopy Gen"
 go run k8s.io/code-generator/cmd/deepcopy-gen \
-  -O zz_generated.deepcopy \
+  --output-file zz_generated.deepcopy.go \
   --go-header-file "${boilerplate}" \
-  --input-dirs knative.dev/net-gateway-api/pkg/reconciler/ingress/config
+  knative.dev/net-gateway-api/pkg/reconciler/ingress/config
 
 # group "Update deps post-codegen"
 # Make sure our dependencies are up-to-date

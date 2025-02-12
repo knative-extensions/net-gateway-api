@@ -25,9 +25,9 @@ import (
 	"net/url"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -63,7 +63,7 @@ type routeState struct {
 	callbackKey types.NamespacedName
 
 	// pendingCount is the number of pods that haven't been successfully probed yet
-	pendingCount atomic.Int32
+	pendingCount atomic.Int64
 	lastAccessed time.Time
 
 	cancel func()
@@ -72,7 +72,7 @@ type routeState struct {
 // podState represents the probing state of a Pod (for a specific Ingress)
 type podState struct {
 	// pendingCount is the number of probes for the Pod
-	pendingCount atomic.Int32
+	pendingCount atomic.Int64
 
 	cancel func()
 }
@@ -126,8 +126,10 @@ func (b *Backends) AddURL(v Visibility, u url.URL) {
 	urls.Insert(u)
 }
 
-type Visibility = v1alpha1.IngressVisibility
-type URLSet = sets.Set[url.URL]
+type (
+	Visibility = v1alpha1.IngressVisibility
+	URLSet     = sets.Set[url.URL]
+)
 
 // ProbeTargetLister lists all the targets that requires probing.
 type ProbeTargetLister interface {
@@ -151,7 +153,7 @@ type Prober struct {
 	routeStates map[types.NamespacedName]*routeState
 	podContexts map[string]cancelContext
 
-	workQueue workqueue.RateLimitingInterface
+	workQueue workqueue.TypedRateLimitingInterface[any]
 
 	targetLister ProbeTargetLister
 
@@ -164,19 +166,20 @@ type Prober struct {
 func NewProber(
 	logger *zap.SugaredLogger,
 	targetLister ProbeTargetLister,
-	readyCallback func(types.NamespacedName)) *Prober {
+	readyCallback func(types.NamespacedName),
+) *Prober {
 	return &Prober{
 		logger:      logger,
 		routeStates: make(map[types.NamespacedName]*routeState),
 		podContexts: make(map[string]cancelContext),
-		workQueue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.NewMaxOfRateLimiter(
+		workQueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.NewTypedMaxOfRateLimiter(
 				// Per item exponential backoff
-				workqueue.NewItemExponentialFailureRateLimiter(50*time.Millisecond, 30*time.Second),
+				workqueue.NewTypedItemExponentialFailureRateLimiter[any](50*time.Millisecond, 30*time.Second),
 				// Global rate limiter
-				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(50), 100)},
+				&workqueue.TypedBucketRateLimiter[any]{Limiter: rate.NewLimiter(rate.Limit(50), 100)},
 			),
-			"ProbingQueue"),
+			workqueue.TypedRateLimitingQueueConfig[any]{Name: "ProbingQueue"}),
 		targetLister:     targetLister,
 		readyCallback:    readyCallback,
 		probeConcurrency: probeConcurrency,
@@ -241,7 +244,6 @@ func (m *Prober) probeRequest(
 	key types.NamespacedName,
 	callbackKey types.NamespacedName,
 	targets []ProbeTarget,
-
 ) bool {
 	ingCtx, cancel := context.WithCancel(context.Background())
 	routeState := &routeState{
@@ -267,7 +269,7 @@ func (m *Prober) probeRequest(
 		}
 	}
 
-	routeState.pendingCount.Store(int32(len(workItems)))
+	routeState.pendingCount.Store(int64(len(workItems)))
 
 	for ip, ipWorkItems := range workItems {
 		// Get or create the context for that IP
@@ -288,9 +290,9 @@ func (m *Prober) probeRequest(
 
 		podCtx, cancel := context.WithCancel(ingCtx)
 		podState := &podState{
-			pendingCount: *atomic.NewInt32(int32(len(ipWorkItems))),
-			cancel:       cancel,
+			cancel: cancel,
 		}
+		podState.pendingCount.Store(int64(len(ipWorkItems)))
 
 		// Quick and dirty way to join two contexts (i.e. podCtx is cancelled when either ingCtx or ipCtx are cancelled)
 		go func() {
@@ -313,7 +315,7 @@ func (m *Prober) probeRequest(
 
 		for _, wi := range ipWorkItems {
 			wi.podState = podState
-			wi.context = podCtx
+			wi.context = podCtx //nolint:fatcontext
 			m.workQueue.AddAfter(wi, initialDelay)
 			logger.Infof("Queuing probe for %s, IP: %s:%s (version: %s)(depth: %d)",
 				wi.url, wi.podIP, wi.podPort, wi.routeState.version, m.workQueue.Len())
@@ -333,11 +335,11 @@ func (m *Prober) Start(done <-chan struct{}) chan struct{} {
 	var wg sync.WaitGroup
 
 	// Start the worker goroutines
-	for i := 0; i < m.probeConcurrency; i++ {
+	for range m.probeConcurrency {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			//nolint:all
+
 			for m.processWorkItem() {
 			}
 		}()
@@ -378,7 +380,6 @@ func (m *Prober) CancelIngressProbingByKey(key types.NamespacedName) {
 			v.cancel()
 			delete(m.routeStates, key)
 		}
-
 	}
 }
 
@@ -469,12 +470,12 @@ func (m *Prober) processWorkItem() bool {
 
 func (m *Prober) onProbingSuccess(routeState *routeState, podState *podState) {
 	// The last probe call for the Pod succeeded, the Pod is ready
-	if podState.pendingCount.Dec() == 0 {
+	if podState.pendingCount.Add(-1) == 0 {
 		// Unlock the goroutine blocked on <-podCtx.Done()
 		podState.cancel()
 
 		// This is the last pod being successfully probed, the Ingress is ready
-		if routeState.pendingCount.Dec() == 0 {
+		if routeState.pendingCount.Add(-1) == 0 {
 			m.readyCallback(routeState.callbackKey)
 		}
 	}
@@ -491,7 +492,7 @@ func (m *Prober) onProbingCancellation(routeState *routeState, podState *podStat
 		// Attempt to set pendingCount to 0.
 		if podState.pendingCount.CompareAndSwap(pendingCount, 0) {
 			// This is the last pod being successfully probed, the Ingress is ready
-			if routeState.pendingCount.Dec() == 0 {
+			if routeState.pendingCount.Add(-1) == 0 {
 				m.readyCallback(routeState.callbackKey)
 			}
 			return

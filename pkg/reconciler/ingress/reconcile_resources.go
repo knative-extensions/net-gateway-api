@@ -48,7 +48,6 @@ func probeTargets(
 	rule *netv1alpha1.IngressRule,
 	r *gatewayapi.HTTPRoute,
 ) status.Backends {
-
 	backends := status.Backends{
 		Version: hash,
 		Key:     resources.HTTPRouteKey(ing, rule),
@@ -96,7 +95,6 @@ func (c *Reconciler) reconcileHTTPRoute(
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
 ) (*gatewayapi.HTTPRoute, status.Backends, error) {
-
 	recorder := controller.GetEventRecorder(ctx)
 
 	httproute, err := c.httprouteLister.HTTPRoutes(ing.Namespace).Get(resources.LongestHost(rule.Hosts))
@@ -127,7 +125,6 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	rule *netv1alpha1.IngressRule,
 	httproute *gatewayapi.HTTPRoute,
 ) (*gatewayapi.HTTPRoute, status.Backends, error) {
-
 	const (
 		endpointPrefix   = "ep-"
 		transitionPrefix = "tr-"
@@ -197,7 +194,6 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
 		!equality.Semantic.DeepEqual(original.Annotations, desired.Annotations) ||
 		!equality.Semantic.DeepEqual(original.Labels, desired.Labels) {
-
 		// Don't modify the informers copy.
 		original.Spec = desired.Spec
 		original.Annotations = desired.Annotations
@@ -205,7 +201,6 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 
 		updated, err := c.gwapiclient.GatewayV1().HTTPRoutes(original.Namespace).
 			Update(ctx, original, metav1.UpdateOptions{})
-
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "UpdateFailed", "Failed to update HTTPRoute: %v", err)
 			return nil, status.Backends{}, fmt.Errorf("failed to update HTTPRoute: %w", err)
@@ -219,7 +214,8 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 func (c *Reconciler) reconcileTLS(
 	ctx context.Context, tls *netv1alpha1.IngressTLS, ing *netv1alpha1.Ingress,
 ) (
-	[]*gatewayapi.Listener, error) {
+	[]*gatewayapi.Listener, error,
+) {
 	recorder := controller.GetEventRecorder(ctx)
 	externalGw := config.FromContext(ctx).GatewayPlugin.ExternalGateway()
 
@@ -250,7 +246,6 @@ func (c *Reconciler) reconcileTLS(
 
 	if apierrs.IsNotFound(err) {
 		rp, err = c.gwapiclient.GatewayV1beta1().ReferenceGrants(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
-
 		if err != nil {
 			recorder.Eventf(ing, corev1.EventTypeWarning, "CreationFailed", "Failed to create ReferenceGrant: %v", err)
 			return nil, fmt.Errorf("failed to create ReferenceGrant: %w", err)
@@ -281,7 +276,6 @@ func (c *Reconciler) reconcileTLS(
 	selector := gatewayapi.NamespacesFromSelector
 	listeners := make([]*gatewayapi.Listener, 0, len(tls.Hosts))
 	for _, h := range tls.Hosts {
-		h := h
 		listener := gatewayapi.Listener{
 			Name:     gatewayapi.SectionName(listenerPrefix + ing.GetUID()),
 			Hostname: (*gatewayapi.Hostname)(&h),
@@ -338,7 +332,6 @@ func (c *Reconciler) reconcileGatewayListeners(
 
 	updated := false
 	for i, l := range gw.Spec.Listeners {
-		l := l
 		desired, ok := lmap[string(l.Name)]
 		if !ok {
 			// This listener doesn't match any that we control.
@@ -434,7 +427,6 @@ oldbackends:
 				nn.Namespace = string(*backend.Namespace)
 			} else {
 				nn.Namespace = route.Namespace
-
 			}
 			oldNames.Insert(nn)
 			oldBackends = append(oldBackends, backend)

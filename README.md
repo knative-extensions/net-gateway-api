@@ -6,7 +6,11 @@
 
 net-gateway-api repository contains a KIngress implementation and testing for Knative integration with the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 
-This work is still in early development, which means it's _not ready for production_, but also that your feedback can have a big impact. You can find the tested Ingress and unavailable features [here](docs/test-version.md).
+Note: the integration is beta because some features are still missing. You can find the tested Ingress and unavailable features [here](docs/test-version.md).
+
+- http-option - disabling HTTP
+- external-tls provisioning using HTTP-01 challenges is limited to 64 certs by the Gateway API
+
 
 ## KIngress Conformance Tests
 

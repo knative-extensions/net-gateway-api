@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -91,7 +92,7 @@ type Gateway struct {
 
 	Class             string
 	Service           *types.NamespacedName
-	SupportedFeatures sets.Set[features.SupportedFeature]
+	SupportedFeatures sets.Set[features.FeatureName]
 }
 
 // FromConfigMap creates a GatewayPlugin config from the supplied ConfigMap
@@ -120,7 +121,7 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.ExternalGateways = defaultExternalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("only a single external gateway is supported")
+		return nil, errors.New("only a single external gateway is supported")
 	}
 
 	switch len(config.LocalGateways) {
@@ -128,17 +129,17 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 		config.LocalGateways = defaultLocalGateways()
 	case 1:
 	default:
-		return nil, fmt.Errorf("only a single local gateway is supported")
+		return nil, errors.New("only a single local gateway is supported")
 	}
 
 	return config, nil
 }
 
 type gatewayEntry struct {
-	Gateway           string                      `json:"gateway"`
-	Service           *string                     `json:"service"`
-	Class             string                      `json:"class"`
-	SupportedFeatures []features.SupportedFeature `json:"supported-features"`
+	Gateway           string                 `json:"gateway"`
+	Service           *string                `json:"service"`
+	Class             string                 `json:"class"`
+	SupportedFeatures []features.FeatureName `json:"supported-features"`
 }
 
 func parseGatewayConfig(data string) ([]Gateway, error) {
@@ -167,7 +168,6 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 			configmap.AsNamespacedName("gateway", &gw.NamespacedName),
 			configmap.AsOptionalNamespacedName("service", &gw.Service),
 		)
-
 		if err != nil {
 			return nil, err
 		}

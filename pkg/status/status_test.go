@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -35,7 +36,6 @@ import (
 	"knative.dev/networking/pkg/http/probe"
 	"knative.dev/pkg/logging"
 
-	"go.uber.org/atomic"
 	"go.uber.org/zap/zaptest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -96,7 +96,7 @@ func TestProbeAllHosts(t *testing.T) {
 	failedRequests := make(chan *http.Request)
 	failHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		failedRequests <- r
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 	})
 
 	// Actual probe handler used in Activator and Queue-Proxy
@@ -212,7 +212,6 @@ func TestProbeAllHosts(t *testing.T) {
 
 	// Just drain the requests in the channel to not block the handler
 	go func() {
-		//nolint:all
 		for range probeRequests {
 		}
 	}()
@@ -253,7 +252,7 @@ func TestProbeLifecycle(t *testing.T) {
 	failedRequests := make(chan *http.Request)
 	failHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		failedRequests <- r
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 	})
 
 	// Actual probe handler used in Activator and Queue-Proxy
@@ -322,7 +321,7 @@ func TestProbeLifecycle(t *testing.T) {
 	}
 
 	// Wait for the first (failing) and second (success) requests to be executed and validate Host header
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		req := <-probeRequests
 		if req.Host != hostA {
 			t.Fatalf("Host header = %q, want %q", req.Host, hostA)
@@ -337,7 +336,7 @@ func TestProbeLifecycle(t *testing.T) {
 	}
 
 	// The subsequent calls to DoProbes must succeed and return true
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if state, err = prober.DoProbes(ctx, backends); err != nil {
 			t.Fatal("DoProbes failed:", err)
 		}
@@ -885,7 +884,6 @@ func (l fakeProbeTargetLister) BackendsToProbeTargets(_ context.Context, backend
 		}
 
 		for url := range urls {
-			url := url
 			newTarget.URLs = append(newTarget.URLs, &url)
 		}
 		targets = append(targets, newTarget)

@@ -11,8 +11,8 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-version:
-        - v1.28.x
-        - v1.29.x
+        - v1.30.x
+        - v1.31.x
         ingress:
         - istio
         - contour
@@ -27,7 +27,7 @@ jobs:
     steps:
 
     - uses: knative/actions/setup-go@main
-    - uses: ko-build/setup-ko@v0.7
+    - uses: ko-build/setup-ko@v0.8
 
     - uses: chainguard-dev/actions/setup-kind@main
       with:

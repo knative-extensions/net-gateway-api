@@ -66,12 +66,7 @@ EOF
 
 ### Install net-gateway-api
 ```bash
-ko apply -f config/
-```
-
-### Load tested environment versions
-```
-source ./hack/test-env.sh
+kubectl apply -f https://github.com/knative-extensions/net-gateway-api/releases/latest/download/net-gateway-api.yaml
 ```
 
 ### Install a supported implementation

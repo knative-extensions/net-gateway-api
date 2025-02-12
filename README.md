@@ -114,6 +114,53 @@ export ALL_PROXY=socks5://localhost:1080
 curl 172.18.255.200 -v -H 'Host: helloworld-test-image.default.example.com'
 ```
 
+### (OPTIONAL) Cert-Manager HTTP-01 challenges, e.g. Let's encrypt
+In order to use HTTP-01 challenges you must enable the [gateway-api extraArg](https://cert-manager.io/docs/configuration/acme/http01/#configuring-the-http-01-gateway-api-solver)
+when you install [Cert-Manager](https://cert-manager.io).
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm install cert-manager jetstack/cert-manager \
+  --version v1.17.0 \
+  -n cert-manager \
+  --create-namespace \
+  --set crds.enabled=true \
+  --set "extraArgs={--enable-gateway-api}"
+```
+
+You then need to configure [HTTP-01 gatewayHTTPRoute solver](https://cert-manager.io/docs/reference/api-docs/#acme.cert-manager.io/v1.ACMEChallengeSolverHTTP01GatewayHTTPRoute)
+with a reference to your external gateway name.
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-http01-staging
+  namespace: cert-manager
+spec:
+  acme:
+    # You must replace this email address with your own.
+    # Let's Encrypt will use this to contact you about expiring
+    # certificates, and issues related to your account.
+    email: user@example.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    # Secret resource that will be used to store the account's private key.
+    # This is your identity with your ACME provider. Any secret name
+    # may be chosen. It will be populated with data automatically,
+    # so generally nothing further needs to be done with
+    # the secret. If you lose this identity/secret, you will be able to
+    # generate a new one and generate certificates for any/all domains
+    # managed using your previous account, but you will be unable to revoke
+    # any certificates generated using that previous account.
+    privateKeySecretRef:
+      name: letsencrypt-http01-staging
+    solvers:
+    - http01:
+        gatewayHTTPRoute:
+          parentRefs:
+          # This should match the name of your external gateway
+          - name: gateway-external
+```
+
 ---
 
 To learn more about Knative, please visit our

@@ -3,7 +3,7 @@ module knative.dev/net-gateway-api
 go 1.23.0
 
 require (
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.10.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -12,9 +12,9 @@ require (
 	k8s.io/client-go v0.32.2
 	k8s.io/code-generator v0.32.2
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
-	knative.dev/hack v0.0.0-20250217122557-ce4c934f30e5
-	knative.dev/networking v0.0.0-20250217154350-2cde4327c6c8
-	knative.dev/pkg v0.0.0-20250218011850-c925de2a3f07
+	knative.dev/hack v0.0.0-20250219013704-306ce745e077
+	knative.dev/networking v0.0.0-20250226145929-863b7af736fb
+	knative.dev/pkg v0.0.0-20250226145529-0372c089c78f
 	sigs.k8s.io/gateway-api v1.2.1
 	sigs.k8s.io/yaml v1.4.0
 )

@@ -3,7 +3,7 @@ module knative.dev/net-gateway-api
 go 1.23.0
 
 require (
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.10.0
 	gopkg.in/yaml.v2 v2.4.0

@@ -18,8 +18,9 @@ package resources
 
 import (
 	"context"
-	"knative.dev/pkg/ptr"
 	"testing"
+
+	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

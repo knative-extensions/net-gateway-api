@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -25,9 +26,9 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// Grant the resource "to" access to the resource "from"
+// MakeReferenceGrant Grant the resource "to" access to the resource "from"
 func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1beta1.ReferenceGrant {
-	name := to.Name
+	name := fmt.Sprintf("%s-%s", ing.Name, to.Name)
 	if len(name)+len(from.Namespace) > 62 {
 		name = name[:62-len(from.Namespace)]
 	}

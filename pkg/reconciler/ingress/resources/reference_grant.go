@@ -28,11 +28,7 @@ import (
 
 // MakeReferenceGrant Grant the resource "to" access to the resource "from"
 func MakeReferenceGrant(_ context.Context, ing *netv1alpha1.Ingress, to, from metav1.PartialObjectMetadata) *gatewayv1beta1.ReferenceGrant {
-	name := fmt.Sprintf("%s-%s", ing.Name, to.Name)
-	if len(name)+len(from.Namespace) > 62 {
-		name = name[:62-len(from.Namespace)]
-	}
-	name += "-" + from.Namespace
+	name := kmeta.ChildName(ing.Name, fmt.Sprintf("-%s-%s", to.Name, from.Namespace))
 
 	return &gatewayv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{

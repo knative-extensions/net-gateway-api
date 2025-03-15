@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"knative.dev/pkg/ptr"
@@ -28,7 +29,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func TestMakeReferenceGrant(t *testing.T) {
+func TestMakeReferenceGrantLongName(t *testing.T) {
 	ing := &netv1alpha1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
@@ -55,7 +56,7 @@ func TestMakeReferenceGrant(t *testing.T) {
 
 	from := metav1.PartialObjectMetadata{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "from-namespace",
+			Namespace: strings.Repeat("f", 63),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Ingress",
@@ -65,7 +66,7 @@ func TestMakeReferenceGrant(t *testing.T) {
 
 	want := &gatewayv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-ingress-to-resource-from-namespace",
+			Name:        "test-ingress0156b17a6c5096e2fdeb6058cc449e26-to-resource-ffffff",
 			Namespace:   "to-namespace",
 			Labels:      to.Labels,
 			Annotations: to.Annotations,
@@ -83,7 +84,7 @@ func TestMakeReferenceGrant(t *testing.T) {
 			From: []gatewayv1beta1.ReferenceGrantFrom{{
 				Group:     gatewayv1beta1.Group("networking.k8s.io"),
 				Kind:      gatewayv1beta1.Kind("Ingress"),
-				Namespace: gatewayv1beta1.Namespace("from-namespace"),
+				Namespace: gatewayv1beta1.Namespace(strings.Repeat("f", 63)),
 			}},
 			To: []gatewayv1beta1.ReferenceGrantTo{{
 				Group: gatewayv1beta1.Group(""),

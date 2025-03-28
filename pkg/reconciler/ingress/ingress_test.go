@@ -229,6 +229,7 @@ func TestReconcile(t *testing.T) {
 func TestReconcileTLS(t *testing.T) {
 	// The gateway API annoyingly has a number of
 	secretName := "name-WE-STICK-A-LONG-UID-HERE"
+	ingressName := "name"
 	nsName := "ns"
 	deleteTime := time.Now().Add(-10 * time.Second)
 	table := TableTest{{
@@ -240,8 +241,8 @@ func TestReconcileTLS(t *testing.T) {
 			gw(defaultListener),
 		},
 		WantCreates: []runtime.Object{
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
-			rp(secret(secretName, nsName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(), withName(ingressName))),
+			rp(ingressName, secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{{
 			Object: gw(defaultListener, tlsListener("example.com", nsName, secretName)),
@@ -271,8 +272,8 @@ func TestReconcileTLS(t *testing.T) {
 			ing(withBasicSpec, withFinalizer, withGatewayAPIClass, withTLS(), makeItReady),
 			secret(secretName, nsName),
 			gw(defaultListener, tlsListener("example.com", nsName, secretName)),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS()), httpRouteReady),
-			rp(secret(secretName, nsName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(), withName(ingressName)), httpRouteReady),
+			rp(ingressName, secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{
 			// None
@@ -292,8 +293,8 @@ func TestReconcileTLS(t *testing.T) {
 			}),
 			secret(secretName, nsName),
 			gw(defaultListener, tlsListener("secure.example.com", nsName, secretName)),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
-			rp(secret(secretName, nsName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(), withName(ingressName))),
+			rp(ingressName, secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{{
 			Object: gw(defaultListener),
@@ -307,8 +308,8 @@ func TestReconcileTLS(t *testing.T) {
 			secret(secretName, nsName),
 		},
 		WantCreates: []runtime.Object{
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS())),
-			rp(secret(secretName, nsName)),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIClass, withTLS(), withName(ingressName))),
+			rp(ingressName, secret(secretName, nsName)),
 		},
 		WantUpdates: []clientgotesting.UpdateActionImpl{
 			// None
@@ -2546,6 +2547,12 @@ func withTLS() IngressOption {
 	}
 }
 
+func withName(name string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Name = name
+	}
+}
+
 func secret(name, ns string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2560,11 +2567,11 @@ func secret(name, ns string) *corev1.Secret {
 	}
 }
 
-func rp(to *corev1.Secret) *gatewayapiv1beta1.ReferenceGrant {
+func rp(ingressName string, to *corev1.Secret) *gatewayapiv1beta1.ReferenceGrant {
 	t := true
 	return &gatewayapiv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      to.Name + "-" + testNamespace,
+			Name:      ingressName + "-" + to.Name + "-" + testNamespace,
 			Namespace: to.Namespace,
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion:         "networking.internal.knative.dev/v1alpha1",

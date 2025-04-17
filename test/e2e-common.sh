@@ -175,8 +175,10 @@ function setup_istio() {
   # Version is selected by ISTIO_VERSION that's source in $REPO_ROOT/hack/test-env.sh
   curl -L https://istio.io/downloadIstio | sh - && \
   export PATH="${PWD}/istio-${ISTIO_VERSION}/bin:${PATH}" && \
-  istioctl install -y --set values.global.proxy.clusterDomain="${CLUSTER_DOMAIN}" && \
-  kubectl apply -f "${REPO_ROOT_DIR}/third_party/istio"
+  istioctl install -y \
+    --set values.global.proxy.clusterDomain="${CLUSTER_DOMAIN}" \
+    --set components.cni.enabled=false \
+  && kubectl apply -f "${REPO_ROOT_DIR}/third_party/istio"
 
   local ret=$?
   if [ $ret -ne 0 ]; then

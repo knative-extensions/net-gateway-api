@@ -27,7 +27,7 @@ jobs:
     steps:
 
     - uses: knative/actions/setup-go@main
-    - uses: ko-build/setup-ko@v0.8
+    - uses: ko-build/setup-ko@v0.9
 
     - uses: chainguard-dev/actions/setup-kind@main
       with:

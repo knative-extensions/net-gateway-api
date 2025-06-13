@@ -316,7 +316,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 	gw, err := c.gatewayLister.Gateways(gwName.Namespace).Get(gwName.Name)
 	if apierrs.IsNotFound(err) {
 		recorder.Eventf(ing, corev1.EventTypeWarning, "GatewayMissing", "Unable to update Gateway %s", gwName.String())
-		return fmt.Errorf("Gateway %s does not exist: %w", gwName, err) //nolint:stylecheck
+		return fmt.Errorf("Gateway %s does not exist: %w", gwName, err) //nolint:staticcheck
 	} else if err != nil {
 		return err
 	}

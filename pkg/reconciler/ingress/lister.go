@@ -107,7 +107,7 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 		} else {
 			gw, err := l.gatewayLister.Gateways(gateway.Namespace).Get(gateway.Name)
 			if apierrs.IsNotFound(err) {
-				return nil, fmt.Errorf("Gateway %q does not exist: %w", gateway, err) //nolint:stylecheck
+				return nil, fmt.Errorf("Gateway %q does not exist: %w", gateway, err) //nolint:staticcheck
 			} else if err != nil {
 				return nil, err
 			}

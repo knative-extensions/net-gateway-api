@@ -16,7 +16,7 @@ require (
 	knative.dev/networking v0.0.0-20250716125000-edb1a4a0c863
 	knative.dev/pkg v0.0.0-20250716115900-19d3cc2da0b9
 	sigs.k8s.io/gateway-api v1.2.1
-	sigs.k8s.io/yaml v1.5.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (

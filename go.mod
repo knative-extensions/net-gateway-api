@@ -7,14 +7,14 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.33.4
-	k8s.io/apimachinery v0.33.4
-	k8s.io/client-go v0.33.4
-	k8s.io/code-generator v0.33.4
+	k8s.io/api v0.33.5
+	k8s.io/apimachinery v0.33.5
+	k8s.io/client-go v0.33.5
+	k8s.io/code-generator v0.33.5
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	knative.dev/hack v0.0.0-20250902153942-1499de21e119
-	knative.dev/networking v0.0.0-20250916015400-8cc248b445a0
-	knative.dev/pkg v0.0.0-20250915135827-db4c336acdbe
+	knative.dev/networking v0.0.0-20251007015313-5e69dbb20593
+	knative.dev/pkg v0.0.0-20251007000110-e53fcbb06907
 	sigs.k8s.io/gateway-api v1.2.1
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -94,7 +94,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.33.4 // indirect
+	k8s.io/apiextensions-apiserver v0.33.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect

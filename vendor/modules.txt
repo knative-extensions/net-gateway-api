@@ -1141,18 +1141,20 @@ knative.dev/pkg/webhook
 knative.dev/pkg/webhook/certificates
 knative.dev/pkg/webhook/certificates/resources
 knative.dev/pkg/webhook/configmaps
-# sigs.k8s.io/gateway-api v1.2.1
-## explicit; go 1.22.0
-sigs.k8s.io/gateway-api/apis/applyconfiguration
-sigs.k8s.io/gateway-api/apis/applyconfiguration/apis/v1
-sigs.k8s.io/gateway-api/apis/applyconfiguration/apis/v1alpha2
-sigs.k8s.io/gateway-api/apis/applyconfiguration/apis/v1alpha3
-sigs.k8s.io/gateway-api/apis/applyconfiguration/apis/v1beta1
-sigs.k8s.io/gateway-api/apis/applyconfiguration/internal
+# sigs.k8s.io/gateway-api v1.3.0
+## explicit; go 1.24.0
 sigs.k8s.io/gateway-api/apis/v1
 sigs.k8s.io/gateway-api/apis/v1alpha2
 sigs.k8s.io/gateway-api/apis/v1alpha3
 sigs.k8s.io/gateway-api/apis/v1beta1
+sigs.k8s.io/gateway-api/apisx/v1alpha1
+sigs.k8s.io/gateway-api/applyconfiguration
+sigs.k8s.io/gateway-api/applyconfiguration/apis/v1
+sigs.k8s.io/gateway-api/applyconfiguration/apis/v1alpha2
+sigs.k8s.io/gateway-api/applyconfiguration/apis/v1alpha3
+sigs.k8s.io/gateway-api/applyconfiguration/apis/v1beta1
+sigs.k8s.io/gateway-api/applyconfiguration/apisx/v1alpha1
+sigs.k8s.io/gateway-api/applyconfiguration/internal
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/fake
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme
@@ -1164,17 +1166,22 @@ sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha3
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha3/fake
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1
 sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1/fake
+sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apisx/v1alpha1
+sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apisx/v1alpha1/fake
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha2
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha3
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1beta1
+sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apisx
+sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apisx/v1alpha1
 sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/internalinterfaces
 sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1
 sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2
 sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha3
 sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1
+sigs.k8s.io/gateway-api/pkg/client/listers/apisx/v1alpha1
 sigs.k8s.io/gateway-api/pkg/features
 # sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8
 ## explicit; go 1.23
@@ -1184,7 +1191,7 @@ sigs.k8s.io/json/internal/golang/encoding/json
 ## explicit; go 1.18
 sigs.k8s.io/randfill
 sigs.k8s.io/randfill/bytesource
-# sigs.k8s.io/structured-merge-diff/v4 v4.6.0
+# sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 ## explicit; go 1.13
 sigs.k8s.io/structured-merge-diff/v4/fieldpath
 sigs.k8s.io/structured-merge-diff/v4/merge

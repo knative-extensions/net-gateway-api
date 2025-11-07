@@ -32,6 +32,6 @@ data:
   local-gateways: |
     - class: eg-internal
       gateway: eg-internal/eg-internal
-      service: envoy-gateway-system/knative-internal
+      service: eg-internal/knative-internal
       supported-features:
       - HTTPRouteRequestTimeout

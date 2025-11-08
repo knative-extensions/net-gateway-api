@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export GATEWAY_API_VERSION="v1.3.0"
+export GATEWAY_API_VERSION="v1.4.0"
 export ISTIO_VERSION="1.27.1"
 export ISTIO_UNSUPPORTED_E2E_TESTS="retry,httpoption"
 export CONTOUR_VERSION="v1.33.0"

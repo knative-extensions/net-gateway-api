@@ -110,7 +110,7 @@ function knative_teardown() {
 
 function setup_networking() {
   echo ">> Installing Gateway API CRDs"
-  kubectl apply -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" || return $?
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/gateway-api/gateway-api.yaml" || return $?
 
   if [[ "${INGRESS}" == "contour" ]]; then
     setup_contour

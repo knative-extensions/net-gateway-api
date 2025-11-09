@@ -112,7 +112,7 @@ helm install eg oci://docker.io/envoyproxy/gateway-helm \
   -f ./third_party/envoy-gateway/helm/values-eg.yaml
 
 echo ">> Deploy Gateway API resources"
-kubectl apply -f ./third_party/envoy-gateway
+kubectl apply --server-side -f ./third_party/envoy-gateway
 ```
 
 ### (OPTIONAL) For testing purpose (Istio)

@@ -57,6 +57,7 @@ func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
 				networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
 			},
 			Labels: map[string]string{
+				networking.IngressLabelKey:    "name",
 				networking.VisibilityLabelKey: "",
 			},
 			OwnerReferences: []metav1.OwnerReference{{

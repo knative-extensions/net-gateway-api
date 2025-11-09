@@ -204,6 +204,7 @@ func MakeHTTPRoute(
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
 			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
+				networking.IngressLabelKey:    ing.Name,
 				networking.VisibilityLabelKey: visibility,
 			}),
 			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {

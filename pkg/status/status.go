@@ -31,6 +31,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"github.com/pires/go-proxyproto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -84,21 +85,23 @@ type cancelContext struct {
 }
 
 type workItem struct {
-	routeState *routeState
-	podState   *podState
-	context    context.Context
-	url        *url.URL
-	podIP      string
-	podPort    string
-	logger     *zap.SugaredLogger
+	routeState           *routeState
+	podState             *podState
+	context              context.Context
+	url                  *url.URL
+	podIP                string
+	podPort              string
+	logger               *zap.SugaredLogger
+	proxyProtocolEnabled bool
 }
 
 // ProbeTarget contains the URLs to probes for a set of Pod IPs serving out of the same port.
 type ProbeTarget struct {
-	PodIPs  sets.Set[string]
-	PodPort string
-	Port    string
-	URLs    []*url.URL
+	PodIPs               sets.Set[string]
+	PodPort              string
+	Port                 string
+	URLs                 []*url.URL
+	ProxyProtocolEnabled bool
 }
 
 type ProbeState struct {
@@ -259,11 +262,12 @@ func (m *Prober) probeRequest(
 		for ip := range target.PodIPs {
 			for _, url := range target.URLs {
 				workItems[ip] = append(workItems[ip], &workItem{
-					routeState: routeState,
-					url:        url,
-					podIP:      ip,
-					podPort:    target.PodPort,
-					logger:     logger,
+					routeState:           routeState,
+					url:                  url,
+					podIP:                ip,
+					podPort:              target.PodPort,
+					logger:               logger,
+					proxyProtocolEnabled: target.ProxyProtocolEnabled,
 				})
 			}
 		}
@@ -429,7 +433,25 @@ func (m *Prober) processWorkItem() bool {
 		// because the HTTP client validates that the hostname (not the Host header) matches the server
 		// TLS certificate Common Name or Alternative Names. Therefore, http.Request.URL is set to the
 		// hostname and it is substituted it here with the target IP.
-		return dialContext(ctx, network, net.JoinHostPort(item.podIP, item.podPort))
+		conn, err := dialContext(ctx, network, net.JoinHostPort(item.podIP, item.podPort))
+		if err != nil {
+			return nil, err
+		}
+		if !item.proxyProtocolEnabled {
+			return conn, nil
+		}
+		proxyHeader := proxyproto.Header{
+			Version:           2,
+			Command:           proxyproto.PROXY,
+			TransportProtocol: proxyproto.TCPv4,
+			SourceAddr:        conn.LocalAddr(),
+			DestinationAddr:   conn.RemoteAddr(),
+		}
+		if _, err := proxyHeader.WriteTo(conn); err != nil {
+			item.logger.Fatalf("Failed to write to connection to Pod: %v", err)
+			return nil, err
+		}
+		return conn, nil
 	}
 
 	probeURL := deepCopy(item.url)

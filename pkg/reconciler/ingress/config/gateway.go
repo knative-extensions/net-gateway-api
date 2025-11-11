@@ -90,9 +90,10 @@ func (g *GatewayPlugin) LocalGateway() Gateway {
 type Gateway struct {
 	types.NamespacedName
 
-	Class             string
-	Service           *types.NamespacedName
-	SupportedFeatures sets.Set[features.FeatureName]
+	Class                string
+	Service              *types.NamespacedName
+	SupportedFeatures    sets.Set[features.FeatureName]
+	ProxyProtocolEnabled bool
 }
 
 // FromConfigMap creates a GatewayPlugin config from the supplied ConfigMap
@@ -136,10 +137,11 @@ func FromConfigMap(cm *corev1.ConfigMap) (*GatewayPlugin, error) {
 }
 
 type gatewayEntry struct {
-	Gateway           string                 `json:"gateway"`
-	Service           *string                `json:"service"`
-	Class             string                 `json:"class"`
-	SupportedFeatures []features.FeatureName `json:"supported-features"`
+	Gateway              string                 `json:"gateway"`
+	Service              *string                `json:"service"`
+	Class                string                 `json:"class"`
+	SupportedFeatures    []features.FeatureName `json:"supported-features"`
+	ProxyProtocolEnabled bool                   `json:"proxy-protocol-enabled"`
 }
 
 func parseGatewayConfig(data string) ([]Gateway, error) {
@@ -152,8 +154,9 @@ func parseGatewayConfig(data string) ([]Gateway, error) {
 	gws := make([]Gateway, 0, len(entries))
 	for i, entry := range entries {
 		gw := Gateway{
-			Class:             entry.Class,
-			SupportedFeatures: sets.New(entry.SupportedFeatures...),
+			Class:                entry.Class,
+			SupportedFeatures:    sets.New(entry.SupportedFeatures...),
+			ProxyProtocolEnabled: entry.ProxyProtocolEnabled,
 		}
 
 		names := map[string]string{

@@ -18,13 +18,17 @@ package ingress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
@@ -47,6 +51,7 @@ import (
 
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapiv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewaylisters "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 	. "knative.dev/pkg/reconciler/testing"
@@ -196,6 +201,103 @@ func TestReconcile(t *testing.T) {
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		// no extra update
+	}, {
+		Name: "prune stale HTTPRoute when rule removed",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantDeletes: []clientgotesting.DeleteActionImpl{
+			clientgotesting.NewDeleteAction(
+				schema.GroupVersionResource{
+					Group:    "gateway.networking.k8s.io",
+					Version:  "v1",
+					Resource: "httproutes",
+				},
+				"ns",
+				"stale.example.com",
+			),
+		},
+	}, {
+		Name: "prune skips non-owned HTTPRoute",
+		Key:  "ns/name",
+		Objects: append(func() []runtime.Object {
+			route := HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build()
+			// Remove owner so it is not controlled by this Ingress
+			route.OwnerReferences = nil
+			return []runtime.Object{
+				ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+				httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+				route,
+			}
+		}(), servicesAndEndpoints...),
+		// No deletes expected
+		WantDeletes: []clientgotesting.DeleteActionImpl{},
+	}, {
+		Name: "prune list error bubbles up",
+		Key:  "ns/name",
+		Ctx:  withHTTPRouteListError(),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+		}, servicesAndEndpoints...),
+		WantCreates: []runtime.Object{
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass)),
+		},
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady, func(i *v1alpha1.Ingress) {
+				i.Status.MarkIngressNotReady("ReconcileIngressFailed", "Ingress reconciliation failed")
+			}),
+		}},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
+			Eventf(corev1.EventTypeWarning, "InternalError", `failed to list HTTPRoutes: forced list error`),
+		},
+		WantErr: true,
+	}, {
+		Name: "prune delete NotFound tolerated",
+		Key:  "ns/name",
+		WithReactors: []clientgotesting.ReactionFunc{
+			func(a clientgotesting.Action) (bool, runtime.Object, error) {
+				if a.GetVerb() == "delete" && a.GetResource().Resource == "httproutes" {
+					name := a.(clientgotesting.DeleteActionImpl).Name
+					return true, nil, apierrs.NewNotFound(
+						schema.GroupResource{Group: "gateway.networking.k8s.io", Resource: "httproutes"},
+						name,
+					)
+				}
+				return false, nil, nil
+			},
+		},
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantDeletes: []clientgotesting.DeleteActionImpl{
+			clientgotesting.NewDeleteAction(
+				schema.GroupVersionResource{
+					Group:    "gateway.networking.k8s.io",
+					Version:  "v1",
+					Resource: "httproutes",
+				},
+				"ns",
+				"stale.example.com",
+			),
+		},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {
@@ -214,6 +316,11 @@ func TestReconcile(t *testing.T) {
 			},
 		}
 
+		// Force HTTPRoute List error when test context requests it.
+		if ctx.Value(httpRouteListErrorKey{}) == true {
+			r.httprouteLister = errorWrapHTTPRouteLister{inner: listers.GetHTTPRouteLister()}
+		}
+
 		ingr := ingressreconciler.NewReconciler(ctx, logging.FromContext(ctx), fakeingressclient.Get(ctx),
 			listers.GetIngressLister(), controller.GetEventRecorder(ctx), r, gatewayAPIIngressClassName,
 			controller.Options{
@@ -224,6 +331,38 @@ func TestReconcile(t *testing.T) {
 
 		return ingr
 	}))
+}
+
+// --- helpers for forcing lister errors in specific tests ---
+
+type httpRouteListErrorKey struct{}
+
+func withHTTPRouteListError() context.Context {
+	return context.WithValue(context.Background(), httpRouteListErrorKey{}, true)
+}
+
+type errorWrapHTTPRouteNamespaceLister struct {
+	inner gatewaylisters.HTTPRouteNamespaceLister
+}
+
+func (e errorWrapHTTPRouteNamespaceLister) List(selector labels.Selector) ([]*gatewayapi.HTTPRoute, error) {
+	return nil, errors.New("forced list error")
+}
+
+func (e errorWrapHTTPRouteNamespaceLister) Get(name string) (*gatewayapi.HTTPRoute, error) {
+	return e.inner.Get(name)
+}
+
+type errorWrapHTTPRouteLister struct {
+	inner gatewaylisters.HTTPRouteLister
+}
+
+func (e errorWrapHTTPRouteLister) List(selector labels.Selector) ([]*gatewayapi.HTTPRoute, error) {
+	return e.inner.List(selector)
+}
+
+func (e errorWrapHTTPRouteLister) HTTPRoutes(namespace string) gatewaylisters.HTTPRouteNamespaceLister {
+	return errorWrapHTTPRouteNamespaceLister{inner: e.inner.HTTPRoutes(namespace)}
 }
 
 func TestReconcileTLS(t *testing.T) {

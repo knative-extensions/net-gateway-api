@@ -281,7 +281,7 @@ func (c *Reconciler) reconcileTLS(
 			Hostname: (*gatewayapi.Hostname)(&h),
 			Port:     443,
 			Protocol: gatewayapi.HTTPSProtocolType,
-			TLS: &gatewayapi.GatewayTLSConfig{
+			TLS: &gatewayapi.ListenerTLSConfig{
 				Mode: &mode,
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
 					Group:     (*gatewayapi.Group)(ptr.To("")),

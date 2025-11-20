@@ -2504,7 +2504,7 @@ func tlsListener(hostname, nsName, secretName string) GatewayOption {
 			Hostname: (*gatewayapi.Hostname)(&hostname),
 			Port:     443,
 			Protocol: "HTTPS",
-			TLS: &gatewayapi.GatewayTLSConfig{
+			TLS: &gatewayapi.ListenerTLSConfig{
 				Mode: (*gatewayapi.TLSModeType)(ptr.To("Terminate")),
 				CertificateRefs: []gatewayapi.SecretObjectReference{{
 					Group:     ptr.To[gatewayapi.Group](""),

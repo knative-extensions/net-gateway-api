@@ -105,14 +105,12 @@ kubectl apply -f ./third_party/contour
 
 ```bash
 echo ">> Bringing up Envoy Gateway"
-helm repo add envoyproxy https://charts.envoyproxy.io
-helm install eg oci://docker.io/envoyproxy/gateway-helm \
-  --version ${ENVOY_GATEWAY_VERSION} \
-  -n envoy-gateway-system --create-namespace \
-  -f ./third_party/envoy-gateway/helm/values-eg.yaml
+kubectl apply --server-side -f ./third_party/envoy-gateway/install.yaml
 
 echo ">> Deploy Gateway API resources"
-kubectl apply --server-side -f ./third_party/envoy-gateway
+kubectl apply --server-side -f ./third_party/envoy-gateway/config-gateway.yaml
+kubectl apply --server-side -f ./third_party/envoy-gateway/external.yaml
+kubectl apply --server-side -f ./third_party/envoy-gateway/internal.yaml
 ```
 
 ### (OPTIONAL) For testing purpose (Istio)

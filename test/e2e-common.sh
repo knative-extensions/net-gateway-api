@@ -135,18 +135,17 @@ function teardown_networking() {
 }
 
 function setup_envoy_gateway() {
-  # Install Envoy Gateway via Helm with GatewayNamespace deployment to align Service namespaces
-  helm repo add envoyproxy https://charts.envoyproxy.io
-  helm install eg oci://docker.io/envoyproxy/gateway-helm \
-    --version ${ENVOY_GATEWAY_VERSION} \
-    -n envoy-gateway-system --create-namespace \
-    -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/helm/values-eg.yaml"
-
-  kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
+  # Install Envoy Gateway by applying the vendored rendered manifest.
+  # The manifest is generated from the official Helm chart via:
+  #   hack/update-envoy-gateway.sh
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/install.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/config-gateway.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/external.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/internal.yaml"
 }
 
 function teardown_envoy_gateway() {
-  helm uninstall eg -n envoy-gateway-system || true
+  kubectl delete -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/install.yaml" || true
 }
 
 function setup_contour() {

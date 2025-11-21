@@ -56,7 +56,7 @@ function parse_flags() {
     --envoy-gateway)
       readonly INGRESS=envoy-gateway
       readonly GATEWAY_OVERRIDE=knative-external
-      readonly GATEWAY_NAMESPACE_OVERRIDE=envoy-gateway-system
+      readonly GATEWAY_NAMESPACE_OVERRIDE=eg-external
       readonly GATEWAY_CLASS=eg-external
       readonly UNSUPPORTED_E2E_TESTS="${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}"
       return 1
@@ -135,12 +135,17 @@ function teardown_networking() {
 }
 
 function setup_envoy_gateway() {
-  kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
-  kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
+  # Install Envoy Gateway by applying the vendored rendered manifest.
+  # The manifest is generated from the official Helm chart via:
+  #   hack/update-envoy-gateway.sh
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/install.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/config-gateway.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/external.yaml"
+  kubectl apply --server-side -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/internal.yaml"
 }
 
 function teardown_envoy_gateway() {
-  kubectl delete -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
+  kubectl delete -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/install.yaml" || true
 }
 
 function setup_contour() {

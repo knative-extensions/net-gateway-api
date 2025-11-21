@@ -101,6 +101,18 @@ echo ">> Deploy Gateway API resources"
 kubectl apply -f ./third_party/contour
 ```
 
+#### Envoy Gateway
+
+```bash
+echo ">> Bringing up Envoy Gateway"
+kubectl apply --server-side -f ./third_party/envoy-gateway/install.yaml
+
+echo ">> Deploy Gateway API resources"
+kubectl apply --server-side -f ./third_party/envoy-gateway/config-gateway.yaml
+kubectl apply --server-side -f ./third_party/envoy-gateway/external.yaml
+kubectl apply --server-side -f ./third_party/envoy-gateway/internal.yaml
+```
+
 ### (OPTIONAL) For testing purpose (Istio)
 
 Use Kind with MetalLB - https://kind.sigs.k8s.io/docs/user/loadbalancer

@@ -34,7 +34,7 @@ jobs:
         k8s-version: ${{ matrix.k8s-version }}
         kind-worker-count: 3
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: test
       run: |
         ./test/e2e-tests.sh \

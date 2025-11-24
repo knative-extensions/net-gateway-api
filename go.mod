@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/google/go-cmp v0.7.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.34.2

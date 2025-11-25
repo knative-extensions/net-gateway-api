@@ -25,7 +25,7 @@ data:
   external-gateways: |
     - class: eg-external
       gateway: eg-external/eg-external
-      service: envoy-gateway-system/knative-external
+      service: eg-external/knative-external
       supported-features:
       - HTTPRouteRequestTimeout
 
@@ -33,6 +33,6 @@ data:
   local-gateways: |
     - class: eg-internal
       gateway: eg-internal/eg-internal
-      service: envoy-gateway-system/knative-internal
+      service: eg-internal/knative-internal
       supported-features:
       - HTTPRouteRequestTimeout

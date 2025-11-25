@@ -56,7 +56,7 @@ function parse_flags() {
     --envoy-gateway)
       readonly INGRESS=envoy-gateway
       readonly GATEWAY_OVERRIDE=knative-external
-      readonly GATEWAY_NAMESPACE_OVERRIDE=envoy-gateway-system
+      readonly GATEWAY_NAMESPACE_OVERRIDE=eg-external
       readonly GATEWAY_CLASS=eg-external
       readonly UNSUPPORTED_E2E_TESTS="${ENVOY_GATEWAY_UNSUPPORTED_E2E_TESTS}"
       return 1
@@ -135,12 +135,18 @@ function teardown_networking() {
 }
 
 function setup_envoy_gateway() {
-  kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
+  # Install Envoy Gateway via Helm with GatewayNamespace deployment to align Service namespaces
+  helm repo add envoyproxy https://charts.envoyproxy.io
+  helm install eg oci://docker.io/envoyproxy/gateway-helm \
+    --version ${ENVOY_GATEWAY_VERSION} \
+    -n envoy-gateway-system --create-namespace \
+    -f "${REPO_ROOT_DIR}/third_party/envoy-gateway/helm/values-eg.yaml"
+
   kubectl apply -f "${REPO_ROOT_DIR}/third_party/envoy-gateway"
 }
 
 function teardown_envoy_gateway() {
-  kubectl delete -f https://github.com/envoyproxy/gateway/releases/download/${ENVOY_GATEWAY_VERSION}/install.yaml
+  helm uninstall eg -n envoy-gateway-system || true
 }
 
 function setup_contour() {

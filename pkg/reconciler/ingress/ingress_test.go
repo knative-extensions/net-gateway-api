@@ -23,8 +23,10 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
@@ -196,6 +198,86 @@ func TestReconcile(t *testing.T) {
 			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		// no extra update
+	}, {
+		Name: "prune stale HTTPRoute when rule removed",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantDeletes: []clientgotesting.DeleteActionImpl{
+			clientgotesting.NewDeleteAction(
+				schema.GroupVersionResource{
+					Group:    "gateway.networking.k8s.io",
+					Version:  "v1",
+					Resource: "httproutes",
+				},
+				"ns",
+				"stale.example.com",
+			),
+		},
+	}, {
+		Name: "prune skips non-owned HTTPRoute",
+		Key:  "ns/name",
+		Objects: append(func() []runtime.Object {
+			route := HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build()
+			// Remove controller ownership and the ingress label so this HTTPRoute
+			// is neither controlled by nor labeled for this Ingress. It should
+			// therefore be ignored by the prune logic.
+			route.OwnerReferences = nil
+			delete(route.Labels, networking.IngressLabelKey)
+			return []runtime.Object{
+				ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+				httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+				route,
+			}
+		}(), servicesAndEndpoints...),
+		// No deletes expected
+		WantDeletes: []clientgotesting.DeleteActionImpl{},
+	}, {
+		Name: "prune delete NotFound tolerated",
+		Key:  "ns/name",
+		WithReactors: []clientgotesting.ReactionFunc{
+			func(a clientgotesting.Action) (bool, runtime.Object, error) {
+				if a.GetVerb() == "delete" && a.GetResource().Resource == "httproutes" {
+					name := a.(clientgotesting.DeleteActionImpl).Name
+					return true, nil, apierrs.NewNotFound(
+						schema.GroupResource{Group: "gateway.networking.k8s.io", Resource: "httproutes"},
+						name,
+					)
+				}
+				return false, nil, nil
+			},
+		},
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			HTTPRoute{
+				Name:      "stale.example.com",
+				Namespace: "ns",
+				Hostname:  "stale.example.com",
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantDeletes: []clientgotesting.DeleteActionImpl{
+			clientgotesting.NewDeleteAction(
+				schema.GroupVersionResource{
+					Group:    "gateway.networking.k8s.io",
+					Version:  "v1",
+					Resource: "httproutes",
+				},
+				"ns",
+				"stale.example.com",
+			),
+		},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

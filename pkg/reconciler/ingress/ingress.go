@@ -23,9 +23,13 @@ import (
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
+	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	"knative.dev/net-gateway-api/pkg/status"
+	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	"knative.dev/networking/pkg/ingress"
@@ -102,7 +106,10 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	routesReady := true
 
+	desiredRouteNames := sets.New[string]()
 	for _, rule := range ing.Spec.Rules {
+		desiredRouteNames.Insert(resources.LongestHost(rule.Hosts))
+
 		httproute, probeTargets, err := c.reconcileHTTPRoute(ctx, ingressHash, ing, &rule)
 		if err != nil {
 			return err
@@ -120,6 +127,25 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		} else {
 			routesReady = false
 			ing.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
+		}
+	}
+
+	// Delete HTTPRoutes that don't exist in the current Spec (i.e., tags removed and no longer referenced)
+	{
+		selector := labels.SelectorFromSet(labels.Set{
+			networking.IngressLabelKey: ing.Name,
+		})
+		existingRoutes, err := c.httprouteLister.HTTPRoutes(ing.Namespace).List(selector)
+		if err != nil {
+			return fmt.Errorf("failed to list HTTPRoutes: %w", err)
+		}
+		for _, r := range existingRoutes {
+			// Not in the desired set = unnecessary
+			if !desiredRouteNames.Has(r.Name) {
+				if err := c.gwapiclient.GatewayV1().HTTPRoutes(r.Namespace).Delete(ctx, r.Name, metav1.DeleteOptions{}); err != nil && !apierrs.IsNotFound(err) {
+					return fmt.Errorf("failed to delete stale HTTPRoute %s/%s: %w", r.Namespace, r.Name, err)
+				}
+			}
 		}
 	}
 

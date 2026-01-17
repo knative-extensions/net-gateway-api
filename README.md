@@ -43,7 +43,7 @@ Configuration so Knative serving uses the proper "ingress.class":
 kubectl patch configmap/config-network \
   -n knative-serving \
   --type merge \
-  -p '{"data":{"ingress.class":"gateway-api.ingress.networking.knative.dev"}}'
+  -p '{"data":{"ingress-class":"gateway-api.ingress.networking.knative.dev"}}'
 ```
 
 ##### (OPTIONAL) Deploy a sample hello world app:

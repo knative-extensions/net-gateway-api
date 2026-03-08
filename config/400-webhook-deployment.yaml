@@ -72,8 +72,9 @@ spec:
               value: "8443"
 
           securityContext:
-            runAsNonRoot: true
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
             capabilities:
               drop:
                 - ALL

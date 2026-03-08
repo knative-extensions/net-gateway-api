@@ -37,6 +37,12 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+const (
+	// TagLabelKey is the label key to indicate which traffic tag
+	// an HTTPRoute is associated with.
+	TagLabelKey = networking.GroupName + "/tag"
+)
+
 func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 	// Note: we use indices and references to avoid mutating copies
 	for rIdx := range r.Spec.Rules {
@@ -199,14 +205,20 @@ func MakeHTTPRoute(
 		visibility = "cluster-local"
 	}
 
+	// Build labels for the HTTPRoute
+	labels := map[string]string{
+		networking.IngressLabelKey:    ing.Name,
+		networking.VisibilityLabelKey: visibility,
+	}
+	if tag := TagOfHost(rule.Hosts, ing.Name, config.FromContext(ctx).Network.GetTagTemplate()); tag != "" {
+		labels[TagLabelKey] = tag
+	}
+
 	return &gatewayapi.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
-			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
-				networking.IngressLabelKey:    ing.Name,
-				networking.VisibilityLabelKey: visibility,
-			}),
+			Labels:    kmeta.UnionMaps(ing.Labels, labels),
 			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation
 			}),

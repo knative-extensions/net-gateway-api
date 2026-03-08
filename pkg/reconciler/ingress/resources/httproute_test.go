@@ -30,6 +30,7 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	networkcfg "knative.dev/networking/pkg/config"
 	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
@@ -546,6 +547,230 @@ func TestMakeHTTPRoute(t *testing.T) {
 							}},
 						},
 					},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+							Name:      gatewayapi.ObjectName("foo"),
+						}},
+					},
+				},
+			}},
+		}, {
+			name: "tagged host adds tag label",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      []string{"auth-test-ingress.default.example.com"},
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							Splits: []v1alpha1.IngressBackendSplit{{
+								IngressBackend: v1alpha1.IngressBackend{
+									ServiceName: "goo",
+									ServicePort: intstr.FromInt(123),
+								},
+								Percent: 100,
+							}},
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "auth-test-ingress.default.example.com",
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+						TagLabelKey:                         "auth",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{"auth-test-ingress.default.example.com"},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
+									Group: (*gatewayapi.Group)(ptr.To("")),
+									Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+									Name:  gatewayapi.ObjectName("goo"),
+								},
+								Weight: ptr.To(int32(100)),
+							},
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{},
+								},
+							}},
+						}},
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}},
+					}},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+							Name:      gatewayapi.ObjectName("foo"),
+						}},
+					},
+				},
+			}},
+		}, {
+			name: "untagged host does not add tag label",
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      []string{"test-ingress.default.example.com"},
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							Splits: []v1alpha1.IngressBackendSplit{{
+								IngressBackend: v1alpha1.IngressBackend{
+									ServiceName: "goo",
+									ServicePort: intstr.FromInt(123),
+								},
+								Percent: 100,
+							}},
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress.default.example.com",
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{"test-ingress.default.example.com"},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
+									Group: (*gatewayapi.Group)(ptr.To("")),
+									Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+									Name:  gatewayapi.ObjectName("goo"),
+								},
+								Weight: ptr.To(int32(100)),
+							},
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{},
+								},
+							}},
+						}},
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}},
+					}},
+					CommonRouteSpec: gatewayapi.CommonRouteSpec{
+						ParentRefs: []gatewayapi.ParentReference{{
+							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
+							Kind:      (*gatewayapi.Kind)(ptr.To("Gateway")),
+							Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+							Name:      gatewayapi.ObjectName("foo"),
+						}},
+					},
+				},
+			}},
+		}, {
+			name: "tagged host with custom template adds tag label",
+			changeConfig: func(c *config.Config) {
+				c.Network.TagTemplate = "{{.Name}}-{{.Tag}}"
+			},
+			ing: &v1alpha1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey: testIngressName,
+					},
+				},
+				Spec: v1alpha1.IngressSpec{Rules: []v1alpha1.IngressRule{{
+					Hosts:      []string{"test-ingress-v2.default.example.com"},
+					Visibility: v1alpha1.IngressVisibilityExternalIP,
+					HTTP: &v1alpha1.HTTPIngressRuleValue{
+						Paths: []v1alpha1.HTTPIngressPath{{
+							Splits: []v1alpha1.IngressBackendSplit{{
+								IngressBackend: v1alpha1.IngressBackend{
+									ServiceName: "goo",
+									ServicePort: intstr.FromInt(123),
+								},
+								Percent: 100,
+							}},
+						}},
+					},
+				}}},
+			},
+			expected: []*gatewayapi.HTTPRoute{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress-v2.default.example.com",
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						networking.IngressLabelKey:          testIngressName,
+						"networking.knative.dev/visibility": "",
+						TagLabelKey:                         "v2",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: gatewayapi.HTTPRouteSpec{
+					Hostnames: []gatewayapi.Hostname{"test-ingress-v2.default.example.com"},
+					Rules: []gatewayapi.HTTPRouteRule{{
+						BackendRefs: []gatewayapi.HTTPBackendRef{{
+							BackendRef: gatewayapi.BackendRef{
+								BackendObjectReference: gatewayapi.BackendObjectReference{
+									Group: (*gatewayapi.Group)(ptr.To("")),
+									Kind:  (*gatewayapi.Kind)(ptr.To("Service")),
+									Port:  ptr.To[gatewayapi.PortNumber](123),
+									Name:  gatewayapi.ObjectName("goo"),
+								},
+								Weight: ptr.To(int32(100)),
+							},
+							Filters: []gatewayapi.HTTPRouteFilter{{
+								Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+								RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+									Set: []gatewayapi.HTTPHeader{},
+								},
+							}},
+						}},
+						Matches: []gatewayapi.HTTPRouteMatch{{
+							Path: &gatewayapi.HTTPPathMatch{
+								Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+								Value: ptr.To("/"),
+							},
+						}},
+					}},
 					CommonRouteSpec: gatewayapi.CommonRouteSpec{
 						ParentRefs: []gatewayapi.ParentReference{{
 							Group:     (*gatewayapi.Group)(ptr.To("gateway.networking.k8s.io")),
@@ -1231,6 +1456,9 @@ func (t *testConfigStore) ToContext(ctx context.Context) context.Context {
 }
 
 var testConfig = &config.Config{
+	Network: &networkcfg.Config{
+		TagTemplate: networkcfg.DefaultTagTemplate,
+	},
 	GatewayPlugin: &config.GatewayPlugin{
 		ExternalGateways: []config.Gateway{{
 			NamespacedName:    types.NamespacedName{Namespace: "test-ns", Name: "foo"},

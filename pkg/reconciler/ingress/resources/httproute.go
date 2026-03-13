@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/pkg/features"
@@ -34,6 +35,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
+	netingress "knative.dev/networking/pkg/ingress"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -186,6 +188,32 @@ func HTTPRouteKey(ing *netv1alpha1.Ingress, rule *netv1alpha1.IngressRule) types
 		Name:      LongestHost(rule.Hosts),
 		Namespace: ing.Namespace,
 	}
+}
+
+type tagRouteKey struct {
+	tag        string
+	visibility netv1alpha1.IngressVisibility
+}
+
+// DesiredHTTPRouteRules returns the full set of KIngress rules that should be
+// materialized as Gateway API HTTPRoutes. This includes synthetic tag-host rules
+// derived from networking.TagToHostAnnotationKey when the source KIngress only
+// carries header-based tag paths.
+func DesiredHTTPRouteRules(ing *netv1alpha1.Ingress) []netv1alpha1.IngressRule {
+	tagToHosts := netingress.TagToHosts(ing)
+	tagHostCoverage := getTagHostCoverage(ing, tagToHosts)
+
+	rules := make([]netv1alpha1.IngressRule, 0, len(ing.Spec.Rules)+len(tagToHosts))
+	for i := range ing.Spec.Rules {
+		rule := ing.Spec.Rules[i].DeepCopy()
+		if tags := netingress.HostRouteTags(rule); tags.Len() == 1 {
+			tag := sets.List(tags)[0]
+			rule.Hosts = mergeHosts(rule.Hosts, netingress.HostsForTag(tag, rule.Visibility, tagToHosts))
+		}
+		rules = append(rules, *rule)
+		rules = append(rules, syntheticTagHostRules(&ing.Spec.Rules[i], tagToHosts, tagHostCoverage)...)
+	}
+	return rules
 }
 
 // MakeHTTPRoute creates HTTPRoute to set up routing rules.
@@ -366,6 +394,61 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+func syntheticTagHostRules(
+	rule *netv1alpha1.IngressRule,
+	tagToHosts map[string]sets.Set[string],
+	tagHostCoverage map[tagRouteKey]sets.Set[string],
+) []netv1alpha1.IngressRule {
+	tagPaths := make(map[string][]netv1alpha1.HTTPIngressPath)
+	for _, path := range rule.HTTP.Paths {
+		tag := netingress.RouteTagHeaderValue(path.Headers)
+		if tag == "" {
+			continue
+		}
+		tagPaths[tag] = append(tagPaths[tag], *netingress.MakeTagHostIngressPath(&path, tag))
+	}
+
+	rules := make([]netv1alpha1.IngressRule, 0, len(tagPaths))
+	for _, tag := range sets.List(sets.KeySet(tagPaths)) {
+		hosts := netingress.HostsForTag(tag, rule.Visibility, tagToHosts)
+		if coveredHosts, ok := tagHostCoverage[tagRouteKey{tag: tag, visibility: rule.Visibility}]; ok {
+			hosts = hosts.Difference(coveredHosts)
+		}
+		if hosts.Len() == 0 {
+			continue
+		}
+
+		tagRule := rule.DeepCopy()
+		tagRule.Hosts = sets.List(hosts)
+		tagRule.HTTP = &netv1alpha1.HTTPIngressRuleValue{
+			Paths: tagPaths[tag],
+		}
+		rules = append(rules, *tagRule)
+	}
+	return rules
+}
+
+func getTagHostCoverage(ing *netv1alpha1.Ingress, tagToHosts map[string]sets.Set[string]) map[tagRouteKey]sets.Set[string] {
+	coverage := make(map[tagRouteKey]sets.Set[string])
+	for i := range ing.Spec.Rules {
+		rule := &ing.Spec.Rules[i]
+		for tag := range netingress.HostRouteTags(rule) {
+			key := tagRouteKey{tag: tag, visibility: rule.Visibility}
+			if _, ok := coverage[key]; !ok {
+				coverage[key] = sets.New[string]()
+			}
+			coverage[key].Insert(mergeHosts(rule.Hosts, netingress.HostsForTag(tag, rule.Visibility, tagToHosts))...)
+		}
+	}
+	return coverage
+}
+
+func mergeHosts(hosts []string, extraHosts sets.Set[string]) []string {
+	merged := sets.New(hosts...)
+	merged.Insert(sets.List(extraHosts)...)
+	return sets.List(merged)
 }
 
 type HTTPHeaderList []gatewayapi.HTTPHeader

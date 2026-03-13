@@ -107,7 +107,7 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 	routesReady := true
 
 	desiredRouteNames := sets.New[string]()
-	for _, rule := range ing.Spec.Rules {
+	for _, rule := range resources.DesiredHTTPRouteRules(ing) {
 		desiredRouteNames.Insert(resources.LongestHost(rule.Hosts))
 
 		httproute, probeTargets, err := c.reconcileHTTPRoute(ctx, ingressHash, ing, &rule)

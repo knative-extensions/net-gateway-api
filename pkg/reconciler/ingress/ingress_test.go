@@ -191,6 +191,32 @@ func TestReconcile(t *testing.T) {
 			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
 		},
 	}, {
+		Name: "first reconcile ingress with tag-to-host annotation",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withGatewayAPIclass, withTagToHostHeaderRoute("blue", "blue.example.com")),
+		}, servicesAndEndpoints...),
+		WantCreates: desiredHTTPRoutes(t, ing(withBasicSpec, withGatewayAPIclass, withTagToHostHeaderRoute("blue", "blue.example.com"))),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(withBasicSpec, withGatewayAPIclass, withTagToHostHeaderRoute("blue", "blue.example.com"), func(i *v1alpha1.Ingress) {
+				i.Status.InitializeConditions()
+				i.Status.MarkIngressNotReady("HTTPRouteNotReady", "Waiting for HTTPRoute becomes Ready.")
+				i.Status.MarkLoadBalancerNotReady()
+			}),
+		}},
+		WantPatches: []clientgotesting.PatchActionImpl{{
+			ActionImpl: clientgotesting.ActionImpl{
+				Namespace: "ns",
+			},
+			Name:  "name",
+			Patch: []byte(`{"metadata":{"finalizers":["ingresses.networking.internal.knative.dev"],"resourceVersion":""}}`),
+		}},
+		WantEvents: []string{
+			Eventf(corev1.EventTypeNormal, "FinalizerUpdate", `Updated "name" finalizers`),
+			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"example.com\""),
+			Eventf(corev1.EventTypeNormal, "Created", "Created HTTPRoute \"blue.example.com\""),
+		},
+	}, {
 		Name: "reconcile ready ingress",
 		Key:  "ns/name",
 		Objects: append([]runtime.Object{
@@ -2474,6 +2500,23 @@ func httpRoute(t *testing.T, i *v1alpha1.Ingress, opts ...HTTPRouteOption) runti
 	return httpRoute
 }
 
+func desiredHTTPRoutes(t *testing.T, i *v1alpha1.Ingress) []runtime.Object {
+	t.Helper()
+	ingCopy := i.DeepCopy()
+	ingress.InsertProbe(ingCopy)
+	ctx := (&testConfigStore{config: defaultConfig}).ToContext(context.Background())
+	rules := resources.DesiredHTTPRouteRules(ingCopy)
+	objects := make([]runtime.Object, 0, len(rules))
+	for i := range rules {
+		httpRoute, err := resources.MakeHTTPRoute(ctx, ingCopy, &rules[i])
+		if err != nil {
+			t.Fatalf("MakeHTTPRoute failed: %v", err)
+		}
+		objects = append(objects, httpRoute)
+	}
+	return objects
+}
+
 func httpRouteReady(h *gatewayapi.HTTPRoute) {
 	h.Status.Parents = []gatewayapi.RouteParentStatus{{
 		Conditions: []metav1.Condition{{
@@ -2489,6 +2532,21 @@ func withGatewayAPIclass(i *v1alpha1.Ingress) {
 	withAnnotation(map[string]string{
 		networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
 	})(i)
+}
+
+func withTagToHostHeaderRoute(tag, host string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		withAnnotation(map[string]string{
+			networking.TagToHostAnnotationKey: fmt.Sprintf(`{"%s":["%s"]}`, tag, host),
+		})(i)
+
+		tagPath := i.Spec.Rules[0].HTTP.Paths[0].DeepCopy()
+		tagPath.Headers = map[string]v1alpha1.HeaderMatch{
+			header.RouteTagKey: {Exact: tag},
+		}
+		tagPath.AppendHeaders = nil
+		i.Spec.Rules[0].HTTP.Paths = append([]v1alpha1.HTTPIngressPath{*tagPath}, i.Spec.Rules[0].HTTP.Paths...)
+	}
 }
 
 func withStatusManager(f *fakeStatusManager) context.Context {

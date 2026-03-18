@@ -30,6 +30,8 @@ import (
 	gatewayapi "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/pkg/features"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/config"
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
@@ -199,14 +201,20 @@ func MakeHTTPRoute(
 		visibility = "cluster-local"
 	}
 
+	extraLabels := map[string]string{
+		networking.IngressLabelKey:    ing.Name,
+		networking.VisibilityLabelKey: visibility,
+	}
+
+	if tags := hostRouteTags(rule); tags.Len() == 1 {
+		extraLabels[TagLabelKey] = sets.List(tags)[0]
+	}
+
 	return &gatewayapi.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
-			Labels: kmeta.UnionMaps(ing.Labels, map[string]string{
-				networking.IngressLabelKey:    ing.Name,
-				networking.VisibilityLabelKey: visibility,
-			}),
+			Labels:    kmeta.UnionMaps(ing.Labels, extraLabels),
 			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation
 			}),
@@ -367,6 +375,11 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 	}
 	return rules
 }
+
+// TagLabelKey is the label key used to identify which tag a host-based
+// HTTPRoute belongs to. The networking package does not define this constant
+// yet, so it is defined locally.
+const TagLabelKey = "networking.knative.dev/tag"
 
 type HTTPHeaderList []gatewayapi.HTTPHeader
 

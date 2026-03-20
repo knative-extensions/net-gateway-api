@@ -645,6 +645,162 @@ func TestMakeHTTPRoute(t *testing.T) {
 	}
 }
 
+func TestDesiredHTTPRouteRules_TagToHostAnnotation(t *testing.T) {
+	ing := &v1alpha1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testIngressName,
+			Namespace: testNamespace,
+			Annotations: map[string]string{
+				networking.TagToHostAnnotationKey: `{"blue":["blue.example.com","blue.test-ns.svc.cluster.local"]}`,
+			},
+		},
+		Spec: v1alpha1.IngressSpec{
+			Rules: []v1alpha1.IngressRule{{
+				Hosts:      []string{"example.com"},
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						Headers: map[string]v1alpha1.HeaderMatch{
+							header.RouteTagKey: {Exact: "blue"},
+						},
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}, {
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "doo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(81),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}, {
+				Hosts:      []string{"example.test-ns", "example.test-ns.svc", "example.test-ns.svc.cluster.local"},
+				Visibility: v1alpha1.IngressVisibilityClusterLocal,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						Headers: map[string]v1alpha1.HeaderMatch{
+							header.RouteTagKey: {Exact: "blue"},
+						},
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}},
+		},
+	}
+
+	got := DesiredHTTPRouteRules(ing)
+	if gotLen, wantLen := len(got), 4; gotLen != wantLen {
+		t.Fatalf("Expected %d rules, got %d", wantLen, gotLen)
+	}
+
+	rulesByName := make(map[string]v1alpha1.IngressRule, len(got))
+	for _, rule := range got {
+		rulesByName[LongestHost(rule.Hosts)] = rule
+	}
+
+	externalRule, ok := rulesByName["blue.example.com"]
+	if !ok {
+		t.Fatalf("Expected synthetic external tag rule, got %v", sets.List(sets.KeySet(rulesByName)))
+	}
+	if diff := cmp.Diff([]string{"blue.example.com"}, externalRule.Hosts); diff != "" {
+		t.Fatalf("Unexpected synthetic external hosts (-want +got):\n%s", diff)
+	}
+	if gotTag := externalRule.HTTP.Paths[0].AppendHeaders[header.RouteTagKey]; gotTag != "blue" {
+		t.Fatalf("Expected synthetic external route to append tag header, got %q", gotTag)
+	}
+	if _, ok := externalRule.HTTP.Paths[0].Headers[header.RouteTagKey]; ok {
+		t.Fatal("Expected synthetic external route to drop the tag header match")
+	}
+
+	clusterLocalRule, ok := rulesByName["blue.test-ns.svc.cluster.local"]
+	if !ok {
+		t.Fatalf("Expected synthetic cluster-local tag rule, got %v", sets.List(sets.KeySet(rulesByName)))
+	}
+	expectedLocalHosts := []string{
+		"blue.test-ns",
+		"blue.test-ns.svc",
+		"blue.test-ns.svc.cluster.local",
+	}
+	if diff := cmp.Diff(expectedLocalHosts, clusterLocalRule.Hosts); diff != "" {
+		t.Fatalf("Unexpected synthetic cluster-local hosts (-want +got):\n%s", diff)
+	}
+	if gotTag := clusterLocalRule.HTTP.Paths[0].AppendHeaders[header.RouteTagKey]; gotTag != "blue" {
+		t.Fatalf("Expected synthetic cluster-local route to append tag header, got %q", gotTag)
+	}
+}
+
+func TestDesiredHTTPRouteRules_TagToHostAnnotationDoesNotDuplicateHostRules(t *testing.T) {
+	ing := &v1alpha1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testIngressName,
+			Namespace: testNamespace,
+			Annotations: map[string]string{
+				networking.TagToHostAnnotationKey: `{"blue":["blue.example.com"]}`,
+			},
+		},
+		Spec: v1alpha1.IngressSpec{
+			Rules: []v1alpha1.IngressRule{{
+				Hosts:      []string{"example.com"},
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						Headers: map[string]v1alpha1.HeaderMatch{
+							header.RouteTagKey: {Exact: "blue"},
+						},
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}, {
+				Hosts:      []string{"blue.example.com"},
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						AppendHeaders: map[string]string{
+							header.RouteTagKey: "blue",
+						},
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}},
+		},
+	}
+
+	got := DesiredHTTPRouteRules(ing)
+	if gotLen, wantLen := len(got), 2; gotLen != wantLen {
+		t.Fatalf("Expected %d rules, got %d", wantLen, gotLen)
+	}
+}
+
 func TestAddEndpointProbes(t *testing.T) {
 	tcs := &testConfigStore{config: testConfig}
 	ctx := tcs.ToContext(context.Background())

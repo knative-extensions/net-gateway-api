@@ -42,8 +42,12 @@ const (
 	RolloutAnnotationKey = GroupName + "/rollout"
 
 	// TagToHostAnnotationKey is the annotation key used for storing a JSON map of
-	// tags to host names
+	// tag names to hostnames that should be routed to that tag.
 	TagToHostAnnotationKey = GroupName + "/tag-to-host"
+
+	// TagLabelKey is the label key attached to per-tag Ingress resources
+	// to indicate which traffic tag the Ingress corresponds to.
+	TagLabelKey = GroupName + "/tag"
 )
 
 const (

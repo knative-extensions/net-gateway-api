@@ -757,6 +757,7 @@ func TestReconcileProbing(t *testing.T) {
 						networking.IngressClassAnnotationKey: gatewayAPIIngressClassName,
 					},
 					Labels: map[string]string{
+						networking.IngressLabelKey:    "name",
 						networking.VisibilityLabelKey: "",
 					},
 					OwnerReferences: []metav1.OwnerReference{{
@@ -2269,6 +2270,185 @@ func TestReconcileProbing(t *testing.T) {
 			}.Build(),
 		}, servicesAndEndpoints...),
 		WantUpdates: nil, // No updates
+	}, {
+		Name: "label change propagated when probeHash equals hash",
+		// When only labels change on the Ingress (spec is identical so hash matches),
+		// the label update must still be propagated to the HTTPRoute.
+		Key: "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{
+					Ready:   false,
+					Version: "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+				}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+				withLabel(map[string]string{"app": "my-app"}),
+			),
+			// Existing HTTPRoute WITHOUT the custom label
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Labels:    map[string]string{"app": "my-app"},
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "label change propagated when new backends are added",
+		// When the Ingress has new backends AND different labels, both the spec
+		// and label changes must be propagated to the HTTPRoute.
+		Key: "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				withLabel(map[string]string{"app": "my-app"}),
+			),
+			// Existing HTTPRoute from old spec WITHOUT the custom label
+			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(
+				withBasicSpec,
+				withSecondRevisionSpec,
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+				withLabel(map[string]string{"app": "my-app"}),
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Labels:    map[string]string{"app": "my-app"},
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					NormalRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Port:      123,
+						Weight:    100,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "second-revision",
+						Path:      "/.well-known/knative/revision/ns/second-revision",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+					EndpointProbeRule{
+						Namespace: "ns",
+						Name:      "goo",
+						Path:      "/.well-known/knative/revision/ns/goo",
+						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
+						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
 	}}
 
 	table.Test(t, MakeFactory(func(ctx context.Context, listers *Listers, cmw configmap.Watcher) controller.Reconciler {

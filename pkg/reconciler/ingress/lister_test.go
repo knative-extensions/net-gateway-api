@@ -650,6 +650,12 @@ func withAnnotation(ann map[string]string) IngressOption {
 	}
 }
 
+func withLabel(labels map[string]string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Labels = kmeta.UnionMaps(i.Labels, labels)
+	}
+}
+
 func withHTTPOption(option v1alpha1.HTTPOption) IngressOption {
 	return func(i *v1alpha1.Ingress) {
 		i.Spec.HTTPOption = option

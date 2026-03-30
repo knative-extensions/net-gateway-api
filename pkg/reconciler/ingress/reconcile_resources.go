@@ -118,6 +118,21 @@ func (c *Reconciler) reconcileHTTPRoute(
 	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
 }
 
+func propagateIngressMetadata(
+	ctx context.Context,
+	ing *netv1alpha1.Ingress,
+	rule *netv1alpha1.IngressRule,
+	target *gatewayapi.HTTPRoute,
+) error {
+	desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		return err
+	}
+	target.Labels = desired.Labels
+	target.Annotations = desired.Annotations
+	return nil
+}
+
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
 	hash string,
@@ -168,12 +183,21 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 			resources.AddOldBackend(desired, hash, backend)
 		}
 	} else if probeHash == hash {
-		// Hash is the same but probes are not ready - continue
-		return httproute, probeTargets(probe.Version, ing, rule, httproute), nil
+		// Hash is the same but probes are not ready - continue.
+		// Preserve the existing spec but propagate any metadata changes.
+		desired = httproute.DeepCopy()
+		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
+			return nil, status.Backends{}, err
+		}
+		// Preserve the probe version (with prefix) for correct probe tracking.
+		hash = probe.Version
 	} else if len(newBackends) > 0 {
 		// Ingress changed with new backends
 		hash = endpointPrefix + hash
 		desired = httproute.DeepCopy()
+		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
+			return nil, status.Backends{}, err
+		}
 		resources.UpdateProbeHash(desired, hash)
 		resources.RemoveEndpointProbes(desired)
 		for _, backend := range newBackends {

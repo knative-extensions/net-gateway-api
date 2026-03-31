@@ -1222,6 +1222,102 @@ func TestAddOldBackend(t *testing.T) {
 	}
 }
 
+func TestMakeHTTPRoute_TagLabel(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+
+	ing := &v1alpha1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testIngressName,
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey: testIngressName,
+			},
+			Annotations: map[string]string{
+				networking.TagToHostAnnotationKey: `{"blue":["blue.example.com"]}`,
+			},
+		},
+		Spec: v1alpha1.IngressSpec{
+			Rules: []v1alpha1.IngressRule{{
+				Hosts:      []string{"blue.example.com"},
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}},
+		},
+	}
+
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	got, ok := route.Labels[TagLabelKey]
+	if !ok {
+		t.Fatalf("expected label %q to be present, but it was not found in %v", TagLabelKey, route.Labels)
+	}
+	if got != "blue" {
+		t.Errorf("label %q = %q, want %q", TagLabelKey, got, "blue")
+	}
+}
+
+func TestMakeHTTPRoute_NoTagLabelForMainRoute(t *testing.T) {
+	tcs := &testConfigStore{config: testConfig}
+	ctx := tcs.ToContext(context.Background())
+
+	ing := &v1alpha1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testIngressName,
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				networking.IngressLabelKey: testIngressName,
+			},
+			Annotations: map[string]string{
+				networking.TagToHostAnnotationKey: `{"blue":["blue.example.com"]}`,
+			},
+		},
+		Spec: v1alpha1.IngressSpec{
+			Rules: []v1alpha1.IngressRule{{
+				Hosts:      []string{"example.com"},
+				Visibility: v1alpha1.IngressVisibilityExternalIP,
+				HTTP: &v1alpha1.HTTPIngressRuleValue{
+					Paths: []v1alpha1.HTTPIngressPath{{
+						Splits: []v1alpha1.IngressBackendSplit{{
+							IngressBackend: v1alpha1.IngressBackend{
+								ServiceName:      "goo",
+								ServiceNamespace: testNamespace,
+								ServicePort:      intstr.FromInt(80),
+							},
+							Percent: 100,
+						}},
+					}},
+				},
+			}},
+		},
+	}
+
+	rule := &ing.Spec.Rules[0]
+	route, err := MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		t.Fatal("MakeHTTPRoute failed:", err)
+	}
+
+	if _, ok := route.Labels[TagLabelKey]; ok {
+		t.Errorf("expected label %q to be absent for main route, but found value %q", TagLabelKey, route.Labels[TagLabelKey])
+	}
+}
+
 type testConfigStore struct {
 	config *config.Config
 }

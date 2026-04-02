@@ -17,6 +17,8 @@ limitations under the License.
 package ingress
 
 import (
+	"maps"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"knative.dev/networking/pkg/apis/networking"
@@ -36,6 +38,8 @@ type HTTPRoute struct {
 	Rules            []RuleBuilder
 	StatusConditions []metav1.Condition
 	ClusterLocal     bool
+	Labels           map[string]string
+	Annotations      map[string]string
 }
 
 func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
@@ -84,6 +88,9 @@ func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
 		route.Labels[networking.VisibilityLabelKey] = "cluster-local"
 		route.Spec.CommonRouteSpec.ParentRefs[0].Name = gatewayapi.ObjectName(privateName)
 	}
+
+	maps.Copy(route.Labels, r.Labels)
+	maps.Copy(route.Annotations, r.Annotations)
 
 	for _, hostname := range hostnames {
 		route.Spec.Hostnames = append(

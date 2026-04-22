@@ -75,7 +75,10 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 					scheme = "https"
 					matchSchemes = sets.New("https", "https-443")
 				}
-				pt := status.ProbeTarget{PodIPs: sets.New[string]()}
+				pt := status.ProbeTarget{
+					PodIPs:               sets.New[string](),
+					ProxyProtocolEnabled: gateway.ProxyProtocolEnabled,
+				}
 
 				portNumber := sub.Ports[0].Port
 				for _, port := range sub.Ports {
@@ -131,8 +134,9 @@ func (l *gatewayPodTargetLister) BackendsToProbeTargets(ctx context.Context, bac
 			}
 
 			pt := status.ProbeTarget{
-				PodIPs:  sets.New[string](gw.Status.Addresses[0].Value),
-				PodPort: podPort,
+				PodIPs:               sets.New[string](gw.Status.Addresses[0].Value),
+				PodPort:              podPort,
+				ProxyProtocolEnabled: gateway.ProxyProtocolEnabled,
 			}
 
 			for url := range urls {

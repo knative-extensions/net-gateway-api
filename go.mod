@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/google/go-cmp v0.7.0
+	github.com/pires/go-proxyproto v0.8.1
 	go.uber.org/zap v1.27.1
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v2 v2.4.0

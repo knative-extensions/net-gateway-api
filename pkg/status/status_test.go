@@ -19,6 +19,7 @@ package status
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/pires/go-proxyproto"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -383,6 +385,140 @@ func TestProbeLifecycle(t *testing.T) {
 		t.Fatal("An unexpected request went through the probe handler")
 	default:
 		break
+	}
+}
+
+func TestProbeProxyProtocol(t *testing.T) {
+	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
+
+	hash := "some-hash"
+	hostA := "foo.bar.com"
+	// Simulate that the latest configuration is not applied yet by returning a different
+	// hash once and then the by returning the expected hash.
+	hashes := make(chan string, 1)
+	hashes <- "not-the-hash-you-are-looking-for"
+	go func() {
+		for {
+			hashes <- hash
+		}
+	}()
+
+	// Failing handler returning HTTP 500 (it should never be called during probing)
+	failedRequests := make(chan *http.Request)
+	failHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		failedRequests <- r
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	// Actual probe handler used in Activator and Queue-Proxy
+	probeHandler := probe.NewHandler(failHandler)
+
+	// Test handler keeping track of received requests, mimicking AppendHeader of K-Network-Hash
+	// and simulate a non-existing host by returning 404.
+	probeRequests := make(chan *http.Request)
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.Host, hostA) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		probeRequests <- r
+		r.Header.Set(header.HashKey, <-hashes)
+		probeHandler.ServeHTTP(w, r)
+	})
+
+	server := http.Server{
+		Addr:         "127.0.0.1:0",
+		Handler:      finalHandler,
+		ReadTimeout:  time.Second * 10,
+		WriteTimeout: time.Second * 10,
+	}
+
+	ln, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		t.Fatalf("Failed to create listener for proxy protocol: %v", err)
+	}
+
+	proxyListener := &proxyproto.Listener{
+		Listener:          ln,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	defer proxyListener.Close()
+
+	go server.Serve(proxyListener)
+	defer server.Close()
+
+	tsURLString := "http://" + ln.Addr().String()
+	tsURL, err := url.Parse(tsURLString)
+	if err != nil {
+		t.Fatalf("Failed to parse URL %q: %v", tsURLString, err)
+	}
+
+	hostAURL := *tsURL
+	hostAURL.Host = hostA
+
+	ready := make(chan types.NamespacedName)
+	prober := NewProber(
+		zaptest.NewLogger(t).Sugar(),
+		fakeProbeTargetLister{
+			PodIPs:               sets.New(tsURL.Hostname()),
+			PodPort:              tsURL.Port(),
+			ProxyProtocolEnabled: true,
+		},
+		func(nn types.NamespacedName) {
+			ready <- nn
+		})
+
+	done := make(chan struct{})
+	cancelled := prober.Start(done)
+	defer func() {
+		close(done)
+		<-cancelled
+	}()
+
+	backends := Backends{
+		CallbackKey: ingressNN,
+		Key:         ingressNN,
+		Version:     hash,
+		URLs: map[v1alpha1.IngressVisibility]URLSet{
+			v1alpha1.IngressVisibilityExternalIP: sets.New(
+				hostAURL,
+			),
+		},
+	}
+
+	// The first call to DoProbes must succeed and return false
+	state, err := prober.DoProbes(ctx, backends)
+	if err != nil {
+		t.Fatal("DoProbes failed:", err)
+	}
+	if state.Ready {
+		t.Fatal("Probing returned ready but should be false")
+	}
+
+	// Wait for the first (failing) and second (success) requests to be executed and validate Host header
+	for range 2 {
+		req := <-probeRequests
+		if req.Host != hostA {
+			t.Fatalf("Host header = %q, want %q", req.Host, hostA)
+		}
+	}
+
+	select {
+	case <-ready:
+		// Wait for the probing to eventually succeed
+	case <-time.After(5 * time.Second):
+		t.Error("Timed out waiting for probing to succeed.")
+	}
+
+	// The subsequent calls to DoProbes must succeed and return true
+	for range 5 {
+		if state, err = prober.DoProbes(ctx, backends); err != nil {
+			t.Fatal("DoProbes failed:", err)
+		}
+		if !state.Ready {
+			t.Fatal("Probing should be ready")
+		}
 	}
 }
 
@@ -870,8 +1006,9 @@ func TestProbeVerifier(t *testing.T) {
 }
 
 type fakeProbeTargetLister struct {
-	PodIPs  sets.Set[string]
-	PodPort string
+	PodIPs               sets.Set[string]
+	PodPort              string
+	ProxyProtocolEnabled bool
 }
 
 func (l fakeProbeTargetLister) BackendsToProbeTargets(_ context.Context, backends Backends) ([]ProbeTarget, error) {
@@ -879,8 +1016,9 @@ func (l fakeProbeTargetLister) BackendsToProbeTargets(_ context.Context, backend
 
 	for _, urls := range backends.URLs {
 		newTarget := ProbeTarget{
-			PodIPs:  l.PodIPs,
-			PodPort: l.PodPort,
+			PodIPs:               l.PodIPs,
+			PodPort:              l.PodPort,
+			ProxyProtocolEnabled: l.ProxyProtocolEnabled,
 		}
 
 		for url := range urls {

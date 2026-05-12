@@ -52,6 +52,7 @@ data:
         service: istio-system/istio-ingressgateway
         supported-features:
         - HTTPRouteRequestTimeout
+        proxy-protocol-enabled: false
 
     # local-gateways defines the Gateway to be used for cluster local traffic
     local-gateways: |
@@ -60,3 +61,4 @@ data:
         service: istio-system/knative-local-gateway
         supported-features:
         - HTTPRouteRequestTimeout
+        proxy-protocol-enabled: false

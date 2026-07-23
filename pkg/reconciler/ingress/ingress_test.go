@@ -3066,4 +3066,3 @@ func TestIsGatewayAdmitted(t *testing.T) {
 		})
 	}
 }
-

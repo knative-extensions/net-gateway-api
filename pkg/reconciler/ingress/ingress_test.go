@@ -140,7 +140,7 @@ var (
 	servicesAndEndpoints = append(append([]runtime.Object{}, services...), endpoints...)
 )
 
-// TODO: Add more tests - e.g. invalid ingress, delete ingress, etc.
+// Additional unit tests for helper functions are in TestIsHTTPRouteReady and TestIsGatewayAdmitted below.
 func TestReconcile(t *testing.T) {
 	table := TableTest{{
 		Name: "bad workqueue key",
@@ -2885,3 +2885,184 @@ var (
 		},
 	}
 )
+
+func TestIsHTTPRouteReady(t *testing.T) {
+	tests := []struct {
+		name  string
+		route *gatewayapi.HTTPRoute
+		want  bool
+	}{{
+		name: "nil parents returns false",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{},
+		},
+		want: false,
+	}, {
+		name: "empty parents returns true (vacuously — all zero gateways are admitted)",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{},
+				},
+			},
+		},
+		// NOTE: This is potentially surprising behavior. An HTTPRoute with a
+		// non-nil but empty Parents slice is considered "ready" because the
+		// loop in isHTTPRouteReady does not iterate and falls through to
+		// return true. Only a nil Parents slice returns false.
+		want: true,
+	}, {
+		name: "single admitted parent returns true",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{{
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionTrue,
+						}},
+					}},
+				},
+			},
+		},
+		want: true,
+	}, {
+		name: "single parent not admitted returns false",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{{
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionFalse,
+						}},
+					}},
+				},
+			},
+		},
+		want: false,
+	}, {
+		name: "multiple parents all admitted returns true",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{{
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionTrue,
+						}},
+					}, {
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionTrue,
+						}},
+					}},
+				},
+			},
+		},
+		want: true,
+	}, {
+		name: "multiple parents one not admitted returns false",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{{
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionTrue,
+						}},
+					}, {
+						Conditions: []metav1.Condition{{
+							Type:   string(gatewayapi.RouteConditionAccepted),
+							Status: metav1.ConditionFalse,
+						}},
+					}},
+				},
+			},
+		},
+		want: false,
+	}, {
+		name: "parent with no conditions returns false",
+		route: &gatewayapi.HTTPRoute{
+			Status: gatewayapi.HTTPRouteStatus{
+				RouteStatus: gatewayapi.RouteStatus{
+					Parents: []gatewayapi.RouteParentStatus{{
+						Conditions: []metav1.Condition{},
+					}},
+				},
+			},
+		},
+		want: false,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isHTTPRouteReady(tt.route)
+			if got != tt.want {
+				t.Errorf("isHTTPRouteReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsGatewayAdmitted(t *testing.T) {
+	tests := []struct {
+		name   string
+		parent gatewayapi.RouteParentStatus
+		want   bool
+	}{{
+		name: "accepted condition true",
+		parent: gatewayapi.RouteParentStatus{
+			Conditions: []metav1.Condition{{
+				Type:   string(gatewayapi.RouteConditionAccepted),
+				Status: metav1.ConditionTrue,
+			}},
+		},
+		want: true,
+	}, {
+		name: "accepted condition false",
+		parent: gatewayapi.RouteParentStatus{
+			Conditions: []metav1.Condition{{
+				Type:   string(gatewayapi.RouteConditionAccepted),
+				Status: metav1.ConditionFalse,
+			}},
+		},
+		want: false,
+	}, {
+		name: "no conditions",
+		parent: gatewayapi.RouteParentStatus{
+			Conditions: []metav1.Condition{},
+		},
+		want: false,
+	}, {
+		name: "other conditions only",
+		parent: gatewayapi.RouteParentStatus{
+			Conditions: []metav1.Condition{{
+				Type:   string(gatewayapi.RouteConditionResolvedRefs),
+				Status: metav1.ConditionTrue,
+			}},
+		},
+		want: false,
+	}, {
+		name: "accepted among multiple conditions",
+		parent: gatewayapi.RouteParentStatus{
+			Conditions: []metav1.Condition{{
+				Type:   string(gatewayapi.RouteConditionResolvedRefs),
+				Status: metav1.ConditionTrue,
+			}, {
+				Type:   string(gatewayapi.RouteConditionAccepted),
+				Status: metav1.ConditionTrue,
+			}},
+		},
+		want: true,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isGatewayAdmitted(tt.parent)
+			if got != tt.want {
+				t.Errorf("isGatewayAdmitted() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

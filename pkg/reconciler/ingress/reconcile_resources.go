@@ -352,7 +352,7 @@ func (c *Reconciler) reconcileGatewayListeners(
 		lmap[string(l.Name)] = l
 	}
 	// TODO: how do we track and remove listeners if they are removed from the KIngress spec?
-	// Tracked in https://github.com/knative-sandbox/net-gateway-api/issues/319
+	// Tracked in https://github.com/knative-extensions/net-gateway-api/issues/319
 
 	updated := false
 	for i, l := range gw.Spec.Listeners {

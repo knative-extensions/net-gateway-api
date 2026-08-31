@@ -40,27 +40,34 @@ import (
 func UpdateProbeHash(r *gatewayapi.HTTPRoute, hash string) {
 	// Note: we use indices and references to avoid mutating copies
 	for rIdx := range r.Spec.Rules {
-		rule := &r.Spec.Rules[rIdx]
+		replaceProbeHash(&r.Spec.Rules[rIdx], hash)
+	}
+}
 
-		for fIdx := range rule.Filters {
-			filter := &rule.Filters[fIdx]
+func replaceProbeHash(rule *gatewayapi.HTTPRouteRule, hash string) bool {
+	found := false
 
-			if filter.Type != gatewayapi.HTTPRouteFilterRequestHeaderModifier {
-				continue
-			}
+	for fIdx := range rule.Filters {
+		filter := &rule.Filters[fIdx]
 
-			if filter.RequestHeaderModifier == nil {
-				continue
-			}
+		if filter.Type != gatewayapi.HTTPRouteFilterRequestHeaderModifier {
+			continue
+		}
 
-			for hIdx := range filter.RequestHeaderModifier.Set {
-				h := &filter.RequestHeaderModifier.Set[hIdx]
-				if h.Name == header.HashKey {
-					h.Value = hash
-				}
+		if filter.RequestHeaderModifier == nil {
+			continue
+		}
+
+		for hIdx := range filter.RequestHeaderModifier.Set {
+			h := &filter.RequestHeaderModifier.Set[hIdx]
+			if h.Name == header.HashKey {
+				h.Value = hash
+				found = true
 			}
 		}
 	}
+
+	return found
 }
 
 func RemoveEndpointProbes(r *gatewayapi.HTTPRoute) {
@@ -80,105 +87,86 @@ outer:
 	}
 }
 
-func AddEndpointProbe(r *gatewayapi.HTTPRoute, hash string, backend netv1alpha1.IngressBackendSplit) {
-	rule := gatewayapi.HTTPRouteRule{
-		Matches: []gatewayapi.HTTPRouteMatch{{
-			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
-				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", backend.ServiceNamespace, backend.ServiceName)),
-			},
-			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapi.HeaderMatchExact),
-				Name:  header.HashKey,
-				Value: header.HashValueOverride,
-			}},
+func AddEndpointProbe(
+	r *gatewayapi.HTTPRoute,
+	hash string,
+	sourceRule gatewayapi.HTTPRouteRule,
+	backendIndex int,
+) {
+	rule := sourceRule.DeepCopy()
+	backend := rule.BackendRefs[backendIndex]
+	backend.Weight = ptr.To[int32](100)
+	rule.Name = nil
+
+	backendNamespace := ptr.Deref(backend.Namespace, gatewayapi.Namespace(r.Namespace))
+
+	rule.Matches = []gatewayapi.HTTPRouteMatch{{
+		Path: &gatewayapi.HTTPPathMatch{
+			Type: ptr.To(gatewayapi.PathMatchPathPrefix),
+			Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s",
+				backendNamespace, backend.Name)),
+		},
+		Headers: []gatewayapi.HTTPHeaderMatch{{
+			Type:  ptr.To(gatewayapi.HeaderMatchExact),
+			Name:  header.HashKey,
+			Value: header.HashValueOverride,
 		}},
-		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-				Set: []gatewayapi.HTTPHeader{{
-					Name:  header.HashKey,
-					Value: hash,
-				}},
-			},
-		}},
-		BackendRefs: []gatewayapi.HTTPBackendRef{{
-			BackendRef: gatewayapi.BackendRef{
-				Weight: ptr.To[int32](100),
-				BackendObjectReference: gatewayapi.BackendObjectReference{
-					Group: ptr.To[gatewayapi.Group](""),
-					Kind:  ptr.To[gatewayapi.Kind]("Service"),
-					Name:  gatewayapi.ObjectName(backend.ServiceName),
-					//nolint:gosec // port numbers are bounded
-					Port: ptr.To(gatewayapi.PortNumber(backend.ServicePort.IntValue())),
-				},
-			},
-		}},
-	}
+	}}
+	rule.BackendRefs = []gatewayapi.HTTPBackendRef{backend}
+	setProbeHash(rule, hash)
 
-	if len(backend.AppendHeaders) > 0 {
-		headers := make([]gatewayapi.HTTPHeader, 0, len(backend.AppendHeaders))
-
-		for k, v := range backend.AppendHeaders {
-			headers = append(headers, gatewayapi.HTTPHeader{
-				Name:  gatewayapi.HTTPHeaderName(k),
-				Value: v,
-			})
-		}
-
-		slices.SortFunc(headers, compareHTTPHeader)
-
-		rule.BackendRefs[0].Filters = append(rule.BackendRefs[0].Filters,
-			gatewayapi.HTTPRouteFilter{
-				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-					Set: headers,
-				},
-			},
-		)
-	}
-
-	r.Spec.Rules = append(r.Spec.Rules, rule)
+	r.Spec.Rules = append(r.Spec.Rules, *rule)
 }
 
-func AddOldBackend(r *gatewayapi.HTTPRoute, hash string, old gatewayapi.HTTPBackendRef) {
-	backend := *old.DeepCopy()
-	backend.Weight = ptr.To[int32](100)
+func IsProbeMatch(match gatewayapi.HTTPRouteMatch) bool {
+	return slices.ContainsFunc(match.Headers, func(h gatewayapi.HTTPHeaderMatch) bool {
+		return h.Name == header.HashKey && h.Value == header.HashValueOverride
+	})
+}
 
-	// KIngress only supports AppendHeaders so there's only this filter
-	for _, filters := range backend.Filters {
-		if filters.RequestHeaderModifier != nil {
-			slices.SortFunc(filters.RequestHeaderModifier.Set, func(a, b gatewayapi.HTTPHeader) int {
-				return strings.Compare(string(a.Name), string(b.Name))
-			})
+func IsProbeRule(rule gatewayapi.HTTPRouteRule) bool {
+	return slices.ContainsFunc(rule.Matches, IsProbeMatch)
+}
+
+func setProbeHash(rule *gatewayapi.HTTPRouteRule, hash string) {
+	if replaceProbeHash(rule, hash) {
+		return
+	}
+
+	probeHeader := gatewayapi.HTTPHeader{Name: header.HashKey, Value: hash}
+
+	for i := range rule.Filters {
+		filter := &rule.Filters[i]
+		if filter.Type != gatewayapi.HTTPRouteFilterRequestHeaderModifier ||
+			filter.RequestHeaderModifier == nil {
+			continue
 		}
+
+		filter.RequestHeaderModifier.Set = append(filter.RequestHeaderModifier.Set, probeHeader)
+		slices.SortFunc(filter.RequestHeaderModifier.Set, compareHTTPHeader)
+		return
 	}
 
-	rule := gatewayapi.HTTPRouteRule{
-		Matches: []gatewayapi.HTTPRouteMatch{{
-			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
-				Value: ptr.To(fmt.Sprintf("/.well-known/knative/revision/%s/%s", r.Namespace, backend.Name)),
-			},
-			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapi.HeaderMatchExact),
-				Name:  header.HashKey,
-				Value: header.HashValueOverride,
-			}},
-		}},
-		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-				Set: []gatewayapi.HTTPHeader{{
-					Name:  header.HashKey,
-					Value: hash,
-				}},
-			},
-		}},
-		BackendRefs: []gatewayapi.HTTPBackendRef{backend},
+	probeFilter := gatewayapi.HTTPRouteFilter{
+		Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+		RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+			Set: []gatewayapi.HTTPHeader{probeHeader},
+		},
+	}
+	rule.Filters = append([]gatewayapi.HTTPRouteFilter{probeFilter}, rule.Filters...)
+}
+
+func appendHostRewriteFilter(filters []gatewayapi.HTTPRouteFilter, host string) []gatewayapi.HTTPRouteFilter {
+	if host == "" {
+		return filters
 	}
 
-	r.Spec.Rules = append(r.Spec.Rules, rule)
+	return append(filters, gatewayapi.HTTPRouteFilter{
+		Type: gatewayapi.HTTPRouteFilterURLRewrite,
+		URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+			Hostname: ptr.To(gatewayapi.PreciseHostname(host)),
+		},
+	})
 }
 
 func HTTPRouteKey(ing *netv1alpha1.Ingress, rule *netv1alpha1.IngressRule) types.NamespacedName {
@@ -287,14 +275,7 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 			}}
 		}
 
-		if path.RewriteHost != "" {
-			preFilters = append(preFilters, gatewayapi.HTTPRouteFilter{
-				Type: gatewayapi.HTTPRouteFilterURLRewrite,
-				URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
-					Hostname: (*gatewayapi.PreciseHostname)(&path.RewriteHost),
-				},
-			})
-		}
+		preFilters = appendHostRewriteFilter(preFilters, path.RewriteHost)
 
 		for _, split := range path.Splits {
 			headers := []gatewayapi.HTTPHeader{}

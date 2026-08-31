@@ -30,6 +30,19 @@ type RuleBuilder interface {
 	Build() gatewayapi.HTTPRouteRule
 }
 
+func appendRewriteHostFilter(filters []gatewayapi.HTTPRouteFilter, host string) []gatewayapi.HTTPRouteFilter {
+	if host == "" {
+		return filters
+	}
+
+	return append(filters, gatewayapi.HTTPRouteFilter{
+		Type: gatewayapi.HTTPRouteFilterURLRewrite,
+		URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+			Hostname: ptr.To(gatewayapi.PreciseHostname(host)),
+		},
+	})
+}
+
 type HTTPRoute struct {
 	Namespace        string
 	Name             string
@@ -116,83 +129,38 @@ func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
 }
 
 type EndpointProbeRule struct {
-	Namespace string
-	Name      string
-	Hash      string
-	Path      string
-	Port      int
-	Headers   []string
+	Namespace   string
+	Name        string
+	Hash        string
+	Path        string
+	Port        int
+	Headers     []string
+	RewriteHost string
 }
 
 func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
-	path := p.Path
-	if path == "" {
-		path = "/"
-	}
-	rule := gatewayapi.HTTPRouteRule{
-		Matches: []gatewayapi.HTTPRouteMatch{{
-			Path: &gatewayapi.HTTPPathMatch{
-				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
-				Value: ptr.To(path),
-			},
-			Headers: []gatewayapi.HTTPHeaderMatch{{
-				Type:  ptr.To(gatewayapi.HeaderMatchExact),
-				Name:  header.HashKey,
-				Value: header.HashValueOverride,
-			}},
-		}},
-		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-				Set: []gatewayapi.HTTPHeader{{
-					Name:  header.HashKey,
-					Value: p.Hash,
-				}},
-			},
-		}},
-		BackendRefs: []gatewayapi.HTTPBackendRef{{
-			Filters: []gatewayapi.HTTPRouteFilter{{
-				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-					Set: []gatewayapi.HTTPHeader{{
-						Name:  "K-Serving-Namespace",
-						Value: p.Namespace,
-					}, {
-						Name:  "K-Serving-Revision",
-						Value: p.Name,
-					}},
-				},
-			}},
-			BackendRef: gatewayapi.BackendRef{
-				Weight: ptr.To[int32](100),
-				BackendObjectReference: gatewayapi.BackendObjectReference{
-					Group: ptr.To[gatewayapi.Group](""),
-					Kind:  ptr.To[gatewayapi.Kind]("Service"),
-					Name:  gatewayapi.ObjectName(p.Name),
-					Port:  ptr.To[gatewayapi.PortNumber](gatewayapi.PortNumber(p.Port)),
-				},
-			},
-		}},
-	}
-
-	for i := 0; i < len(p.Headers); i += 2 {
-		k, v := p.Headers[i], p.Headers[i+1]
-		rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set = append(
-			rule.BackendRefs[0].Filters[0].RequestHeaderModifier.Set,
-			gatewayapi.HTTPHeader{Name: gatewayapi.HTTPHeaderName(k), Value: v},
-		)
-	}
-
-	return rule
+	return ProbeRule{
+		Rule: NormalRule{
+			Namespace:   p.Namespace,
+			Name:        p.Name,
+			Port:        p.Port,
+			Headers:     p.Headers,
+			Weight:      100,
+			RewriteHost: p.RewriteHost,
+		},
+		Hash: p.Hash,
+		Path: p.Path,
+	}.Build()
 }
 
 type NormalRule struct {
-	Namespace string
-	Name      string
-	Path      string
-	Port      int
-	Headers   []string
-	Weight    int
+	Namespace   string
+	Name        string
+	Path        string
+	Port        int
+	Headers     []string
+	Weight      int
+	RewriteHost string
 }
 
 func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
@@ -240,5 +208,53 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 		)
 	}
 
+	rule.Filters = appendRewriteHostFilter(rule.Filters, p.RewriteHost)
+
+	return rule
+}
+
+type SplitRule []NormalRule
+
+func (s SplitRule) Build() gatewayapi.HTTPRouteRule {
+	rule := s[0].Build()
+	for _, backend := range s[1:] {
+		rule.BackendRefs = append(rule.BackendRefs, backend.Build().BackendRefs...)
+	}
+	return rule
+}
+
+type ProbeRule struct {
+	Rule RuleBuilder
+	Hash string
+	Path string
+}
+
+func (p ProbeRule) Build() gatewayapi.HTTPRouteRule {
+	path := p.Path
+	if path == "" {
+		path = "/"
+	}
+
+	rule := p.Rule.Build()
+	rule.Matches = []gatewayapi.HTTPRouteMatch{{
+		Path: &gatewayapi.HTTPPathMatch{
+			Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+			Value: ptr.To(path),
+		},
+		Headers: []gatewayapi.HTTPHeaderMatch{{
+			Type:  ptr.To(gatewayapi.HeaderMatchExact),
+			Name:  header.HashKey,
+			Value: header.HashValueOverride,
+		}},
+	}}
+	rule.Filters = append([]gatewayapi.HTTPRouteFilter{{
+		Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+		RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+			Set: []gatewayapi.HTTPHeader{{
+				Name:  header.HashKey,
+				Value: p.Hash,
+			}},
+		},
+	}}, rule.Filters...)
 	return rule
 }

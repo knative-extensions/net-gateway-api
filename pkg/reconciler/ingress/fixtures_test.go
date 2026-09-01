@@ -30,6 +30,19 @@ type RuleBuilder interface {
 	Build() gatewayapi.HTTPRouteRule
 }
 
+func appendRewriteHostFilter(filters []gatewayapi.HTTPRouteFilter, host string) []gatewayapi.HTTPRouteFilter {
+	if host == "" {
+		return filters
+	}
+
+	return append(filters, gatewayapi.HTTPRouteFilter{
+		Type: gatewayapi.HTTPRouteFilterURLRewrite,
+		URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+			Hostname: ptr.To(gatewayapi.PreciseHostname(host)),
+		},
+	})
+}
+
 type HTTPRoute struct {
 	Namespace        string
 	Name             string
@@ -116,12 +129,13 @@ func (r HTTPRoute) Build() *gatewayapi.HTTPRoute {
 }
 
 type EndpointProbeRule struct {
-	Namespace string
-	Name      string
-	Hash      string
-	Path      string
-	Port      int
-	Headers   []string
+	Namespace   string
+	Name        string
+	Hash        string
+	Path        string
+	Port        int
+	Headers     []string
+	RewriteHost string
 }
 
 func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
@@ -183,16 +197,19 @@ func (p EndpointProbeRule) Build() gatewayapi.HTTPRouteRule {
 		)
 	}
 
+	rule.Filters = appendRewriteHostFilter(rule.Filters, p.RewriteHost)
+
 	return rule
 }
 
 type NormalRule struct {
-	Namespace string
-	Name      string
-	Path      string
-	Port      int
-	Headers   []string
-	Weight    int
+	Namespace   string
+	Name        string
+	Path        string
+	Port        int
+	Headers     []string
+	Weight      int
+	RewriteHost string
 }
 
 func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
@@ -239,6 +256,8 @@ func (p NormalRule) Build() gatewayapi.HTTPRouteRule {
 			gatewayapi.HTTPHeader{Name: gatewayapi.HTTPHeaderName(k), Value: v},
 		)
 	}
+
+	rule.Filters = appendRewriteHostFilter(rule.Filters, p.RewriteHost)
 
 	return rule
 }

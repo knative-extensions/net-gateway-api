@@ -656,8 +656,10 @@ func TestAddEndpointProbes(t *testing.T) {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
 
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+	firstSource := *route.Spec.Rules[0].DeepCopy()
+	firstSource.Filters = appendHostRewriteFilter(firstSource.Filters, "goo.test-ns.svc.cluster.local")
+	AddEndpointProbe(route, "hash", firstSource, 0)
+	AddEndpointProbe(route, "hash", route.Spec.Rules[0], 1)
 
 	expected := &gatewayapi.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -760,9 +762,17 @@ func TestAddEndpointProbes(t *testing.T) {
 					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}, {
 							Name:  header.HashKey,
 							Value: "hash",
 						}},
+					},
+				}, {
+					Type: gatewayapi.HTTPRouteFilterURLRewrite,
+					URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+						Hostname: ptr.To[gatewayapi.PreciseHostname]("goo.test-ns.svc.cluster.local"),
 					},
 				}},
 				BackendRefs: []gatewayapi.HTTPBackendRef{{
@@ -804,6 +814,9 @@ func TestAddEndpointProbes(t *testing.T) {
 					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}, {
 							Name:  header.HashKey,
 							Value: "hash",
 						}},
@@ -838,6 +851,99 @@ func TestAddEndpointProbes(t *testing.T) {
 	}
 }
 
+func TestAddEndpointProbeCopiesSourceRule(t *testing.T) {
+	requestTimeout := gatewayapi.Duration("12s")
+	backendNamespace := gatewayapi.Namespace("backend-ns")
+	source := gatewayapi.HTTPRouteRule{
+		Name: ptr.To(gatewayapi.SectionName("production")),
+		Matches: []gatewayapi.HTTPRouteMatch{{
+			Path: &gatewayapi.HTTPPathMatch{
+				Type:  ptr.To(gatewayapi.PathMatchPathPrefix),
+				Value: ptr.To("/production"),
+			},
+		}},
+		Filters: []gatewayapi.HTTPRouteFilter{{
+			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+				Set: []gatewayapi.HTTPHeader{{Name: "Route-Header", Value: "route-value"}},
+			},
+		}, {
+			Type: gatewayapi.HTTPRouteFilterURLRewrite,
+			URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+				Hostname: ptr.To(gatewayapi.PreciseHostname("app.default.svc.cluster.local")),
+			},
+		}},
+		BackendRefs: []gatewayapi.HTTPBackendRef{{
+			BackendRef: gatewayapi.BackendRef{
+				BackendObjectReference: gatewayapi.BackendObjectReference{
+					Group:     ptr.To(gatewayapi.Group("")),
+					Kind:      ptr.To(gatewayapi.Kind("Service")),
+					Name:      "app",
+					Namespace: &backendNamespace,
+					Port:      ptr.To(gatewayapi.PortNumber(80)),
+				},
+				Weight: ptr.To[int32](25),
+			},
+			Filters: []gatewayapi.HTTPRouteFilter{{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+					Set: []gatewayapi.HTTPHeader{{Name: "Backend-Header", Value: "backend-value"}},
+				},
+			}},
+		}, {
+			BackendRef: gatewayapi.BackendRef{
+				BackendObjectReference: gatewayapi.BackendObjectReference{Name: "other"},
+				Weight:                 ptr.To[int32](75),
+			},
+		}},
+		Timeouts: &gatewayapi.HTTPRouteTimeouts{Request: &requestTimeout},
+	}
+	original := source.DeepCopy()
+	route := &gatewayapi.HTTPRoute{ObjectMeta: metav1.ObjectMeta{Namespace: "route-ns"}}
+
+	AddEndpointProbe(route, "probe-hash", source, 0)
+
+	if diff := cmp.Diff(original, &source); diff != "" {
+		t.Fatalf("source rule was mutated (-want, +got):\n%s", diff)
+	}
+	if got, want := len(route.Spec.Rules), 1; got != want {
+		t.Fatalf("probe rule count = %d, want %d", got, want)
+	}
+	probe := route.Spec.Rules[0]
+	if probe.Name != nil {
+		t.Errorf("probe rule name = %q, want no name", *probe.Name)
+	}
+	if diff := cmp.Diff(source.Timeouts, probe.Timeouts); diff != "" {
+		t.Errorf("timeouts were not preserved (-want, +got):\n%s", diff)
+	}
+	if got, want := *probe.Matches[0].Path.Value, "/.well-known/knative/revision/backend-ns/app"; got != want {
+		t.Errorf("probe path = %q, want %q", got, want)
+	}
+	if got, want := len(probe.BackendRefs), 1; got != want {
+		t.Fatalf("probe backend count = %d, want %d", got, want)
+	}
+	if got, want := *probe.BackendRefs[0].Weight, int32(100); got != want {
+		t.Errorf("probe backend weight = %d, want %d", got, want)
+	}
+	if diff := cmp.Diff(source.BackendRefs[0].Filters, probe.BackendRefs[0].Filters); diff != "" {
+		t.Errorf("backend filters were not preserved (-want, +got):\n%s", diff)
+	}
+	if got, want := len(probe.Filters), len(source.Filters); got != want {
+		t.Fatalf("route filter count = %d, want %d", got, want)
+	}
+	gotHeaders := probe.Filters[0].RequestHeaderModifier.Set
+	wantHeaders := []gatewayapi.HTTPHeader{
+		{Name: header.HashKey, Value: "probe-hash"},
+		{Name: "Route-Header", Value: "route-value"},
+	}
+	if diff := cmp.Diff(wantHeaders, gotHeaders); diff != "" {
+		t.Errorf("route request headers (-want, +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(source.Filters[1], probe.Filters[1]); diff != "" {
+		t.Errorf("host rewrite was not preserved (-want, +got):\n%s", diff)
+	}
+}
+
 func TestRemoveEndpointProbes(t *testing.T) {
 	tcs := &testConfigStore{config: testConfig}
 	ctx := tcs.ToContext(context.Background())
@@ -851,8 +957,8 @@ func TestRemoveEndpointProbes(t *testing.T) {
 
 	expected := route.DeepCopy()
 
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+	AddEndpointProbe(route, "hash", route.Spec.Rules[0], 0)
+	AddEndpointProbe(route, "hash", route.Spec.Rules[0], 1)
 	RemoveEndpointProbes(route)
 
 	if diff := cmp.Diff(expected, route); diff != "" {
@@ -870,8 +976,8 @@ func TestUpdateProbeHash(t *testing.T) {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
 
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[0])
-	AddEndpointProbe(route, "hash", rule.HTTP.Paths[0].Splits[1])
+	AddEndpointProbe(route, "hash", route.Spec.Rules[0], 0)
+	AddEndpointProbe(route, "hash", route.Spec.Rules[0], 1)
 	UpdateProbeHash(route, "second-hash")
 
 	expected := &gatewayapi.HTTPRoute{
@@ -975,6 +1081,9 @@ func TestUpdateProbeHash(t *testing.T) {
 					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}, {
 							Name:  header.HashKey,
 							Value: "second-hash",
 						}},
@@ -1019,6 +1128,9 @@ func TestUpdateProbeHash(t *testing.T) {
 					Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
 					RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
 						Set: []gatewayapi.HTTPHeader{{
+							Name:  "Foo",
+							Value: "bar",
+						}, {
 							Name:  header.HashKey,
 							Value: "second-hash",
 						}},
@@ -1053,7 +1165,7 @@ func TestUpdateProbeHash(t *testing.T) {
 	}
 }
 
-func TestAddOldBackend(t *testing.T) {
+func TestAddEndpointProbeFromPreviousRoute(t *testing.T) {
 	tcs := &testConfigStore{config: testConfig}
 	ctx := tcs.ToContext(context.Background())
 	ing := testIngress.DeepCopy()
@@ -1064,27 +1176,31 @@ func TestAddOldBackend(t *testing.T) {
 		t.Fatal("MakeHTTPRoute failed:", err)
 	}
 
-	AddOldBackend(route, "hash", gatewayapi.HTTPBackendRef{
-		BackendRef: gatewayapi.BackendRef{
-			Weight: ptr.To[int32](100),
-			BackendObjectReference: gatewayapi.BackendObjectReference{
-				Group:     ptr.To[gatewayapi.Group](""),
-				Kind:      ptr.To[gatewayapi.Kind]("Service"),
-				Name:      "blah",
-				Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
-				Port:      ptr.To[gatewayapi.PortNumber](127),
+	previousRule := gatewayapi.HTTPRouteRule{
+		BackendRefs: []gatewayapi.HTTPBackendRef{{
+			BackendRef: gatewayapi.BackendRef{
+				Weight: ptr.To[int32](100),
+				BackendObjectReference: gatewayapi.BackendObjectReference{
+					Group:     ptr.To[gatewayapi.Group](""),
+					Kind:      ptr.To[gatewayapi.Kind]("Service"),
+					Name:      "blah",
+					Namespace: ptr.To[gatewayapi.Namespace]("test-ns"),
+					Port:      ptr.To[gatewayapi.PortNumber](127),
+				},
 			},
-		},
-		Filters: []gatewayapi.HTTPRouteFilter{{
-			Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
-			RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
-				Set: []gatewayapi.HTTPHeader{{
-					Name:  "Foo",
-					Value: "bar",
-				}},
-			},
+			Filters: []gatewayapi.HTTPRouteFilter{{
+				Type: gatewayapi.HTTPRouteFilterRequestHeaderModifier,
+				RequestHeaderModifier: &gatewayapi.HTTPHeaderFilter{
+					Set: []gatewayapi.HTTPHeader{{
+						Name:  "Foo",
+						Value: "bar",
+					}},
+				},
+			}},
 		}},
-	})
+		Filters: appendHostRewriteFilter(nil, "blah.test-ns.svc.cluster.local"),
+	}
+	AddEndpointProbe(route, "hash", previousRule, 0)
 
 	expected := &gatewayapi.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1190,6 +1306,11 @@ func TestAddOldBackend(t *testing.T) {
 							Name:  header.HashKey,
 							Value: "hash",
 						}},
+					},
+				}, {
+					Type: gatewayapi.HTTPRouteFilterURLRewrite,
+					URLRewrite: &gatewayapi.HTTPURLRewriteFilter{
+						Hostname: ptr.To[gatewayapi.PreciseHostname]("blah.test-ns.svc.cluster.local"),
 					},
 				}},
 				BackendRefs: []gatewayapi.HTTPBackendRef{{

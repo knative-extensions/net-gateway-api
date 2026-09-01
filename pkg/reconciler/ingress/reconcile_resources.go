@@ -63,25 +63,19 @@ func probeTargets(
 	}
 
 	for _, rule := range r.Spec.Rules {
-	match_loop:
 		for _, match := range rule.Matches {
-			for _, headers := range match.Headers {
-				// Skip non-probe matches
-				if headers.Name != header.HashKey {
-					continue
-				}
+			if !isProbeMatch(match) {
+				continue
+			}
 
-				if visibility == netv1alpha1.IngressVisibilityClusterLocal {
-					host := resources.LongestHost(r.Spec.Hostnames)
-					url := url.URL{Host: string(host), Path: *match.Path.Value}
-					backends.AddURL(visibility, url)
-					continue match_loop
-				}
+			if visibility == netv1alpha1.IngressVisibilityClusterLocal {
+				host := resources.LongestHost(r.Spec.Hostnames)
+				backends.AddURL(visibility, url.URL{Host: string(host), Path: *match.Path.Value})
+				continue
+			}
 
-				for _, hostname := range r.Spec.Hostnames {
-					url := url.URL{Host: string(hostname), Path: *match.Path.Value}
-					backends.AddURL(visibility, url)
-				}
+			for _, hostname := range r.Spec.Hostnames {
+				backends.AddURL(visibility, url.URL{Host: string(hostname), Path: *match.Path.Value})
 			}
 		}
 	}
@@ -118,21 +112,6 @@ func (c *Reconciler) reconcileHTTPRoute(
 	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
 }
 
-func propagateIngressMetadata(
-	ctx context.Context,
-	ing *netv1alpha1.Ingress,
-	rule *netv1alpha1.IngressRule,
-	target *gatewayapi.HTTPRoute,
-) error {
-	desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
-	if err != nil {
-		return err
-	}
-	target.Labels = desired.Labels
-	target.Annotations = desired.Annotations
-	return nil
-}
-
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
 	hash string,
@@ -146,9 +125,7 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	)
 
 	var (
-		desired *gatewayapi.HTTPRoute
-		err     error
-
+		desired  *gatewayapi.HTTPRoute
 		original = httproute.DeepCopy()
 		recorder = controller.GetEventRecorder(ctx)
 
@@ -165,54 +142,41 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
 	probeHash = strings.TrimPrefix(probeHash, transitionPrefix)
 
-	newBackends, oldBackends := computeBackends(httproute, rule)
+	desiredRoute, err := resources.MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		return nil, status.Backends{}, err
+	}
+	newBackends, oldBackends := computeProbeTargets(httproute, desiredRoute)
 
 	if wasTransitionProbe && probeHash == hash && probe.Ready {
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired = desiredRoute
 	} else if wasEndpointProbe && probeHash == hash && probe.Ready {
 		hash = transitionPrefix + hash
 
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired = desiredRoute
 		resources.UpdateProbeHash(desired, hash)
 
-		resources.RemoveEndpointProbes(httproute)
-		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, hash, backend)
-		}
-		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, hash, backend)
-		}
+		addEndpointProbes(desired, hash, newBackends, oldBackends)
 	} else if probeHash == hash {
 		// Hash is the same but probes are not ready - continue.
 		// Preserve the existing spec but propagate any metadata changes.
 		desired = httproute.DeepCopy()
-		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
-			return nil, status.Backends{}, err
-		}
+		desired.Labels = desiredRoute.Labels
+		desired.Annotations = desiredRoute.Annotations
 		// Preserve the probe version (with prefix) for correct probe tracking.
 		hash = probe.Version
 	} else if len(newBackends) > 0 {
 		// Ingress changed with new backends
 		hash = endpointPrefix + hash
 		desired = httproute.DeepCopy()
-		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
-			return nil, status.Backends{}, err
-		}
+		desired.Labels = desiredRoute.Labels
+		desired.Annotations = desiredRoute.Annotations
 		resources.UpdateProbeHash(desired, hash)
 		resources.RemoveEndpointProbes(desired)
-		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, hash, backend)
-		}
-		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, hash, backend)
-		}
+		addEndpointProbes(desired, hash, newBackends, oldBackends)
 	} else {
 		// Ingress changed with the same backends
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-	}
-
-	if err != nil {
-		return nil, status.Backends{}, err
+		desired = desiredRoute
 	}
 
 	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
@@ -424,64 +388,120 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	return nil
 }
 
-func computeBackends(
-	route *gatewayapi.HTTPRoute,
-	rule *netv1alpha1.IngressRule,
-) ([]netv1alpha1.IngressBackendSplit, []gatewayapi.HTTPBackendRef) {
-	newBackends := []netv1alpha1.IngressBackendSplit{}
-	oldBackends := []gatewayapi.HTTPBackendRef{}
-	oldNames := sets.Set[types.NamespacedName]{}
+func addEndpointProbes(
+	desired *gatewayapi.HTTPRoute,
+	hash string,
+	newBackends []backendToProbe,
+	oldBackends []backendToProbe,
+) {
+	for _, target := range newBackends {
+		resources.AddEndpointProbe(desired, hash, target.sourceRule, target.backendIndex)
+	}
+	for _, target := range oldBackends {
+		resources.AddEndpointProbe(desired, hash, target.sourceRule, target.backendIndex)
+	}
+}
 
-oldbackends:
-	for _, rule := range route.Spec.Rules {
-		// We want to skip probes
-		for _, match := range rule.Matches {
-			for _, headers := range match.Headers {
-				if headers.Name == header.HashKey {
-					continue oldbackends
-				}
-			}
+type backendToProbe struct {
+	sourceRule   gatewayapi.HTTPRouteRule
+	backendIndex int
+}
+
+func (b backendToProbe) backendRef() gatewayapi.HTTPBackendRef {
+	return b.sourceRule.BackendRefs[b.backendIndex]
+}
+
+func computeProbeTargets(
+	current *gatewayapi.HTTPRoute,
+	desired *gatewayapi.HTTPRoute,
+) ([]backendToProbe, []backendToProbe) {
+	newBackends := []backendToProbe{}
+	oldBackends := []backendToProbe{}
+	oldBackendsByIdentity := sets.Set[backendIdentity]{}
+
+	for _, rule := range current.Spec.Rules {
+		if isProbeRule(rule) {
+			continue
 		}
 
-		for _, backend := range rule.BackendRefs {
-			nn := types.NamespacedName{
-				Name: string(backend.Name),
-			}
-			if backend.Namespace != nil {
-				nn.Namespace = string(*backend.Namespace)
-			} else {
-				nn.Namespace = route.Namespace
-			}
-			oldNames.Insert(nn)
-			oldBackends = append(oldBackends, backend)
+		for backendIndex, backend := range rule.BackendRefs {
+			oldBackendsByIdentity.Insert(identityForBackend(current.Namespace, backend))
+			oldBackends = append(oldBackends, backendToProbe{
+				sourceRule:   rule,
+				backendIndex: backendIndex,
+			})
 		}
 	}
 
-newbackends:
-	for _, path := range rule.HTTP.Paths {
-		// We want to skip probes
-		for k := range path.Headers {
-			if k == header.HashKey {
-				continue newbackends
-			}
+	for _, rule := range desired.Spec.Rules {
+		if isProbeRule(rule) {
+			continue
 		}
 
-		for _, split := range path.Splits {
-			service := types.NamespacedName{
-				Name:      split.ServiceName,
-				Namespace: split.ServiceNamespace,
-			}
-
-			if oldNames.Has(service) {
+		for backendIndex, backend := range rule.BackendRefs {
+			if oldBackendsByIdentity.Has(identityForBackend(desired.Namespace, backend)) {
 				continue
 			}
 
-			newBackends = append(newBackends, split)
+			newBackends = append(newBackends, backendToProbe{
+				sourceRule:   rule,
+				backendIndex: backendIndex,
+			})
 		}
 	}
 
-	slices.SortFunc(newBackends, func(a, b netv1alpha1.IngressBackendSplit) int {
-		return strings.Compare(a.ServiceName, b.ServiceName)
+	slices.SortFunc(newBackends, func(a, b backendToProbe) int {
+		return strings.Compare(string(a.backendRef().Name), string(b.backendRef().Name))
 	})
 	return newBackends, oldBackends
+}
+
+func isProbeMatch(match gatewayapi.HTTPRouteMatch) bool {
+	for _, matchHeader := range match.Headers {
+		if matchHeader.Name == header.HashKey && matchHeader.Value == header.HashValueOverride {
+			return true
+		}
+	}
+	return false
+}
+
+func isProbeRule(rule gatewayapi.HTTPRouteRule) bool {
+	return slices.ContainsFunc(rule.Matches, isProbeMatch)
+}
+
+type backendIdentity struct {
+	group     gatewayapi.Group
+	kind      gatewayapi.Kind
+	namespace string
+	name      gatewayapi.ObjectName
+	port      gatewayapi.PortNumber
+}
+
+func identityForBackend(namespace string, backend gatewayapi.HTTPBackendRef) backendIdentity {
+	group := gatewayapi.Group("")
+	if backend.Group != nil {
+		group = *backend.Group
+	}
+
+	kind := gatewayapi.Kind("Service")
+	if backend.Kind != nil {
+		kind = *backend.Kind
+	}
+
+	if backend.Namespace != nil {
+		namespace = string(*backend.Namespace)
+	}
+
+	port := gatewayapi.PortNumber(0)
+	if backend.Port != nil {
+		port = *backend.Port
+	}
+
+	return backendIdentity{
+		group:     group,
+		kind:      kind,
+		namespace: namespace,
+		name:      backend.Name,
+		port:      port,
+	}
 }

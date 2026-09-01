@@ -600,6 +600,12 @@ func withBackendAppendHeaders(key, val string) IngressOption {
 	}
 }
 
+func withRewriteHost(host string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Spec.Rules[0].HTTP.Paths[0].RewriteHost = host
+	}
+}
+
 func withInternalSpec(i *v1alpha1.Ingress) {
 	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
 		Hosts:      []string{"foo.svc", "foo.svc.cluster.local"},

@@ -600,6 +600,31 @@ func withBackendAppendHeaders(key, val string) IngressOption {
 	}
 }
 
+func withAdditionalSplit(name string, percent int) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		path := &i.Spec.Rules[0].HTTP.Paths[0]
+		path.Splits[0].Percent -= percent
+		path.Splits = append(path.Splits, v1alpha1.IngressBackendSplit{
+			AppendHeaders: map[string]string{
+				"K-Serving-Revision":  name,
+				"K-Serving-Namespace": i.Namespace,
+			},
+			IngressBackend: v1alpha1.IngressBackend{
+				ServiceName:      name,
+				ServiceNamespace: i.Namespace,
+				ServicePort:      intstr.FromInt(123),
+			},
+			Percent: percent,
+		})
+	}
+}
+
+func withRewriteHost(host string) IngressOption {
+	return func(i *v1alpha1.Ingress) {
+		i.Spec.Rules[0].HTTP.Paths[0].RewriteHost = host
+	}
+}
+
 func withInternalSpec(i *v1alpha1.Ingress) {
 	i.Spec.Rules = append(i.Spec.Rules, v1alpha1.IngressRule{
 		Hosts:      []string{"foo.svc", "foo.svc.cluster.local"},

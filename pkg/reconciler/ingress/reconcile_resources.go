@@ -36,7 +36,6 @@ import (
 	"knative.dev/net-gateway-api/pkg/reconciler/ingress/resources"
 	"knative.dev/net-gateway-api/pkg/status"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/networking/pkg/http/header"
 	"knative.dev/pkg/controller"
 )
 
@@ -63,25 +62,19 @@ func probeTargets(
 	}
 
 	for _, rule := range r.Spec.Rules {
-	match_loop:
 		for _, match := range rule.Matches {
-			for _, headers := range match.Headers {
-				// Skip non-probe matches
-				if headers.Name != header.HashKey {
-					continue
-				}
+			if !resources.IsProbeMatch(match) {
+				continue
+			}
 
-				if visibility == netv1alpha1.IngressVisibilityClusterLocal {
-					host := resources.LongestHost(r.Spec.Hostnames)
-					url := url.URL{Host: string(host), Path: *match.Path.Value}
-					backends.AddURL(visibility, url)
-					continue match_loop
-				}
+			if visibility == netv1alpha1.IngressVisibilityClusterLocal {
+				host := resources.LongestHost(r.Spec.Hostnames)
+				backends.AddURL(visibility, url.URL{Host: string(host), Path: *match.Path.Value})
+				continue
+			}
 
-				for _, hostname := range r.Spec.Hostnames {
-					url := url.URL{Host: string(hostname), Path: *match.Path.Value}
-					backends.AddURL(visibility, url)
-				}
+			for _, hostname := range r.Spec.Hostnames {
+				backends.AddURL(visibility, url.URL{Host: string(hostname), Path: *match.Path.Value})
 			}
 		}
 	}
@@ -118,21 +111,6 @@ func (c *Reconciler) reconcileHTTPRoute(
 	return c.reconcileHTTPRouteUpdate(ctx, hash, ing, rule, httproute.DeepCopy())
 }
 
-func propagateIngressMetadata(
-	ctx context.Context,
-	ing *netv1alpha1.Ingress,
-	rule *netv1alpha1.IngressRule,
-	target *gatewayapi.HTTPRoute,
-) error {
-	desired, err := resources.MakeHTTPRoute(ctx, ing, rule)
-	if err != nil {
-		return err
-	}
-	target.Labels = desired.Labels
-	target.Annotations = desired.Annotations
-	return nil
-}
-
 func (c *Reconciler) reconcileHTTPRouteUpdate(
 	ctx context.Context,
 	hash string,
@@ -146,9 +124,7 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	)
 
 	var (
-		desired *gatewayapi.HTTPRoute
-		err     error
-
+		desired  *gatewayapi.HTTPRoute
 		original = httproute.DeepCopy()
 		recorder = controller.GetEventRecorder(ctx)
 
@@ -165,54 +141,41 @@ func (c *Reconciler) reconcileHTTPRouteUpdate(
 	probeHash := strings.TrimPrefix(probe.Version, endpointPrefix)
 	probeHash = strings.TrimPrefix(probeHash, transitionPrefix)
 
-	newBackends, oldBackends := computeBackends(httproute, rule)
+	desiredRoute, err := resources.MakeHTTPRoute(ctx, ing, rule)
+	if err != nil {
+		return nil, status.Backends{}, err
+	}
+	newBackends, oldBackends := computeProbeTargets(httproute, desiredRoute)
 
 	if wasTransitionProbe && probeHash == hash && probe.Ready {
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired = desiredRoute
 	} else if wasEndpointProbe && probeHash == hash && probe.Ready {
 		hash = transitionPrefix + hash
 
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
+		desired = desiredRoute
 		resources.UpdateProbeHash(desired, hash)
 
-		resources.RemoveEndpointProbes(httproute)
-		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, hash, backend)
-		}
-		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, hash, backend)
-		}
+		addEndpointProbes(desired, hash, slices.Concat(newBackends, oldBackends))
 	} else if probeHash == hash {
 		// Hash is the same but probes are not ready - continue.
 		// Preserve the existing spec but propagate any metadata changes.
 		desired = httproute.DeepCopy()
-		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
-			return nil, status.Backends{}, err
-		}
+		desired.Labels = desiredRoute.Labels
+		desired.Annotations = desiredRoute.Annotations
 		// Preserve the probe version (with prefix) for correct probe tracking.
 		hash = probe.Version
 	} else if len(newBackends) > 0 {
 		// Ingress changed with new backends
 		hash = endpointPrefix + hash
 		desired = httproute.DeepCopy()
-		if err = propagateIngressMetadata(ctx, ing, rule, desired); err != nil {
-			return nil, status.Backends{}, err
-		}
+		desired.Labels = desiredRoute.Labels
+		desired.Annotations = desiredRoute.Annotations
 		resources.UpdateProbeHash(desired, hash)
 		resources.RemoveEndpointProbes(desired)
-		for _, backend := range newBackends {
-			resources.AddEndpointProbe(desired, hash, backend)
-		}
-		for _, backend := range oldBackends {
-			resources.AddOldBackend(desired, hash, backend)
-		}
+		addEndpointProbes(desired, hash, slices.Concat(newBackends, oldBackends))
 	} else {
 		// Ingress changed with the same backends
-		desired, err = resources.MakeHTTPRoute(ctx, ing, rule)
-	}
-
-	if err != nil {
-		return nil, status.Backends{}, err
+		desired = desiredRoute
 	}
 
 	if !equality.Semantic.DeepEqual(original.Spec, desired.Spec) ||
@@ -424,64 +387,94 @@ func (c *Reconciler) clearGatewayListeners(ctx context.Context, ing *netv1alpha1
 	return nil
 }
 
-func computeBackends(
-	route *gatewayapi.HTTPRoute,
-	rule *netv1alpha1.IngressRule,
-) ([]netv1alpha1.IngressBackendSplit, []gatewayapi.HTTPBackendRef) {
-	newBackends := []netv1alpha1.IngressBackendSplit{}
-	oldBackends := []gatewayapi.HTTPBackendRef{}
-	oldNames := sets.Set[types.NamespacedName]{}
+func addEndpointProbes(desired *gatewayapi.HTTPRoute, hash string, targets []backendToProbe) {
+	for _, target := range targets {
+		resources.AddEndpointProbe(desired, hash, target.sourceRule, target.backendIndex)
+	}
+}
 
-oldbackends:
+type backendToProbe struct {
+	sourceRule   gatewayapi.HTTPRouteRule
+	backendIndex int
+	identity     backendIdentity
+}
+
+func productionBackends(route *gatewayapi.HTTPRoute) []backendToProbe {
+	var backends []backendToProbe
+
 	for _, rule := range route.Spec.Rules {
-		// We want to skip probes
-		for _, match := range rule.Matches {
-			for _, headers := range match.Headers {
-				if headers.Name == header.HashKey {
-					continue oldbackends
-				}
-			}
+		if resources.IsProbeRule(rule) {
+			continue
 		}
 
-		for _, backend := range rule.BackendRefs {
-			nn := types.NamespacedName{
-				Name: string(backend.Name),
-			}
-			if backend.Namespace != nil {
-				nn.Namespace = string(*backend.Namespace)
-			} else {
-				nn.Namespace = route.Namespace
-			}
-			oldNames.Insert(nn)
-			oldBackends = append(oldBackends, backend)
+		for backendIndex, backend := range rule.BackendRefs {
+			backends = append(backends, backendToProbe{
+				sourceRule:   rule,
+				backendIndex: backendIndex,
+				identity:     identityForBackend(route.Namespace, backend),
+			})
 		}
 	}
 
-newbackends:
-	for _, path := range rule.HTTP.Paths {
-		// We want to skip probes
-		for k := range path.Headers {
-			if k == header.HashKey {
-				continue newbackends
-			}
-		}
+	return backends
+}
 
-		for _, split := range path.Splits {
-			service := types.NamespacedName{
-				Name:      split.ServiceName,
-				Namespace: split.ServiceNamespace,
-			}
+func computeProbeTargets(
+	current *gatewayapi.HTTPRoute,
+	desired *gatewayapi.HTTPRoute,
+) (newBackends []backendToProbe, oldBackends []backendToProbe) {
+	desiredBackends := productionBackends(desired)
 
-			if oldNames.Has(service) {
-				continue
-			}
-
-			newBackends = append(newBackends, split)
+	desiredByIdentity := make(map[backendIdentity]backendToProbe, len(desiredBackends))
+	for _, backend := range desiredBackends {
+		if _, ok := desiredByIdentity[backend.identity]; !ok {
+			desiredByIdentity[backend.identity] = backend
 		}
 	}
 
-	slices.SortFunc(newBackends, func(a, b netv1alpha1.IngressBackendSplit) int {
-		return strings.Compare(a.ServiceName, b.ServiceName)
+	probed := sets.Set[backendIdentity]{}
+
+	for _, backend := range productionBackends(current) {
+		if probed.Has(backend.identity) {
+			continue
+		}
+		probed.Insert(backend.identity)
+
+		if retained, ok := desiredByIdentity[backend.identity]; ok {
+			backend = retained
+		}
+		oldBackends = append(oldBackends, backend)
+	}
+
+	for _, backend := range desiredBackends {
+		if probed.Has(backend.identity) {
+			continue
+		}
+		probed.Insert(backend.identity)
+
+		newBackends = append(newBackends, backend)
+	}
+
+	slices.SortFunc(newBackends, func(a, b backendToProbe) int {
+		return strings.Compare(string(a.identity.name), string(b.identity.name))
 	})
 	return newBackends, oldBackends
+}
+
+type backendIdentity struct {
+	group     gatewayapi.Group
+	kind      gatewayapi.Kind
+	namespace string
+	name      gatewayapi.ObjectName
+	port      gatewayapi.PortNumber
+}
+
+func identityForBackend(namespace string, backend gatewayapi.HTTPBackendRef) backendIdentity {
+	return backendIdentity{
+		group:     ptr.Deref(backend.Group, ""),
+		kind:      ptr.Deref(backend.Kind, "Service"),
+		namespace: string(ptr.Deref(backend.Namespace, gatewayapi.Namespace(namespace))),
+		name:      backend.Name,
+		port:      ptr.Deref(backend.Port, 0),
+	}
 }

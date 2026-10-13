@@ -512,8 +512,8 @@ func TestReconcileProbing(t *testing.T) {
 		Name: "updated ingress - new backends used for endpoint probing",
 		Key:  "ns/name",
 		Objects: append([]runtime.Object{
-			ing(withBasicSpec, withSecondRevisionSpec, withGatewayAPIclass, withFinalizer, makeItReady),
-			httpRoute(t, ing(withBasicSpec, withGatewayAPIclass), httpRouteReady),
+			ing(withBasicSpec, withSecondRevisionSpec, withRewriteHost("current.default.svc.cluster.local"), withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withRewriteHost("previous.default.svc.cluster.local"), withGatewayAPIclass), httpRouteReady),
 		}, servicesAndEndpoints...),
 		Ctx: withStatusManager(&fakeStatusManager{
 			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
@@ -527,6 +527,7 @@ func TestReconcileProbing(t *testing.T) {
 			Object: ing(
 				withBasicSpec,
 				withSecondRevisionSpec,
+				withRewriteHost("current.default.svc.cluster.local"),
 				withGatewayAPIclass,
 				withFinalizer,
 				makeItReady,
@@ -540,30 +541,103 @@ func TestReconcileProbing(t *testing.T) {
 				Hostname:  "example.com",
 				Rules: []RuleBuilder{
 					EndpointProbeRule{
-						Namespace: "ns",
-						Name:      "goo",
-						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
-						Port:      123,
+						Namespace:   "ns",
+						Name:        "goo",
+						Hash:        "ep-f7a1d68d4686969231731f087164ec98c24f3f1aae43c79ba5218b15bf2f63bc",
+						Port:        123,
+						RewriteHost: "previous.default.svc.cluster.local",
 					},
 					NormalRule{
-						Namespace: "ns",
-						Name:      "goo",
-						Port:      123,
-						Weight:    100,
+						Namespace:   "ns",
+						Name:        "goo",
+						Port:        123,
+						Weight:      100,
+						RewriteHost: "previous.default.svc.cluster.local",
 					},
 					EndpointProbeRule{
-						Namespace: "ns",
-						Name:      "second-revision",
-						Path:      "/.well-known/knative/revision/ns/second-revision",
-						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
-						Port:      123,
+						Namespace:   "ns",
+						Name:        "second-revision",
+						Path:        "/.well-known/knative/revision/ns/second-revision",
+						Hash:        "ep-f7a1d68d4686969231731f087164ec98c24f3f1aae43c79ba5218b15bf2f63bc",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
 					},
 					EndpointProbeRule{
-						Namespace: "ns",
-						Name:      "goo",
-						Path:      "/.well-known/knative/revision/ns/goo",
-						Hash:      "ep-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
-						Port:      123,
+						Namespace:   "ns",
+						Name:        "goo",
+						Path:        "/.well-known/knative/revision/ns/goo",
+						Hash:        "ep-f7a1d68d4686969231731f087164ec98c24f3f1aae43c79ba5218b15bf2f63bc",
+						Port:        123,
+						RewriteHost: "previous.default.svc.cluster.local",
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "updated ingress - retained backend is endpoint probed with its new host rewrite",
+		Key:  "ns/name",
+		Objects: append([]runtime.Object{
+			ing(withBasicSpec, withAdditionalSplit("second-revision", 50), withRewriteHost("current.default.svc.cluster.local"), withGatewayAPIclass, withFinalizer, makeItReady),
+			httpRoute(t, ing(withBasicSpec, withRewriteHost("previous.default.svc.cluster.local"), withGatewayAPIclass), httpRouteReady),
+		}, servicesAndEndpoints...),
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				return status.ProbeState{Ready: true, Version: "previous"}, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		WantStatusUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: ing(
+				withBasicSpec,
+				withAdditionalSplit("second-revision", 50),
+				withRewriteHost("current.default.svc.cluster.local"),
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+		}},
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "previous.default.svc.cluster.local",
+					},
+					NormalRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Port:        123,
+						Weight:      100,
+						RewriteHost: "previous.default.svc.cluster.local",
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "second-revision",
+						Path:        "/.well-known/knative/revision/ns/second-revision",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Path:        "/.well-known/knative/revision/ns/goo",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
 					},
 				},
 				StatusConditions: []metav1.Condition{{
@@ -721,6 +795,110 @@ func TestReconcileProbing(t *testing.T) {
 						Path:      "/.well-known/knative/revision/ns/goo",
 						Hash:      "tr-9333a9a68409bb44f2a5f538d2d7c617e5338b6b6c1ebc5e00a19612a5c962c2",
 						Port:      123,
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}},
+	}, {
+		Name: "endpoints are ready - transition probes retained backend like production traffic",
+		Key:  "ns/name",
+		Ctx: withStatusManager(&fakeStatusManager{
+			FakeIsProbeActive: func(types.NamespacedName) (status.ProbeState, bool) {
+				state := status.ProbeState{Ready: true, Version: "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7"}
+				return state, true
+			},
+			FakeDoProbes: func(context.Context, status.Backends) (status.ProbeState, error) {
+				return status.ProbeState{Ready: false}, nil
+			},
+		}),
+		Objects: append([]runtime.Object{
+			ing(
+				withBasicSpec,
+				withAdditionalSplit("second-revision", 50),
+				withRewriteHost("current.default.svc.cluster.local"),
+				withGatewayAPIclass,
+				withFinalizer,
+				makeItReady,
+				makeLoadBalancerNotReady,
+			),
+			HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "previous.default.svc.cluster.local",
+					},
+					NormalRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Port:        123,
+						Weight:      100,
+						RewriteHost: "previous.default.svc.cluster.local",
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "second-revision",
+						Path:        "/.well-known/knative/revision/ns/second-revision",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Path:        "/.well-known/knative/revision/ns/goo",
+						Hash:        "ep-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
+					},
+				},
+				StatusConditions: []metav1.Condition{{
+					Type:   string(gatewayapi.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				}},
+			}.Build(),
+		}, servicesAndEndpoints...),
+		WantUpdates: []clientgotesting.UpdateActionImpl{{
+			Object: HTTPRoute{
+				Name:      "example.com",
+				Namespace: "ns",
+				Hostname:  "example.com",
+				Rules: []RuleBuilder{
+					ProbeRule{
+						Hash: "tr-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Rule: SplitRule{
+							{Namespace: "ns", Name: "goo", Port: 123, Weight: 50, RewriteHost: "current.default.svc.cluster.local"},
+							{Namespace: "ns", Name: "second-revision", Port: 123, Weight: 50, RewriteHost: "current.default.svc.cluster.local"},
+						},
+					},
+					SplitRule{
+						{Namespace: "ns", Name: "goo", Port: 123, Weight: 50, RewriteHost: "current.default.svc.cluster.local"},
+						{Namespace: "ns", Name: "second-revision", Port: 123, Weight: 50, RewriteHost: "current.default.svc.cluster.local"},
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "second-revision",
+						Path:        "/.well-known/knative/revision/ns/second-revision",
+						Hash:        "tr-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
+					},
+					EndpointProbeRule{
+						Namespace:   "ns",
+						Name:        "goo",
+						Path:        "/.well-known/knative/revision/ns/goo",
+						Hash:        "tr-a78c3887be1559cac0d79dd0d7b3e5c87a0042b32eb3db57d2366d9fe01308e7",
+						Port:        123,
+						RewriteHost: "current.default.svc.cluster.local",
 					},
 				},
 				StatusConditions: []metav1.Condition{{

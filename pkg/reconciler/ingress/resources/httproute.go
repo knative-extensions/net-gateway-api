@@ -34,6 +34,7 @@ import (
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/networking/pkg/http/header"
+	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -200,8 +201,8 @@ func MakeHTTPRoute(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      LongestHost(rule.Hosts),
 			Namespace: ing.Namespace,
-			Labels:    kmeta.UnionMaps(ing.Labels, extraLabels),
-			Annotations: kmeta.FilterMap(ing.GetAnnotations(), func(key string) bool {
+			Labels:    kmap.Union(ing.Labels, extraLabels),
+			Annotations: kmap.Filter(ing.GetAnnotations(), func(key string) bool {
 				return key == corev1.LastAppliedConfigAnnotation
 			}),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
@@ -248,14 +249,14 @@ func makeHTTPRouteSpec(
 }
 
 func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatewayapi.HTTPRouteRule {
-	rules := []gatewayapi.HTTPRouteRule{}
+	rules := make([]gatewayapi.HTTPRouteRule, 0, len(rule.HTTP.Paths))
 
 	for _, path := range rule.HTTP.Paths {
 		backendRefs := make([]gatewayapi.HTTPBackendRef, 0, len(path.Splits))
 		var preFilters []gatewayapi.HTTPRouteFilter
 
 		if path.AppendHeaders != nil {
-			headers := []gatewayapi.HTTPHeader{}
+			headers := make([]gatewayapi.HTTPHeader, 0, len(path.AppendHeaders))
 			for k, v := range path.AppendHeaders {
 				header := gatewayapi.HTTPHeader{
 					Name:  gatewayapi.HTTPHeaderName(k),
@@ -324,6 +325,9 @@ func makeHTTPRouteRule(gw config.Gateway, rule *netv1alpha1.IngressRule) []gatew
 		}
 
 		var headerMatchList []gatewayapi.HTTPHeaderMatch
+		if len(path.Headers) > 0 {
+			headerMatchList = make([]gatewayapi.HTTPHeaderMatch, 0, len(path.Headers))
+		}
 		for k, v := range path.Headers {
 			headerMatch := gatewayapi.HTTPHeaderMatch{
 				Type:  ptr.To(gatewayapi.HeaderMatchExact),

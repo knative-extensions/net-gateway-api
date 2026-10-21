@@ -53,6 +53,7 @@ func Setup(t testing.TB) *Clients {
 	cancel := logstream.Start(t)
 	t.Cleanup(cancel)
 
+	//nolint:staticcheck // logstream still uses these shared flags to configure the same cluster.
 	cfg, err := pkgTest.Flags.GetRESTConfig()
 	if err != nil {
 		t.Fatal("couldn't get REST config:", err)

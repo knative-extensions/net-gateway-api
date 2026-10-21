@@ -2,7 +2,7 @@
 **[This component is Beta](https://github.com/knative/community/tree/main/mechanics/MATURITY-LEVELS.md)**
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/knative.dev/net-gateway-api)
-[![Go Report Card](https://goreportcard.com/badge/knative-sandbox/net-gateway-api)](https://goreportcard.com/report/knative-sandbox/net-gateway-api)
+[![Go Report Card](https://goreportcard.com/badge/knative-extensions/net-gateway-api)](https://goreportcard.com/report/knative-extensions/net-gateway-api)
 
 net-gateway-api repository contains a KIngress implementation and testing for Knative integration with the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/).
 
@@ -16,8 +16,8 @@ Note: the integration is beta because some features are still missing. You can f
 
 We run our Knative Ingress Conformance tests and are tracking support by different implementations here:
 
-- [Contour Epic · Issue #384](https://github.com/knative-sandbox/net-gateway-api/issues/384)
-- [Istio EPIC · Issue #383](https://github.com/knative-sandbox/net-gateway-api/issues/383)
+- [Contour Epic · Issue #384](https://github.com/knative-extensions/net-gateway-api/issues/384)
+- [Istio EPIC · Issue #383](https://github.com/knative-extensions/net-gateway-api/issues/383)
 
 Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 ---

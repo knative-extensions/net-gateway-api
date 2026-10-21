@@ -35,7 +35,7 @@ import (
 	"knative.dev/net-gateway-api/pkg/status"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/kmap"
 
 	. "knative.dev/net-gateway-api/pkg/reconciler/testing"
 )
@@ -671,13 +671,13 @@ func withGatewayAPIClass(i *v1alpha1.Ingress) {
 
 func withAnnotation(ann map[string]string) IngressOption {
 	return func(i *v1alpha1.Ingress) {
-		i.Annotations = kmeta.UnionMaps(i.Annotations, ann)
+		i.Annotations = kmap.Union(i.Annotations, ann)
 	}
 }
 
 func withLabel(labels map[string]string) IngressOption {
 	return func(i *v1alpha1.Ingress) {
-		i.Labels = kmeta.UnionMaps(i.Labels, labels)
+		i.Labels = kmap.Union(i.Labels, labels)
 	}
 }
 

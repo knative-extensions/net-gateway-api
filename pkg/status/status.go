@@ -248,7 +248,7 @@ func (m *Prober) probeRequest(
 	callbackKey types.NamespacedName,
 	targets []ProbeTarget,
 ) bool {
-	ingCtx, cancel := context.WithCancel(context.Background())
+	ingCtx, cancel := context.WithCancel(context.Background()) // #nosec G118 -- The route state owns the cancel function until probing is canceled.
 	routeState := &routeState{
 		version:      version,
 		key:          key,
@@ -282,7 +282,7 @@ func (m *Prober) probeRequest(
 			defer m.mu.Unlock()
 			cancelCtx, ok := m.podContexts[ip]
 			if !ok {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(context.Background()) // #nosec G118 -- The pod context is canceled by CancelPodProbing.
 				cancelCtx = cancelContext{
 					context: ctx,
 					cancel:  cancel,

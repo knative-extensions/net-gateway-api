@@ -1012,7 +1012,7 @@ type fakeProbeTargetLister struct {
 }
 
 func (l fakeProbeTargetLister) BackendsToProbeTargets(_ context.Context, backends Backends) ([]ProbeTarget, error) {
-	targets := []ProbeTarget{}
+	targets := make([]ProbeTarget, 0, len(backends.URLs))
 
 	for _, urls := range backends.URLs {
 		newTarget := ProbeTarget{

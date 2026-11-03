@@ -35,6 +35,12 @@ jobs:
         kind-worker-count: 3
 
     - uses: actions/checkout@v7
+
+    # Helm 4's server-side apply conflicts with the preinstalled Gateway API CRDs.
+    - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      with:
+        version: v3.22.0
+
     - name: test
       run: |
         ./test/e2e-tests.sh \

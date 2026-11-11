@@ -40,8 +40,8 @@ func FromContext(ctx context.Context) *Config {
 // FromContextOrDefaults is like FromContext, but when no Config is attached it
 // returns a Config populated with the defaults for each of the Config fields.
 func FromContextOrDefaults(ctx context.Context) *Config {
-	cfg := FromContext(ctx)
-	if cfg == nil {
+	cfg, ok := ctx.Value(cfgKey{}).(*Config)
+	if !ok || cfg == nil {
 		cfg = &Config{}
 	}
 	return cfg

@@ -1,4 +1,5 @@
 # Knative net-gateway-api
+
 **[This component is Beta](https://github.com/knative/community/tree/main/mechanics/MATURITY-LEVELS.md)**
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/knative.dev/net-gateway-api)
@@ -11,7 +12,6 @@ Note: the integration is beta because some features are still missing. You can f
 - http-option - disabling HTTP
 - external-tls provisioning using HTTP-01 challenges is limited to 64 certs by the Gateway API
 
-
 ## KIngress Conformance Tests
 
 We run our Knative Ingress Conformance tests and are tracking support by different implementations here:
@@ -21,22 +21,28 @@ We run our Knative Ingress Conformance tests and are tracking support by differe
 
 Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 ---
+
 ## Requirements
+
 1. A Kind cluster
 1. Knative serving installed
-2. [`ko`](https://github.com/ko-build/ko) (for installing the net-gateway-api)
-3. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-4. `export KO_DOCKER_REPO=kind.local`
+1. [`ko`](https://github.com/ko-build/ko) (for installing the net-gateway-api)
+1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+1. `export KO_DOCKER_REPO=kind.local`
 
 ## Getting started
+
 ### Install Knative serving
+
 ```bash
 kubectl apply -f https://github.com/knative/serving/releases/latest/download/serving-crds.yaml
 kubectl apply -f https://github.com/knative/serving/releases/latest/download/serving-core.yaml
 ```
 
 #### Configure Knative
+
 ##### Ingress
+
 Configuration so Knative serving uses the proper "ingress.class":
 
 ```bash
@@ -47,6 +53,7 @@ kubectl patch configmap/config-network \
 ```
 
 ##### (OPTIONAL) Deploy a sample hello world app:
+
 ```bash
 cat <<-EOF | kubectl apply -f -
 apiVersion: serving.knative.dev/v1
@@ -65,17 +72,21 @@ EOF
 ```
 
 ### Install net-gateway-api
+
 ```bash
 ko apply -f config/
 ```
 
 ### Load tested environment versions
+
 ```
 source ./hack/test-env.sh
 ```
 
 ### Install a supported implementation
+
 #### Istio
+
 ```bash
 # gateway-api CRD must be installed before Istio.
 echo ">> Installing Gateway API CRDs"
@@ -90,6 +101,7 @@ kubectl apply -f ./third_party/istio
 ```
 
 #### Contour
+
 ```bash
 echo ">> Bringing up Contour"
 kubectl apply -f "https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/render/contour-gateway-provisioner.yaml"

@@ -1,12 +1,15 @@
 # Development
+
 This doc explains how to setup a development environment so you can get started
 contributing to Knative `net-gateway-api`.
 
 Before submitting a PR, see also:
+
 - [CONTRIBUTING.md](./CONTRIBUTING.md).
 - [The pull request workflow](https://knative.dev/community/contributing/reviewing/)
 
 ## Notes
+
 If you use the konk script to setup your cluster, your cluster will be named `knative`. However, most of the scripts expect it to be the default `kind` name. Set the kind cluster name env `export KIND_CLUSTER_NAME=knative` to point to `knative` cluster. KO requires a registry which if you are developing locally you could use `export KO_DOCKER_REPO=kind.local` to use the local one on kind. Please see official [KO documentation](https://github.com/google/ko#local-publishing-options) for more information.
 
 Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
@@ -14,6 +17,7 @@ Versions to be installed are listed in [`hack/test-env.sh`](hack/test-env.sh).
 Tests are currently wip. Please see [README#tests](README.md#tests)
 
 ## Requirements
+
 1. A running cluster
 2. [Knative serving installed](README.md#install-knative-serving)
 3. [`ko`](https://github.com/google/ko) (for development and testing)
@@ -21,6 +25,7 @@ Tests are currently wip. Please see [README#tests](README.md#tests)
 5. [`bash`](https://www.gnu.org/software/bash/) v4 or later. On macOS the default bash is too old, you can use [Homebrew](https://brew.sh) to install a later version.
 
 ## Environment
+
 To start your environment you'll need to set `KO_DOCKER_REPO`: The repository to which developer/test images should be pushed. Ex:
 
 ```shell
@@ -28,6 +33,7 @@ export KO_DOCKER_REPO='gcr.io/my-gcloud-project-id'
 ```
 
 ### Notes
+
 - If you are using Docker Hub to store your images your `KO_DOCKER_REPO` variable should be `docker.io/<username>`.
 - Currently Docker Hub doesn't let you create subdirs under your username.
 - You'll need to be authenticated with your `KO_DOCKER_REPO` before pushing images.
@@ -35,26 +41,32 @@ export KO_DOCKER_REPO='gcr.io/my-gcloud-project-id'
   - Docker Hub: `docker login`
 
 ## Building the test images
+
 NOTE: this is only required when you run conformance/e2e tests locally with `go test` commands, and may be required periodically.
 
 The [`upload-test-images.sh`](test/upload-test-images.sh) script can be used to build and push the test images used by the conformance and e2e tests.
+
 ```bash
 ./test/upload-test-images.sh
 ```
 
 ## Tests
+
 ### Conformance and HA
-* Calling the script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
-* Calling the script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
-* Use the script with `--kind` to run the tests against a kind cluster.
+
+- Calling the script without arguments will create a new cluster in your current GCP project (assuming you have one) and run the tests against it.
+- Calling the script with `--run-tests` and the variable `KO_DOCKER_REPO` set will immediately start the tests against the cluster currently configured for `kubectl`.
+- Use the script with `--kind` to run the tests against a kind cluster.
 
 #### Examples
+
 `./test/e2e-tests.sh --istio --run-tests --kind --skip-dump-on-failure`
 `./test/e2e-tests.sh --contour --run-tests --kind --skip-dump-on-failure`
 
-
 #### Individual tests
+
 To run an individual test use
+
 ```bash
 # Prepare environment
 cd test

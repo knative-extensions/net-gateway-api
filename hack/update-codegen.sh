@@ -53,3 +53,6 @@ group "Update tested version docs"
 source "${REPO_ROOT_DIR}"/hack/test-env.sh
 template=$(cat "${REPO_ROOT_DIR}"/docs/.test-version.template)
 eval "echo \"${template}\"" > "${REPO_ROOT_DIR}"/docs/test-version.md
+
+# Keep generated Markdown consistent with the automated formatting PRs.
+npx --yes prettier@3.10.1 --write "${REPO_ROOT_DIR}/docs/test-version.md"
